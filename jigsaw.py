@@ -266,7 +266,16 @@ class LessonEditor(tk.Toplevel):
         lbl_frame = ttk.Frame(self.right_frame)
         lbl_frame.pack(fill=tk.X, pady=(15, 5))
         ttk.Label(lbl_frame, text="Sentence Chunks (in correct order):").pack(side=tk.LEFT)
-        ttk.Button(lbl_frame, text="⚡ Auto-Split Question", command=self.auto_split_question).pack(side=tk.RIGHT)
+        
+        split_controls = ttk.Frame(lbl_frame)
+        split_controls.pack(side=tk.RIGHT)
+        
+        ttk.Label(split_controls, text="Split by:").pack(side=tk.LEFT, padx=(0, 5))
+        self.delimiter_var = tk.StringVar(value="Space")
+        self.delimiter_cb = ttk.Combobox(split_controls, textvariable=self.delimiter_var, values=["Space", ",", "|", "-", ";"], width=8)
+        self.delimiter_cb.pack(side=tk.LEFT, padx=(0, 10))
+        
+        ttk.Button(split_controls, text="⚡ Auto-Split", command=self.auto_split_question).pack(side=tk.LEFT)
         
         self.chunks_container = ttk.Frame(self.right_frame)
         self.chunks_container.pack(fill=tk.BOTH, expand=True, pady=5)
@@ -282,10 +291,20 @@ class LessonEditor(tk.Toplevel):
         ttk.Button(bottom_frame, text="Cancel", command=self.destroy).pack(side=tk.RIGHT)
 
     def auto_split_question(self):
-        """Automatically splits the current question text into chunks by space."""
+        """Automatically splits the current question text into chunks based on chosen delimiter."""
         q_text = self.q_entry.get().strip()
         if not q_text:
             messagebox.showinfo("Empty", "Please enter a Question first to auto-split it.")
+            return
+            
+        delimiter = self.delimiter_var.get()
+        if delimiter == "Space" or delimiter == "":
+            chunks = q_text.split()
+        else:
+            # Split by the chosen delimiter and strip whitespace from phrases
+            chunks = [c.strip() for c in q_text.split(delimiter) if c.strip()]
+            
+        if not chunks:
             return
             
         # Clear existing chunk widgets
@@ -293,9 +312,9 @@ class LessonEditor(tk.Toplevel):
             widget.destroy()
         self.chunk_entries.clear()
         
-        # Split by spaces and create new chunk fields
-        for word in q_text.split():
-            self.add_chunk_field(word)
+        # Create new chunk fields
+        for chunk in chunks:
+            self.add_chunk_field(chunk)
             
         self.on_field_change()
 
