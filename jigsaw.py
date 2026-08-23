@@ -4,6 +4,8 @@ import random
 import os
 import platform
 import threading
+import webbrowser
+import tempfile
 
 # Platform specific sound imports
 try:
@@ -444,7 +446,7 @@ class SentenceJigsawApp:
     def __init__(self, root):
         self.root = root
         self.root.title("🧩 Sentence Jigsaw")
-        self.root.geometry("900x750") # Slightly taller window
+        self.root.geometry("950x800") # Slightly wider for new buttons
         
         self.model = LessonModel()
         
@@ -480,15 +482,17 @@ class SentenceJigsawApp:
         self.progress_label = ttk.Label(top_frame, text="No file loaded", font=("", 14, "bold"))
         self.progress_label.pack(side=tk.LEFT)
         
-        self.progress_bar = ttk.Progressbar(top_frame, orient=tk.HORIZONTAL, length=200, mode='determinate')
+        self.progress_bar = ttk.Progressbar(top_frame, orient=tk.HORIZONTAL, length=180, mode='determinate')
         self.progress_bar.pack(side=tk.LEFT, padx=15)
         
         # Star display for gamification score & Encouragement
         self.score_label = ttk.Label(top_frame, text="", font=("", 16, "bold"), foreground="#f39c12")
         self.score_label.pack(side=tk.LEFT, padx=10)
         
-        ttk.Button(top_frame, text="📂 Load File", command=self.open_file_dialog).pack(side=tk.RIGHT)
-        ttk.Button(top_frame, text="✏️ Edit Lesson", command=self.open_editor).pack(side=tk.RIGHT, padx=5)
+        # Utilities on the right
+        ttk.Button(top_frame, text="📂 Load", command=self.open_file_dialog).pack(side=tk.RIGHT)
+        ttk.Button(top_frame, text="✏️ Edit", command=self.open_editor).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(top_frame, text="🖨️ Print Worksheet", command=self.generate_worksheet).pack(side=tk.RIGHT, padx=5)
         ttk.Button(top_frame, text="🔄 Restart", command=self.restart_lesson).pack(side=tk.RIGHT, padx=5)
 
         # Main Content
@@ -762,6 +766,82 @@ class SentenceJigsawApp:
                 self.open_file_dialog()
             else:
                 self.root.quit()
+
+    def generate_worksheet(self):
+        """Generates a printable HTML worksheet so kids can write numbers manually."""
+        if not self.model.qa_data:
+            messagebox.showwarning("Empty", "Please load a lesson file first.")
+            return
+
+        html_content = """<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Sentence Jigsaw Worksheet</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; color: #000; }
+        h1 { text-align: center; color: #333; margin-bottom: 20px; }
+        .instructions { text-align: center; font-size: 18px; margin-bottom: 50px; color: #555; }
+        .item { margin-bottom: 50px; page-break-inside: avoid; }
+        .question { font-size: 24px; font-weight: bold; margin-bottom: 20px; color: #222; }
+        .chunks { display: flex; flex-wrap: wrap; gap: 25px; }
+        .chunk-box {
+            border: 2px solid #555;
+            border-radius: 8px;
+            padding: 15px 20px;
+            font-size: 22px;
+            text-align: center;
+            background-color: #fff;
+            min-width: 80px;
+            box-shadow: 2px 2px 0px #ccc;
+        }
+        .number-box {
+            margin-top: 15px;
+            border: 2px dashed #888;
+            height: 40px;
+            width: 50px;
+            margin-left: auto;
+            margin-right: auto;
+            background-color: #fafafa;
+        }
+        @media print {
+            body { margin: 0; }
+            .chunk-box { box-shadow: none; border: 1px solid #000; }
+            .number-box { border: 1px dashed #000; }
+            .instructions { color: #000; }
+        }
+    </style>
+</head>
+<body>
+    <h1>Sentence Jigsaw Practice</h1>
+    <p class="instructions">
+        Read the sentence, then write 1, 2, 3... in the empty boxes below the scrambled blocks to put them in the correct order!
+    </p>
+"""
+        for i, data in enumerate(self.model.qa_data, 1):
+            q = data["question"]
+            chunks = data["chunks"].copy()
+            # Ensure chunks are scrambled for the worksheet
+            while len(chunks) > 1 and chunks == data["chunks"]:
+                random.shuffle(chunks)
+            
+            html_content += f'    <div class="item">\n        <div class="question">{i}. {q}</div>\n'
+            html_content += '        <div class="chunks">\n'
+            for chunk in chunks:
+                html_content += f'            <div class="chunk-box">{chunk}<div class="number-box"></div></div>\n'
+            html_content += '        </div>\n    </div>\n'
+        
+        html_content += "</body>\n</html>"
+        
+        try:
+            # Create a temporary HTML file and open it in the default web browser
+            fd, path = tempfile.mkstemp(suffix=".html", prefix="worksheet_", text=True)
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                f.write(html_content)
+                
+            webbrowser.open(f"file://{path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not generate worksheet:\n{str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
