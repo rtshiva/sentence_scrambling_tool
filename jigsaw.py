@@ -282,16 +282,15 @@ class LessonEditor(tk.Toplevel):
         # Deep copy existing data for editing
         self.edit_data = [dict(d) for d in model.qa_data]
         for d in self.edit_data:
-            d['chunks'] = list(d['chunks']) # Ensure lists are copied
+            d['chunks'] = list(d['chunks'])
             
         self.current_selected_index = 0 if self.edit_data else None
-        self.chunk_entries = []
         
         self.setup_ui()
         self.refresh_listbox()
         if self.current_selected_index is not None:
             self.load_form()
-        
+            
     def setup_ui(self):
         # Left pane (Listbox)
         left_frame = ttk.Frame(self, padding=10)
@@ -325,71 +324,42 @@ class LessonEditor(tk.Toplevel):
         self.right_frame = self.right_scroll.scrollable_frame
         
         # Edit Form Fields
-        ttk.Label(self.right_frame, text="Question:").pack(anchor=tk.W)
+        ttk.Label(self.right_frame, text="Question (Clean text shown to student):").pack(anchor=tk.W)
         self.q_entry = ttk.Entry(self.right_frame, font=("", 12))
         self.q_entry.pack(fill=tk.X, pady=5)
         self.q_entry.bind("<KeyRelease>", self.on_field_change)
         
-        ttk.Label(self.right_frame, text="Meaning / Translation:").pack(anchor=tk.W, pady=(10,0))
+        ttk.Label(self.right_frame, text="Meaning / Translation (Optional):").pack(anchor=tk.W, pady=(10,0))
         self.m_entry = ttk.Entry(self.right_frame, font=("", 12))
         self.m_entry.pack(fill=tk.X, pady=5)
         self.m_entry.bind("<KeyRelease>", self.on_field_change)
         
-        # Row 1: Quick split text box
+        # Row 1: Split Source Box
         text_frame = ttk.Frame(self.right_frame)
         text_frame.pack(fill=tk.X, pady=(15, 5))
-        ttk.Label(text_frame, text="Quick Split Text:").pack(side=tk.LEFT, anchor=tk.N)
+        
+        header_frame = ttk.Frame(text_frame)
+        header_frame.pack(fill=tk.X)
+        ttk.Label(header_frame, text="Sentence with Delimiters (The puzzle answer):").pack(side=tk.LEFT)
+        
+        self.delimiter_var = tk.StringVar(value="| (Pipe)")
+        self.delimiter_cb = ttk.Combobox(header_frame, textvariable=self.delimiter_var, values=["Space", ",", "| (Pipe)", "-", ";"], width=10, state="readonly")
+        self.delimiter_cb.pack(side=tk.RIGHT)
+        ttk.Label(header_frame, text="Split by:").pack(side=tk.RIGHT, padx=5)
+        self.delimiter_cb.bind("<<ComboboxSelected>>", self.on_delimiter_change)
+        
         self.split_source_entry = tk.Text(text_frame, font=("", 12), height=4, wrap=tk.WORD)
-        self.split_source_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+        self.split_source_entry.pack(fill=tk.BOTH, expand=True, pady=5)
+        self.split_source_entry.bind("<KeyRelease>", self.on_field_change)
         
-        # Row 2: Split Controls
-        controls_frame = ttk.Frame(self.right_frame)
-        controls_frame.pack(fill=tk.X, pady=(0, 10))
-        
-        ttk.Button(controls_frame, text="⚡ Auto-Split", command=self.auto_split_source).pack(side=tk.RIGHT)
-        
-        self.delimiter_var = tk.StringVar(value="Space")
-        self.delimiter_cb = ttk.Combobox(controls_frame, textvariable=self.delimiter_var, values=["Space", ",", "|", "-", ";"], width=8)
-        self.delimiter_cb.pack(side=tk.RIGHT, padx=5)
-        
-        ttk.Label(controls_frame, text="Split by:").pack(side=tk.RIGHT)
-
-        # Chunks Label
-        ttk.Label(self.right_frame, text="Sentence Chunks (in correct order):").pack(anchor=tk.W, pady=(15, 5))
-        
+        # Chunks Preview
+        ttk.Label(self.right_frame, text="Live Preview of Puzzle Blocks:").pack(anchor=tk.W, pady=(15, 5))
         self.chunks_container = ttk.Frame(self.right_frame)
         self.chunks_container.pack(fill=tk.BOTH, expand=True, pady=5)
-        
-        self.add_chunk_btn = ttk.Button(self.right_frame, text="➕ Add Chunk Manually", command=lambda: self.add_chunk_field())
-        self.add_chunk_btn.pack(anchor=tk.W, pady=5)
 
-    def auto_split_source(self):
-        """Automatically splits the source text into chunks based on chosen delimiter."""
-        source_text = self.split_source_entry.get("1.0", tk.END).strip()
-        if not source_text:
-            messagebox.showinfo("Empty", "Please enter text into the 'Quick Split Text' box first.")
-            return
-            
-        delimiter = self.delimiter_var.get()
-        if delimiter == "Space" or delimiter == "":
-            chunks = source_text.split()
-        else:
-            # Split by the chosen delimiter and strip whitespace from phrases
-            chunks = [c.strip() for c in source_text.split(delimiter) if c.strip()]
-            
-        if not chunks:
-            return
-            
-        # Clear existing chunk widgets
-        for widget in self.chunks_container.winfo_children():
-            widget.destroy()
-        self.chunk_entries.clear()
-        
-        # Create new chunk fields
-        for chunk in chunks:
-            self.add_chunk_field(chunk)
-            
-        self.on_field_change()
+    def on_delimiter_change(self, event=None):
+        if self.current_selected_index is not None:
+            self.load_form()
 
     def refresh_listbox(self):
         self.listbox.delete(0, tk.END)
@@ -427,64 +397,66 @@ class LessonEditor(tk.Toplevel):
         self.m_entry.delete(0, tk.END)
         self.m_entry.insert(0, data.get('meaning', ''))
         
-        for widget in self.chunks_container.winfo_children():
-            widget.destroy()
-        self.chunk_entries.clear()
+        self.split_source_entry.delete("1.0", tk.END)
         
-        for c in data.get('chunks', []):
-            self.add_chunk_field(c)
+        delim_choice = self.delimiter_var.get()
+        if delim_choice == "Space":
+            joiner = " "
+        elif delim_choice == "| (Pipe)":
+            joiner = " | "
+        else:
+            joiner = f"{delim_choice}"
             
-    def add_chunk_field(self, text=""):
-        frame = ttk.Frame(self.chunks_container)
-        frame.pack(fill=tk.X, pady=2)
+        joined_text = joiner.join(data.get('chunks', []))
+        self.split_source_entry.insert(tk.END, joined_text)
         
-        entry = ttk.Entry(frame, font=("", 12))
-        entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        entry.insert(0, text)
-        entry.bind("<KeyRelease>", self.on_field_change)
-        
-        def move_up():
-            idx = self.chunk_entries.index(entry)
-            if idx > 0:
-                val1, val2 = self.chunk_entries[idx].get(), self.chunk_entries[idx-1].get()
-                self.chunk_entries[idx].delete(0, tk.END); self.chunk_entries[idx].insert(0, val2)
-                self.chunk_entries[idx-1].delete(0, tk.END); self.chunk_entries[idx-1].insert(0, val1)
-                self.on_field_change()
-
-        def move_down():
-            idx = self.chunk_entries.index(entry)
-            if idx < len(self.chunk_entries) - 1:
-                val1, val2 = self.chunk_entries[idx].get(), self.chunk_entries[idx+1].get()
-                self.chunk_entries[idx].delete(0, tk.END); self.chunk_entries[idx].insert(0, val2)
-                self.chunk_entries[idx+1].delete(0, tk.END); self.chunk_entries[idx+1].insert(0, val1)
-                self.on_field_change()
-        
-        def remove():
-            frame.destroy()
-            self.chunk_entries.remove(entry)
-            self.on_field_change()
-            
-        ttk.Button(frame, text="❌", width=3, command=remove).pack(side=tk.RIGHT, padx=(5,0))
-        ttk.Button(frame, text="⬇️", width=3, command=move_down).pack(side=tk.RIGHT, padx=(2,0))
-        ttk.Button(frame, text="⬆️", width=3, command=move_up).pack(side=tk.RIGHT, padx=(5,0))
-        
-        self.chunk_entries.append(entry)
-        if text == "": 
-            self.on_field_change()
+        self.render_preview()
 
     def save_current_form_to_data(self):
         if self.current_selected_index is None or self.current_selected_index >= len(self.edit_data):
             return
             
         def sanitize(text):
-            # Replace ASCII pipe with proper Hindi Purna Viram to prevent delimiter collisions
             return text.replace("|", "।").strip()
+            
+        source_text = self.split_source_entry.get("1.0", tk.END).strip()
+        delim_choice = self.delimiter_var.get()
+        
+        if not source_text:
+            chunks = []
+        elif delim_choice == "Space":
+            chunks = source_text.split()
+        elif delim_choice == "| (Pipe)":
+            chunks = [c.strip() for c in source_text.split("|") if c.strip()]
+        else:
+            chunks = [c.strip() for c in source_text.split(delim_choice) if c.strip()]
             
         self.edit_data[self.current_selected_index] = {
             'question': sanitize(self.q_entry.get()),
             'meaning': sanitize(self.m_entry.get()),
-            'chunks': [sanitize(e.get()) for e in self.chunk_entries if sanitize(e.get())]
+            'chunks': [sanitize(c) for c in chunks if sanitize(c)]
         }
+        self.render_preview()
+
+    def render_preview(self):
+        for widget in self.chunks_container.winfo_children():
+            widget.destroy()
+            
+        if self.current_selected_index is None:
+            return
+            
+        chunks = self.edit_data[self.current_selected_index].get('chunks', [])
+        
+        if not chunks:
+            ttk.Label(self.chunks_container, text="No chunks yet...", font=("", 10, "italic"), foreground="gray").pack(pady=10)
+            return
+            
+        preview_flow = FlowFrame(self.chunks_container)
+        preview_flow.pack(fill=tk.X, expand=True)
+        
+        for c in chunks:
+            lbl = tk.Label(preview_flow, text=c, font=("", 12, "bold"), bg="#bae1ff", relief=tk.RAISED, padx=10, pady=5)
+            preview_flow.add_widget(lbl)
 
     def add_new(self):
         self.save_current_form_to_data()
@@ -492,7 +464,7 @@ class LessonEditor(tk.Toplevel):
         self.current_selected_index = len(self.edit_data) - 1
         self.refresh_listbox()
         self.load_form()
-        self.q_entry.focus() # Focus for quick typing
+        self.q_entry.focus()
 
     def delete_selected(self):
         if self.current_selected_index is None:
@@ -503,9 +475,9 @@ class LessonEditor(tk.Toplevel):
         if not self.edit_data:
              self.q_entry.delete(0, tk.END)
              self.m_entry.delete(0, tk.END)
+             self.split_source_entry.delete("1.0", tk.END)
              for widget in self.chunks_container.winfo_children():
                  widget.destroy()
-             self.chunk_entries.clear()
              
         self.refresh_listbox()
         if self.current_selected_index is not None:
@@ -527,11 +499,10 @@ class LessonEditor(tk.Toplevel):
         try:
             self.model.save_file(filename, self.edit_data)
             messagebox.showinfo("Success", "Lesson saved successfully!")
-            self.on_save_callback() # Notify main app to reload
+            self.on_save_callback()
             self.destroy()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
-
 
 # --- UI: Main Application ---
 class SentenceJigsawApp:
