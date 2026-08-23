@@ -2,6 +2,14 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import random
 import os
+import platform
+import threading
+
+# Platform specific sound imports
+if platform.system() == "Windows":
+    import winsound
+else:
+    import subprocess
 
 # --- Configuration & Theme ---
 THEME = {
@@ -14,6 +22,48 @@ THEME = {
     "button_bg": "#ffffff",
     "button_disabled": "#e0e0e0"
 }
+
+# --- Sound Manager (Cross-Platform) ---
+class SoundPlayer:
+    """Plays lightweight UI sounds asynchronously without freezing the GUI."""
+    
+    @staticmethod
+    def play_click():
+        SoundPlayer._play_async('click')
+
+    @staticmethod
+    def play_success():
+        SoundPlayer._play_async('success')
+
+    @staticmethod
+    def play_error():
+        SoundPlayer._play_async('error')
+
+    @staticmethod
+    def _play_async(sound_type):
+        def play():
+            sys_name = platform.system()
+            if sys_name == "Windows":
+                if sound_type == 'click':
+                    winsound.MessageBeep(winsound.MB_OK)
+                elif sound_type == 'success':
+                    # A small ascending chime for success
+                    winsound.Beep(523, 150) # C5
+                    winsound.Beep(659, 150) # E5
+                    winsound.Beep(784, 200) # G5
+                elif sound_type == 'error':
+                    winsound.MessageBeep(winsound.MB_ICONHAND)
+            elif sys_name == "Darwin": # macOS
+                if sound_type == 'click':
+                    subprocess.run(["afplay", "/System/Library/Sounds/Pop.aiff"])
+                elif sound_type == 'success':
+                    subprocess.run(["afplay", "/System/Library/Sounds/Glass.aiff"])
+                elif sound_type == 'error':
+                    subprocess.run(["afplay", "/System/Library/Sounds/Basso.aiff"])
+            # Linux could use aplay or paplay here if needed
+        
+        # Fire and forget in a background thread
+        threading.Thread(target=play, daemon=True).start()
 
 # --- Data Model ---
 class LessonModel:
@@ -331,6 +381,7 @@ class SentenceJigsawApp:
         self.original_chunks = []
         self.user_selected_chunks = []
         self.chunk_buttons = []
+        self.hints_used = 0
 
         self.setup_ui()
         self.setup_bindings()
@@ -341,11 +392,15 @@ class SentenceJigsawApp:
         top_frame = ttk.Frame(self.root, padding=10)
         top_frame.pack(fill=tk.X)
         
-        self.progress_label = ttk.Label(top_frame, text="No file loaded", font=("", 12))
+        self.progress_label = ttk.Label(top_frame, text="No file loaded", font=("", 12, "bold"))
         self.progress_label.pack(side=tk.LEFT)
         
         self.progress_bar = ttk.Progressbar(top_frame, orient=tk.HORIZONTAL, length=200, mode='determinate')
         self.progress_bar.pack(side=tk.LEFT, padx=10)
+        
+        # Star display for gamification score
+        self.score_label = ttk.Label(top_frame, text="", font=("", 14), foreground="#f39c12")
+        self.score_label.pack(side=tk.LEFT, padx=10)
         
         ttk.Button(top_frame, text="📂 Load File", command=self.open_file_dialog).pack(side=tk.RIGHT)
         ttk.Button(top_frame, text="✏️ Edit Lesson", command=self.open_editor).pack(side=tk.RIGHT, padx=5)
@@ -433,8 +488,10 @@ class SentenceJigsawApp:
         self.question_label.config(text=data["question"])
         self.original_chunks = data["chunks"]
         self.user_selected_chunks = []
+        self.hints_used = 0
         
         self.update_board_visuals(THEME["board_bg_default"], THEME["text_default"])
+        self.score_label.config(text="") # Reset stars
         
         self.next_btn.config(state=tk.DISABLED)
         self.undo_btn.config(state=tk.DISABLED)
@@ -471,6 +528,8 @@ class SentenceJigsawApp:
         self.answer_display.config(text=" ".join(self.user_selected_chunks))
 
     def select_chunk(self, chunk):
+        SoundPlayer.play_click()
+        
         self.user_selected_chunks.append(chunk)
         self.render_answer_text()
         self.undo_btn.config(state=tk.NORMAL)
@@ -485,6 +544,7 @@ class SentenceJigsawApp:
             self.check_answer()
 
     def give_hint(self):
+        self.hints_used += 1
         current_len = len(self.user_selected_chunks)
         if current_len < len(self.original_chunks):
             self.select_chunk(self.original_chunks[current_len])
@@ -523,20 +583,37 @@ class SentenceJigsawApp:
 
     def check_answer(self):
         if self.user_selected_chunks == self.original_chunks:
+            SoundPlayer.play_success()
             self.update_board_visuals(THEME["board_bg_correct"], THEME["text_correct"])
+            
+            # Star Rating based on hints used
+            stars = 3
+            if self.hints_used == 1:
+                stars = 2
+            elif self.hints_used >= 2:
+                stars = 1
+            self.score_label.config(text="⭐" * stars)
+            
             self.next_btn.config(state=tk.NORMAL)
             self.undo_btn.config(state=tk.DISABLED) 
             self.hint_btn.config(state=tk.DISABLED)
             
             self.progress_bar['value'] = self.model.current_index + 1
         else:
+            SoundPlayer.play_error()
             self.update_board_visuals(THEME["board_bg_incorrect"], THEME["text_incorrect"])
-            messagebox.showwarning("Oops!", "That's not quite right. Undo a few steps or try a hint!")
-
+            
+            # Simple flash effect on error
+            def reset_flash():
+                if self.user_selected_chunks != self.original_chunks:
+                    self.update_board_visuals(THEME["board_bg_default"], THEME["text_default"])
+            self.root.after(800, reset_flash) # Flash back to default after 800ms
+            
     def next_sentence(self):
         if self.model.next_question():
             self.load_current_question()
         else:
+            SoundPlayer.play_success()
             response = messagebox.askyesno("Congratulations!", "You finished all the questions!\n\nWould you like to load a new file?")
             if response:
                 self.open_file_dialog()
