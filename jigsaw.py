@@ -170,6 +170,63 @@ class LessonModel:
 
 
 # --- Custom UI Widgets ---
+class ScrollableFrame(ttk.Frame):
+    """A generic scrollable frame widget."""
+    def __init__(self, container, padding=0, *args, **kwargs):
+        super().__init__(container, *args, **kwargs)
+        
+        self.canvas = tk.Canvas(self, borderwidth=0, highlightthickness=0)
+        self.scrollbar = ttk.Scrollbar(self, orient="vertical", command=self.canvas.yview)
+        
+        # The inner frame where actual widgets are placed
+        self.scrollable_frame = ttk.Frame(self.canvas, padding=padding)
+        
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+        
+        self.canvas_window = self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+        
+        self.canvas.pack(side="left", fill="both", expand=True)
+        self.scrollbar.pack(side="right", fill="y")
+        
+        self.canvas.bind('<Configure>', self._on_canvas_configure)
+        
+        # Bind cross-platform scroll events
+        self.bind_all("<MouseWheel>", self._on_mousewheel)
+        self.bind_all("<Button-4>", self._on_mousewheel) # Linux up
+        self.bind_all("<Button-5>", self._on_mousewheel) # Linux down
+
+    def _on_canvas_configure(self, event):
+        # Update inner frame width to fill the canvas horizontally
+        self.canvas.itemconfig(self.canvas_window, width=event.width)
+
+    def _on_mousewheel(self, event):
+        # Check if cursor is over this widget or its children
+        x, y = self.winfo_pointerxy()
+        try:
+            widget = self.winfo_containing(x, y)
+            # If the hovered widget is a child of our ScrollableFrame, scroll it
+            if widget and str(self) in str(widget):
+                if getattr(event, "num", None) == 4:
+                    self.canvas.yview_scroll(-1, "units")
+                elif getattr(event, "num", None) == 5:
+                    self.canvas.yview_scroll(1, "units")
+                else:
+                    delta = event.delta
+                    if platform.system() == "Windows":
+                        delta = int(-1 * (event.delta / 120))
+                    elif platform.system() == "Darwin":
+                        delta = int(-1 * event.delta)
+                    self.canvas.yview_scroll(delta, "units")
+        except Exception:
+            pass
+
+
 class FlowFrame(tk.Frame):
     """A Frame that wraps its children (buttons) onto the next line if they exceed the width."""
     def __init__(self, master, **kwargs):
@@ -217,7 +274,7 @@ class LessonEditor(tk.Toplevel):
         self.on_save_callback = on_save_callback
         
         self.title("Lesson Editor")
-        self.geometry("900x650")
+        self.geometry("900x700")
         self.grab_set() 
         
         # Deep copy existing data for editing
@@ -248,10 +305,24 @@ class LessonEditor(tk.Toplevel):
         ttk.Button(btn_frame, text="➕ Add New", command=self.add_new).pack(side=tk.LEFT, expand=True, padx=2)
         ttk.Button(btn_frame, text="❌ Delete", command=self.delete_selected).pack(side=tk.LEFT, expand=True, padx=2)
         
-        # Right pane (Edit Form)
-        self.right_frame = ttk.Frame(self, padding=10)
-        self.right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        # Right pane container
+        self.right_pane = ttk.Frame(self, padding=10)
+        self.right_pane.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
+        # Bottom pane (Save/Cancel) pinned to the bottom
+        bottom_frame = ttk.Frame(self.right_pane)
+        bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=(10,0))
+        
+        ttk.Button(bottom_frame, text="💾 Save to File", command=self.save_to_file).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(bottom_frame, text="Cancel", command=self.destroy).pack(side=tk.RIGHT)
+        
+        # Scrollable area for the editing form
+        self.right_scroll = ScrollableFrame(self.right_pane)
+        self.right_scroll.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        
+        self.right_frame = self.right_scroll.scrollable_frame
+        
+        # Edit Form Fields
         ttk.Label(self.right_frame, text="Question:").pack(anchor=tk.W)
         self.q_entry = ttk.Entry(self.right_frame, font=("", 12))
         self.q_entry.pack(fill=tk.X, pady=5)
@@ -289,13 +360,6 @@ class LessonEditor(tk.Toplevel):
         
         self.add_chunk_btn = ttk.Button(self.right_frame, text="➕ Add Chunk Manually", command=lambda: self.add_chunk_field())
         self.add_chunk_btn.pack(anchor=tk.W, pady=5)
-        
-        # Bottom pane (Save/Cancel)
-        bottom_frame = ttk.Frame(self.right_frame)
-        bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
-        
-        ttk.Button(bottom_frame, text="💾 Save to File", command=self.save_to_file).pack(side=tk.RIGHT, padx=5)
-        ttk.Button(bottom_frame, text="Cancel", command=self.destroy).pack(side=tk.RIGHT)
 
     def auto_split_source(self):
         """Automatically splits the source text into chunks based on chosen delimiter."""
@@ -472,7 +536,7 @@ class SentenceJigsawApp:
     def __init__(self, root):
         self.root = root
         self.root.title("🧩 Sentence Jigsaw")
-        self.root.geometry("950x800") # Slightly wider for new buttons
+        self.root.geometry("950x800")
         
         self.model = LessonModel()
         
@@ -521,9 +585,11 @@ class SentenceJigsawApp:
         ttk.Button(top_frame, text="🖨️ Print Worksheet", command=self.generate_worksheet).pack(side=tk.RIGHT, padx=5)
         ttk.Button(top_frame, text="🔄 Restart", command=self.restart_lesson).pack(side=tk.RIGHT, padx=5)
 
-        # Main Content
-        content_frame = ttk.Frame(self.root, padding=20)
-        content_frame.pack(fill=tk.BOTH, expand=True)
+        # Main Content Wrapped in Scrollable Frame
+        self.main_scroll = ScrollableFrame(self.root, padding=20)
+        self.main_scroll.pack(fill=tk.BOTH, expand=True)
+        
+        content_frame = self.main_scroll.scrollable_frame
 
         ttk.Label(content_frame, text="Question:", font=("", 14), foreground="gray").pack()
         self.question_label = ttk.Label(content_frame, text="", font=self.question_font, wraplength=800, justify="center")
@@ -655,6 +721,9 @@ class SentenceJigsawApp:
             color_idx += 1
             
         self.root.update_idletasks()
+        
+        # After updating, scroll back to the top of the canvas
+        self.main_scroll.canvas.yview_moveto(0)
 
     def update_board_visuals(self, bg_color, fg_color):
         self.answer_display.config(fg=fg_color, bg=bg_color)
