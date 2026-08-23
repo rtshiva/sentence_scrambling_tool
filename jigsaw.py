@@ -45,14 +45,16 @@ class SoundPlayer:
             sys_name = platform.system()
             if sys_name == "Windows":
                 if sound_type == 'click':
-                    winsound.MessageBeep(winsound.MB_OK)
+                    winsound.Beep(800, 50) # Short high pop
                 elif sound_type == 'success':
-                    # A small ascending chime for success
+                    # Ascending chime
                     winsound.Beep(523, 150) # C5
                     winsound.Beep(659, 150) # E5
                     winsound.Beep(784, 200) # G5
                 elif sound_type == 'error':
-                    winsound.MessageBeep(winsound.MB_ICONHAND)
+                    # Low buzz / descending tone
+                    winsound.Beep(200, 150)
+                    winsound.Beep(150, 250)
             elif sys_name == "Darwin": # macOS
                 if sound_type == 'click':
                     subprocess.run(["afplay", "/System/Library/Sounds/Pop.aiff"])
