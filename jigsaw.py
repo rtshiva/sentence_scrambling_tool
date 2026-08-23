@@ -572,18 +572,24 @@ class SentenceJigsawApp:
         
         content_frame = self.main_scroll.scrollable_frame
 
-        ttk.Label(content_frame, text="Question:", font=("", 14), foreground="gray").pack()
-        self.question_label = ttk.Label(content_frame, text="", font=self.question_font, wraplength=800, justify="center")
-        self.question_label.pack(pady=(0, 20))
+        ttk.Label(content_frame, text="Question:", font=("", 14), foreground="gray").pack(anchor=tk.W)
+        self.question_label = ttk.Label(content_frame, text="", font=self.question_font, wraplength=850, justify=tk.LEFT, anchor=tk.W, padding=(0, 10))
+        self.question_label.pack(fill=tk.X, pady=(0, 20))
 
-        ttk.Label(content_frame, text="Your Answer:", font=("", 14), foreground="gray").pack()
+        ttk.Label(content_frame, text="Your Answer:", font=("", 14), foreground="gray").pack(anchor=tk.W)
         
         self.answer_frame = tk.Frame(content_frame, bg=THEME["board_bg_default"], bd=2, relief=tk.GROOVE)
         self.answer_frame.pack(pady=10, fill=tk.X)
         
-        self.answer_display = tk.Label(self.answer_frame, text="", font=self.answer_font, fg=THEME["text_default"], 
-                                       bg=THEME["board_bg_default"], wraplength=800, justify="center", height=3)
-        self.answer_display.pack(pady=10, fill=tk.BOTH)
+        self.answer_scroll = ttk.Scrollbar(self.answer_frame)
+        self.answer_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.answer_display = tk.Text(self.answer_frame, font=self.answer_font, fg=THEME["text_default"], 
+                                       bg=THEME["board_bg_default"], wrap=tk.WORD, height=4, bd=0, 
+                                       highlightthickness=0, yscrollcommand=self.answer_scroll.set)
+        self.answer_display.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+        self.answer_scroll.config(command=self.answer_display.yview)
+        self.answer_display.config(state=tk.DISABLED)
 
         # Meaning Display
         self.meaning_display = tk.Text(content_frame, font=("", 16, "italic"), fg="#555555", 
@@ -718,7 +724,10 @@ class SentenceJigsawApp:
         self.meaning_display.config(state=tk.DISABLED)
 
     def render_answer_text(self):
-        self.answer_display.config(text=" ".join(self.user_selected_chunks))
+        self.answer_display.config(state=tk.NORMAL)
+        self.answer_display.delete("1.0", tk.END)
+        self.answer_display.insert(tk.END, " ".join(self.user_selected_chunks))
+        self.answer_display.config(state=tk.DISABLED)
 
     def select_chunk(self, chunk):
         SoundPlayer.play_click()
