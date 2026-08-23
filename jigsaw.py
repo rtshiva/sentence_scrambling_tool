@@ -6,10 +6,19 @@ import platform
 import threading
 
 # Platform specific sound imports
-if platform.system() == "Windows":
-    import winsound
-else:
-    import subprocess
+try:
+    if platform.system() == "Windows":
+        import winsound
+    else:
+        import subprocess
+except ImportError:
+    pass
+
+try:
+    import sv_ttk
+    HAS_SV_TTK = True
+except ImportError:
+    HAS_SV_TTK = False
 
 # --- Configuration & Theme ---
 THEME = {
@@ -19,9 +28,12 @@ THEME = {
     "text_default": "blue",
     "text_correct": "green",
     "text_incorrect": "red",
-    "button_bg": "#ffffff",
     "button_disabled": "#e0e0e0"
 }
+
+# Fun, child-friendly pastel colors for the puzzle blocks
+PASTEL_COLORS = ["#ffb3ba", "#ffdfba", "#ffffba", "#baffc9", "#bae1ff", "#e8baff"]
+ENCOURAGEMENTS = ["Awesome!", "Great Job!", "Super!", "Fantastic!", "Well Done!"]
 
 # --- Sound Manager (Cross-Platform) ---
 class SoundPlayer:
@@ -62,7 +74,6 @@ class SoundPlayer:
                     subprocess.run(["afplay", "/System/Library/Sounds/Glass.aiff"])
                 elif sound_type == 'error':
                     subprocess.run(["afplay", "/System/Library/Sounds/Basso.aiff"])
-            # Linux could use aplay or paplay here if needed
         
         # Fire and forget in a background thread
         threading.Thread(target=play, daemon=True).start()
@@ -166,10 +177,10 @@ class FlowFrame(tk.Frame):
             h = widget.winfo_reqheight()
             if x + w > width and x > 0:
                 x = 0
-                y += max_height + 10
+                y += max_height + 15 # Increased spacing for larger buttons
                 max_height = 0
             widget.place(x=x, y=y)
-            x += w + 10
+            x += w + 15
             max_height = max(max_height, h)
         
         self.config(height=y + max_height)
@@ -223,7 +234,7 @@ class LessonEditor(tk.Toplevel):
         self.q_entry.pack(fill=tk.X, pady=5)
         self.q_entry.bind("<KeyRelease>", self.on_field_change)
         
-        ttk.Label(self.right_frame, text="Meaning / Translation (Optional, for Phase 3):").pack(anchor=tk.W, pady=(10,0))
+        ttk.Label(self.right_frame, text="Meaning / Translation:").pack(anchor=tk.W, pady=(10,0))
         self.m_entry = ttk.Entry(self.right_frame, font=("", 12))
         self.m_entry.pack(fill=tk.X, pady=5)
         self.m_entry.bind("<KeyRelease>", self.on_field_change)
@@ -366,22 +377,16 @@ class LessonEditor(tk.Toplevel):
             messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
 
 
-try:
-    import sv_ttk
-    HAS_SV_TTK = True
-except ImportError:
-    HAS_SV_TTK = False
-
 # --- UI: Main Application ---
 class SentenceJigsawApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Sentence Jigsaw")
-        self.root.geometry("900x700") 
+        self.root.title("🧩 Sentence Jigsaw")
+        self.root.geometry("900x750") # Slightly taller window
         
         self.model = LessonModel()
         
-        # Apply modern Sun Valley theme if installed, otherwise fallback
+        # Apply modern Sun Valley theme if installed
         if HAS_SV_TTK:
             sv_ttk.set_theme("light")
         else:
@@ -389,14 +394,15 @@ class SentenceJigsawApp:
             if 'clam' in self.style.theme_names():
                 self.style.theme_use('clam')
         
-        self.question_font = ("", 16, "bold")
-        self.answer_font = ("", 18)
-        self.button_font = ("", 14)
+        # INCREASED FONT SIZES for better readability by kids
+        self.question_font = ("", 22, "bold")
+        self.answer_font = ("", 24, "bold")
+        self.button_font = ("", 18, "bold")
 
         # Volatile Game State
         self.original_chunks = []
         self.user_selected_chunks = []
-        self.chunk_buttons = []
+        self.chunk_buttons = [] # List of dicts: {"text": chunk, "btn": widget, "color": bg_hex}
         self.hints_used = 0
 
         self.setup_ui()
@@ -408,14 +414,14 @@ class SentenceJigsawApp:
         top_frame = ttk.Frame(self.root, padding=10)
         top_frame.pack(fill=tk.X)
         
-        self.progress_label = ttk.Label(top_frame, text="No file loaded", font=("", 12, "bold"))
+        self.progress_label = ttk.Label(top_frame, text="No file loaded", font=("", 14, "bold"))
         self.progress_label.pack(side=tk.LEFT)
         
         self.progress_bar = ttk.Progressbar(top_frame, orient=tk.HORIZONTAL, length=200, mode='determinate')
-        self.progress_bar.pack(side=tk.LEFT, padx=10)
+        self.progress_bar.pack(side=tk.LEFT, padx=15)
         
-        # Star display for gamification score
-        self.score_label = ttk.Label(top_frame, text="", font=("", 14), foreground="#f39c12")
+        # Star display for gamification score & Encouragement
+        self.score_label = ttk.Label(top_frame, text="", font=("", 16, "bold"), foreground="#f39c12")
         self.score_label.pack(side=tk.LEFT, padx=10)
         
         ttk.Button(top_frame, text="📂 Load File", command=self.open_file_dialog).pack(side=tk.RIGHT)
@@ -425,11 +431,11 @@ class SentenceJigsawApp:
         content_frame = ttk.Frame(self.root, padding=20)
         content_frame.pack(fill=tk.BOTH, expand=True)
 
-        ttk.Label(content_frame, text="Question:", font=("", 12), foreground="gray").pack()
+        ttk.Label(content_frame, text="Question:", font=("", 14), foreground="gray").pack()
         self.question_label = ttk.Label(content_frame, text="", font=self.question_font, wraplength=800, justify="center")
         self.question_label.pack(pady=(0, 20))
 
-        ttk.Label(content_frame, text="Your Answer:", font=("", 12), foreground="gray").pack()
+        ttk.Label(content_frame, text="Your Answer:", font=("", 14), foreground="gray").pack()
         
         self.answer_frame = tk.Frame(content_frame, bg=THEME["board_bg_default"], bd=2, relief=tk.GROOVE)
         self.answer_frame.pack(pady=10, fill=tk.X)
@@ -438,13 +444,13 @@ class SentenceJigsawApp:
                                        bg=THEME["board_bg_default"], wraplength=800, justify="center", height=3)
         self.answer_display.pack(pady=10, fill=tk.BOTH)
 
-        # Meaning Display (Text Box to prevent long sentence clipping)
-        self.meaning_display = tk.Text(content_frame, font=("", 14, "italic"), fg="#555555", 
+        # Meaning Display
+        self.meaning_display = tk.Text(content_frame, font=("", 16, "italic"), fg="#555555", 
                                        bg="#fafafa", height=3, wrap=tk.WORD, bd=1, relief=tk.SUNKEN)
         self.meaning_display.pack(pady=(0, 10), fill=tk.X)
         self.meaning_display.config(state=tk.DISABLED)
 
-        ttk.Label(content_frame, text="Click blocks in the correct order:", font=("", 12), foreground="gray").pack(pady=(20, 5))
+        ttk.Label(content_frame, text="Click blocks in the correct order:", font=("", 14), foreground="gray").pack(pady=(20, 5))
         
         self.buttons_frame = FlowFrame(content_frame)
         self.buttons_frame.pack(fill=tk.X, pady=10, expand=True)
@@ -533,22 +539,27 @@ class SentenceJigsawApp:
         while len(scrambled) > 1 and scrambled == self.original_chunks:
             random.shuffle(scrambled)
 
+        # Generate colorful buttons
+        shuffled_colors = PASTEL_COLORS.copy()
+        random.shuffle(shuffled_colors)
+        
+        color_idx = 0
         for chunk in scrambled:
+            bg_color = shuffled_colors[color_idx % len(shuffled_colors)]
             btn = tk.Button(self.buttons_frame, text=chunk, font=self.button_font, 
                             command=lambda c=chunk: self.select_chunk(c),
-                            relief=tk.RAISED, bg=THEME["button_bg"], padx=10, pady=5)
+                            relief=tk.RAISED, bg=bg_color, padx=15, pady=10, cursor="hand2")
             self.buttons_frame.add_widget(btn)
-            self.chunk_buttons.append((chunk, btn))
+            self.chunk_buttons.append({"text": chunk, "btn": btn, "color": bg_color})
+            color_idx += 1
             
         self.root.update_idletasks()
 
     def update_board_visuals(self, bg_color, fg_color):
-        """Helper to cleanly update the board colors (useful for Phase 2 animations)"""
         self.answer_display.config(fg=fg_color, bg=bg_color)
         self.answer_frame.config(bg=bg_color)
         
     def set_meaning_text(self, text):
-        """Helper to cleanly update the meaning text box."""
         self.meaning_display.config(state=tk.NORMAL)
         self.meaning_display.delete("1.0", tk.END)
         if text:
@@ -566,9 +577,9 @@ class SentenceJigsawApp:
         self.undo_btn.config(state=tk.NORMAL)
 
         # Disable clicked button visually
-        for c, btn in self.chunk_buttons:
-            if c == chunk and btn['state'] == tk.NORMAL:
-                btn.config(state=tk.DISABLED, bg=THEME["button_disabled"])
+        for item in self.chunk_buttons:
+            if item["text"] == chunk and item["btn"]['state'] == tk.NORMAL:
+                item["btn"].config(state=tk.DISABLED, bg=THEME["button_disabled"])
                 break
         
         if len(self.user_selected_chunks) == len(self.original_chunks):
@@ -590,16 +601,16 @@ class SentenceJigsawApp:
         if not self.user_selected_chunks:
             self.undo_btn.config(state=tk.DISABLED)
 
-        # Re-enable button
-        for c, btn in self.chunk_buttons:
-            if c == last_chunk and btn['state'] == tk.DISABLED:
-                btn.config(state=tk.NORMAL, bg=THEME["button_bg"])
+        # Re-enable button with original pastel color
+        for item in self.chunk_buttons:
+            if item["text"] == last_chunk and item["btn"]['state'] == tk.DISABLED:
+                item["btn"].config(state=tk.NORMAL, bg=item["color"])
                 break
                 
         self.next_btn.config(state=tk.DISABLED)
         self.hint_btn.config(state=tk.NORMAL)
         self.update_board_visuals(THEME["board_bg_default"], THEME["text_default"])
-        self.set_meaning_text("") # Hide meaning on undo
+        self.set_meaning_text("") 
 
     def clear_selection(self):
         self.user_selected_chunks.clear()
@@ -609,10 +620,10 @@ class SentenceJigsawApp:
         self.undo_btn.config(state=tk.DISABLED)
         self.next_btn.config(state=tk.DISABLED)
         self.hint_btn.config(state=tk.NORMAL)
-        self.set_meaning_text("") # Hide meaning on clear
+        self.set_meaning_text("") 
         
-        for _, btn in self.chunk_buttons:
-            btn.config(state=tk.NORMAL, bg=THEME["button_bg"])
+        for item in self.chunk_buttons:
+            item["btn"].config(state=tk.NORMAL, bg=item["color"])
 
     def check_answer(self):
         if self.user_selected_chunks == self.original_chunks:
@@ -623,13 +634,15 @@ class SentenceJigsawApp:
             if meaning:
                 self.set_meaning_text(f"Meaning: {meaning}")
             
-            # Star Rating based on hints used
+            # Star Rating & Encouragement
             stars = 3
             if self.hints_used == 1:
                 stars = 2
             elif self.hints_used >= 2:
                 stars = 1
-            self.score_label.config(text="⭐" * stars)
+                
+            praise = random.choice(ENCOURAGEMENTS)
+            self.score_label.config(text=f"{praise} " + "⭐" * stars)
             
             self.next_btn.config(state=tk.NORMAL)
             self.undo_btn.config(state=tk.DISABLED) 
@@ -640,11 +653,10 @@ class SentenceJigsawApp:
             SoundPlayer.play_error()
             self.update_board_visuals(THEME["board_bg_incorrect"], THEME["text_incorrect"])
             
-            # Simple flash effect on error
             def reset_flash():
                 if self.user_selected_chunks != self.original_chunks:
                     self.update_board_visuals(THEME["board_bg_default"], THEME["text_default"])
-            self.root.after(800, reset_flash) # Flash back to default after 800ms
+            self.root.after(800, reset_flash) 
             
     def next_sentence(self):
         if self.model.next_question():
