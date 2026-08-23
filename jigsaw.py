@@ -426,6 +426,7 @@ class SentenceJigsawApp:
         
         ttk.Button(top_frame, text="📂 Load File", command=self.open_file_dialog).pack(side=tk.RIGHT)
         ttk.Button(top_frame, text="✏️ Edit Lesson", command=self.open_editor).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(top_frame, text="🔄 Restart", command=self.restart_lesson).pack(side=tk.RIGHT, padx=5)
 
         # Main Content
         content_frame = ttk.Frame(self.root, padding=20)
@@ -467,6 +468,9 @@ class SentenceJigsawApp:
 
         self.clear_btn = ttk.Button(self.controls_frame, text="🗑 Clear All", command=self.clear_selection, state=tk.DISABLED, width=12)
         self.clear_btn.pack(side=tk.LEFT, padx=5)
+
+        self.skip_btn = ttk.Button(self.controls_frame, text="Skip ⏭", command=self.skip_sentence, width=12)
+        self.skip_btn.pack(side=tk.LEFT, padx=5)
 
         self.next_btn = ttk.Button(self.controls_frame, text="Next ➔", command=self.next_sentence, state=tk.DISABLED, width=12)
         self.next_btn.pack(side=tk.LEFT, padx=5)
@@ -515,7 +519,9 @@ class SentenceJigsawApp:
             
         self.question_label.config(text=data["question"])
         self.original_chunks = data["chunks"]
+        
         self.user_selected_chunks = []
+        self.render_answer_text() # Ensures previous answer is visually cleared
         self.hints_used = 0
         
         self.update_board_visuals(THEME["board_bg_default"], THEME["text_default"])
@@ -658,6 +664,17 @@ class SentenceJigsawApp:
                     self.update_board_visuals(THEME["board_bg_default"], THEME["text_default"])
             self.root.after(800, reset_flash) 
             
+    def restart_lesson(self):
+        if not self.model.qa_data:
+            return
+        if messagebox.askyesno("Restart", "Are you sure you want to restart the lesson from the beginning?"):
+            self.model.current_index = 0
+            self.load_current_question()
+            
+    def skip_sentence(self):
+        # Allow skipping to next, behaving as if they hit "next"
+        self.next_sentence()
+
     def next_sentence(self):
         if self.model.next_question():
             self.load_current_question()
