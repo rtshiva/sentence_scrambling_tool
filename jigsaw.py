@@ -306,6 +306,13 @@ class LessonEditor(tk.Toplevel):
         ttk.Button(btn_frame, text="➕ Add New", command=self.add_new).pack(side=tk.LEFT, expand=True, padx=2)
         ttk.Button(btn_frame, text="❌ Delete", command=self.delete_selected).pack(side=tk.LEFT, expand=True, padx=2)
         
+        ttk.Label(left_frame, text="Format Entire Lesson:").pack(anchor=tk.W, pady=(20, 5))
+        all_btn_frame = ttk.Frame(left_frame)
+        all_btn_frame.pack(fill=tk.X)
+        ttk.Button(all_btn_frame, text="2w", width=4, command=lambda: self.auto_group_all(2)).pack(side=tk.LEFT, expand=True, padx=1)
+        ttk.Button(all_btn_frame, text="3w", width=4, command=lambda: self.auto_group_all(3)).pack(side=tk.LEFT, expand=True, padx=1)
+        ttk.Button(all_btn_frame, text="4w", width=4, command=lambda: self.auto_group_all(4)).pack(side=tk.LEFT, expand=True, padx=1)
+        
         # Right pane container
         self.right_pane = ttk.Frame(self, padding=10)
         self.right_pane.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
@@ -360,6 +367,13 @@ class LessonEditor(tk.Toplevel):
         
         self.split_source_entry.bind("<KeyRelease>", self.on_field_change)
         
+        tools_frame = ttk.Frame(text_frame)
+        tools_frame.pack(fill=tk.X, pady=(0, 5))
+        ttk.Label(tools_frame, text="Format Current Question:").pack(side=tk.LEFT, padx=(0,10))
+        ttk.Button(tools_frame, text="2 Words/Block", command=lambda: self.auto_group_words(2)).pack(side=tk.LEFT, padx=2)
+        ttk.Button(tools_frame, text="3 Words/Block", command=lambda: self.auto_group_words(3)).pack(side=tk.LEFT, padx=2)
+        ttk.Button(tools_frame, text="4 Words/Block", command=lambda: self.auto_group_words(4)).pack(side=tk.LEFT, padx=2)
+        
         # Chunks Preview
         ttk.Label(self.right_frame, text="Live Preview of Puzzle Blocks:").pack(anchor=tk.W, pady=(15, 5))
         self.chunks_container = ttk.Frame(self.right_frame)
@@ -368,6 +382,83 @@ class LessonEditor(tk.Toplevel):
     def on_delimiter_change(self, event=None):
         if self.current_selected_index is not None:
             self.load_form()
+
+    def auto_group_words(self, n):
+        if self.current_selected_index is None:
+            return
+            
+        source_text = self.split_source_entry.get("1.0", tk.END).strip()
+        if not source_text:
+            return
+            
+        # Clean out existing delimiters to get raw text
+        delim_choice = self.delimiter_var.get()
+        if delim_choice == "| (Pipe)":
+            source_text = source_text.replace("|", " ")
+        elif delim_choice != "Space":
+            source_text = source_text.replace(delim_choice, " ")
+            
+        # Also clean out Hindi Purna Viram if it was typed or sanitized
+        source_text = source_text.replace("।", " ")
+        
+        # Split into raw words
+        words = source_text.split()
+        if not words:
+            return
+            
+        # Group by N
+        chunks = []
+        for i in range(0, len(words), n):
+            chunks.append(" ".join(words[i:i+n]))
+            
+        # Join back with current delimiter
+        if delim_choice == "Space":
+            joiner = " "
+        elif delim_choice == "| (Pipe)":
+            joiner = " | "
+        else:
+            joiner = f" {delim_choice} "
+            
+        new_text = joiner.join(chunks)
+        
+        # Update text box and trigger save/preview
+        self.split_source_entry.delete("1.0", tk.END)
+        self.split_source_entry.insert(tk.END, new_text)
+        self.on_field_change()
+
+    def auto_group_all(self, n):
+        if not messagebox.askyesno("Confirm", f"This will automatically reformat ALL questions in this lesson to have {n} words per block.\n\nAre you sure you want to do this?"):
+            return
+            
+        delim_choice = self.delimiter_var.get()
+        if delim_choice == "Space":
+            joiner = " "
+        elif delim_choice == "| (Pipe)":
+            joiner = " | "
+        else:
+            joiner = f" {delim_choice} "
+            
+        for d in self.edit_data:
+            raw_text = " ".join(d.get('chunks', []))
+            raw_text = raw_text.replace("|", " ").replace("।", " ")
+            if delim_choice not in ["Space", "| (Pipe)"]:
+                raw_text = raw_text.replace(delim_choice, " ")
+                
+            words = [w for w in raw_text.split() if w.strip()]
+            if not words:
+                continue
+                
+            new_chunks = []
+            for i in range(0, len(words), n):
+                chunk = " ".join(words[i:i+n])
+                new_chunks.append(chunk)
+                
+            d['chunks'] = new_chunks
+            
+        self.save_current_form_to_data() # Save any pending text edits
+        self.refresh_listbox()
+        self.load_form()
+        messagebox.showinfo("Success", f"All questions reformatted to {n} words per block!")
 
     def refresh_listbox(self):
         self.listbox.delete(0, tk.END)
