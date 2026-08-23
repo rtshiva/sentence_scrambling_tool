@@ -337,7 +337,7 @@ class LessonEditor(tk.Toplevel):
         text_frame = ttk.Frame(self.right_frame)
         text_frame.pack(fill=tk.X, pady=(15, 5))
         ttk.Label(text_frame, text="Quick Split Text:").pack(side=tk.LEFT, anchor=tk.N)
-        self.split_source_entry = tk.Text(text_frame, font=("", 12), height=2, wrap=tk.WORD)
+        self.split_source_entry = tk.Text(text_frame, font=("", 12), height=4, wrap=tk.WORD)
         self.split_source_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
         # Row 2: Split Controls
