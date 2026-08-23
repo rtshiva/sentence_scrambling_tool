@@ -262,23 +262,24 @@ class LessonEditor(tk.Toplevel):
         self.m_entry.pack(fill=tk.X, pady=5)
         self.m_entry.bind("<KeyRelease>", self.on_field_change)
         
-        # Auto-split tool row
-        split_frame = ttk.Frame(self.right_frame)
-        split_frame.pack(fill=tk.X, pady=(15, 0))
-        ttk.Label(split_frame, text="Quick Split Text:").pack(side=tk.LEFT)
+        # Row 1: Quick split text box
+        text_frame = ttk.Frame(self.right_frame)
+        text_frame.pack(fill=tk.X, pady=(15, 5))
+        ttk.Label(text_frame, text="Quick Split Text:").pack(side=tk.LEFT, anchor=tk.N)
+        self.split_source_entry = tk.Text(text_frame, font=("", 12), height=2, wrap=tk.WORD)
+        self.split_source_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
-        # Pack right-side controls FIRST to claim horizontal space
-        ttk.Button(split_frame, text="⚡ Auto-Split", command=self.auto_split_source).pack(side=tk.RIGHT)
+        # Row 2: Split Controls
+        controls_frame = ttk.Frame(self.right_frame)
+        controls_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Button(controls_frame, text="⚡ Auto-Split", command=self.auto_split_source).pack(side=tk.RIGHT)
         
         self.delimiter_var = tk.StringVar(value="Space")
-        self.delimiter_cb = ttk.Combobox(split_frame, textvariable=self.delimiter_var, values=["Space", ",", "|", "-", ";"], width=7)
+        self.delimiter_cb = ttk.Combobox(controls_frame, textvariable=self.delimiter_var, values=["Space", ",", "|", "-", ";"], width=8)
         self.delimiter_cb.pack(side=tk.RIGHT, padx=5)
         
-        ttk.Label(split_frame, text="By:").pack(side=tk.RIGHT)
-        
-        # Pack Text widget LAST so it only takes up the remaining available space
-        self.split_source_entry = tk.Text(split_frame, font=("", 12), height=2, wrap=tk.WORD)
-        self.split_source_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
+        ttk.Label(controls_frame, text="Split by:").pack(side=tk.RIGHT)
 
         # Chunks Label
         ttk.Label(self.right_frame, text="Sentence Chunks (in correct order):").pack(anchor=tk.W, pady=(15, 5))
