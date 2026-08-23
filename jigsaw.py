@@ -78,13 +78,16 @@ class SoundPlayer:
         # Fire and forget in a background thread
         threading.Thread(target=play, daemon=True).start()
 
-# --- Data Model ---
+# --- Data Model (Session-Based Mastery) ---
 class LessonModel:
-    """Handles all data operations, loading, saving, and state tracking for the lesson."""
+    """Handles data operations, and manages the Spaced-Repetition active deck."""
     def __init__(self):
         self.filename = None
         self.qa_data = []
-        self.current_index = 0
+        
+        # Mastery Queue System
+        self.deck = [] 
+        self.current_question_idx = None
 
     def load_file(self, filename):
         new_data = []
@@ -110,7 +113,7 @@ class LessonModel:
             
         self.qa_data = new_data
         self.filename = filename
-        self.current_index = 0
+        self.reset_deck()
 
     def save_file(self, filename, data):
         with open(filename, "w", encoding="utf-8") as f:
@@ -129,21 +132,39 @@ class LessonModel:
         
         self.qa_data = data
         self.filename = filename
+        self.reset_deck()
+
+    def reset_deck(self):
+        # Start a new session: All questions are added to the active deck
+        self.deck = list(range(len(self.qa_data)))
+        self.current_question_idx = self.deck[0] if self.deck else None
 
     def get_current_question(self):
-        if not self.qa_data or self.current_index >= len(self.qa_data):
+        if self.current_question_idx is None:
             return None
-        return self.qa_data[self.current_index]
+        return self.qa_data[self.current_question_idx]
 
-    def next_question(self):
-        self.current_index += 1
-        return self.current_index < len(self.qa_data)
+    def process_result(self, flawless):
+        """Processes the outcome of the current question and updates the deck queue."""
+        if not self.deck:
+            return
+            
+        if flawless:
+            self.deck.pop(0) # Mastered! Remove from the active deck
+        else:
+            idx = self.deck.pop(0) # Needs work! Move to the back of the deck
+            self.deck.append(idx)
+            
+        self.current_question_idx = self.deck[0] if self.deck else None
 
     def is_finished(self):
-        return self.current_index >= len(self.qa_data)
+        return len(self.deck) == 0
 
     def total_questions(self):
         return len(self.qa_data)
+        
+    def mastered_questions(self):
+        return len(self.qa_data) - len(self.deck)
 
 
 # --- Custom UI Widgets ---
@@ -404,6 +425,7 @@ class SentenceJigsawApp:
         self.user_selected_chunks = []
         self.chunk_buttons = [] # List of dicts: {"text": chunk, "btn": widget, "color": bg_hex}
         self.hints_used = 0
+        self.flawless_attempt = True # Tracks if the current attempt was perfect
 
         self.setup_ui()
         self.setup_bindings()
@@ -493,7 +515,7 @@ class SentenceJigsawApp:
     def on_editor_saved(self):
         # Reload the game state using the updated model
         self.progress_bar['maximum'] = self.model.total_questions()
-        self.model.current_index = 0
+        self.model.reset_deck()
         self.load_current_question()
 
     def open_file_dialog(self):
@@ -523,6 +545,7 @@ class SentenceJigsawApp:
         self.user_selected_chunks = []
         self.render_answer_text() # Ensures previous answer is visually cleared
         self.hints_used = 0
+        self.flawless_attempt = True # Reset flaw tracking for this queue pop
         
         self.update_board_visuals(THEME["board_bg_default"], THEME["text_default"])
         self.score_label.config(text="") # Reset stars
@@ -532,10 +555,11 @@ class SentenceJigsawApp:
         self.undo_btn.config(state=tk.DISABLED)
         self.clear_btn.config(state=tk.NORMAL)
         self.hint_btn.config(state=tk.NORMAL)
+        self.skip_btn.config(state=tk.NORMAL)
 
-        # Update Progress
-        self.progress_label.config(text=f"Question {self.model.current_index + 1} of {self.model.total_questions()}")
-        self.progress_bar['value'] = self.model.current_index
+        # Update Progress to reflect Mastery status
+        self.progress_label.config(text=f"Mastered: {self.model.mastered_questions()} / {self.model.total_questions()}")
+        self.progress_bar['value'] = self.model.mastered_questions()
 
         self.buttons_frame.clear_widgets()
         self.chunk_buttons.clear()
@@ -593,6 +617,7 @@ class SentenceJigsawApp:
 
     def give_hint(self):
         self.hints_used += 1
+        self.flawless_attempt = False # Hint used, cannot be mastered this round
         current_len = len(self.user_selected_chunks)
         if current_len < len(self.original_chunks):
             self.select_chunk(self.original_chunks[current_len])
@@ -648,15 +673,20 @@ class SentenceJigsawApp:
                 stars = 1
                 
             praise = random.choice(ENCOURAGEMENTS)
-            self.score_label.config(text=f"{praise} " + "⭐" * stars)
+            
+            # If not flawless, add a subtle message so they know it will return
+            if not self.flawless_attempt:
+                self.score_label.config(text=f"{praise} " + "⭐" * stars + " (We'll practice this one again!)")
+            else:
+                self.score_label.config(text=f"{praise} " + "⭐" * stars)
             
             self.next_btn.config(state=tk.NORMAL)
+            self.skip_btn.config(state=tk.DISABLED)
             self.undo_btn.config(state=tk.DISABLED) 
             self.hint_btn.config(state=tk.DISABLED)
-            
-            self.progress_bar['value'] = self.model.current_index + 1
         else:
             SoundPlayer.play_error()
+            self.flawless_attempt = False # Mistake made, cannot be mastered this round
             self.update_board_visuals(THEME["board_bg_incorrect"], THEME["text_incorrect"])
             
             def reset_flash():
@@ -668,19 +698,25 @@ class SentenceJigsawApp:
         if not self.model.qa_data:
             return
         if messagebox.askyesno("Restart", "Are you sure you want to restart the lesson from the beginning?"):
-            self.model.current_index = 0
+            self.model.reset_deck()
             self.load_current_question()
             
     def skip_sentence(self):
-        # Allow skipping to next, behaving as if they hit "next"
-        self.next_sentence()
+        # Explicitly marked as not flawless, pushes it to the back of the deck
+        self.model.process_result(flawless=False)
+        self.load_current_question()
 
     def next_sentence(self):
-        if self.model.next_question():
+        # Process the result based on whether they struggled or not
+        self.model.process_result(flawless=self.flawless_attempt)
+        
+        if not self.model.is_finished():
             self.load_current_question()
         else:
+            self.progress_label.config(text=f"Mastered: {self.model.total_questions()} / {self.model.total_questions()}")
+            self.progress_bar['value'] = self.model.total_questions()
             SoundPlayer.play_success()
-            response = messagebox.askyesno("Congratulations!", "You finished all the questions!\n\nWould you like to load a new file?")
+            response = messagebox.askyesno("Congratulations!", "You completely mastered all the questions!\n\nWould you like to load a new file?")
             if response:
                 self.open_file_dialog()
             else:
