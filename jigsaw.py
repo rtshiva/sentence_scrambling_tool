@@ -215,7 +215,7 @@ class LessonEditor(tk.Toplevel):
         self.on_save_callback = on_save_callback
         
         self.title("Lesson Editor")
-        self.geometry("850x600")
+        self.geometry("900x650")
         self.grab_set() 
         
         # Deep copy existing data for editing
@@ -260,12 +260,16 @@ class LessonEditor(tk.Toplevel):
         self.m_entry.pack(fill=tk.X, pady=5)
         self.m_entry.bind("<KeyRelease>", self.on_field_change)
         
-        ttk.Label(self.right_frame, text="Sentence Chunks (in correct order):").pack(anchor=tk.W, pady=(10,0))
+        # Dynamic chunk editing section with auto-split feature
+        lbl_frame = ttk.Frame(self.right_frame)
+        lbl_frame.pack(fill=tk.X, pady=(15, 5))
+        ttk.Label(lbl_frame, text="Sentence Chunks (in correct order):").pack(side=tk.LEFT)
+        ttk.Button(lbl_frame, text="⚡ Auto-Split Question", command=self.auto_split_question).pack(side=tk.RIGHT)
         
         self.chunks_container = ttk.Frame(self.right_frame)
         self.chunks_container.pack(fill=tk.BOTH, expand=True, pady=5)
         
-        self.add_chunk_btn = ttk.Button(self.right_frame, text="➕ Add Chunk", command=lambda: self.add_chunk_field())
+        self.add_chunk_btn = ttk.Button(self.right_frame, text="➕ Add Chunk Manually", command=lambda: self.add_chunk_field())
         self.add_chunk_btn.pack(anchor=tk.W, pady=5)
         
         # Bottom pane (Save/Cancel)
@@ -274,6 +278,24 @@ class LessonEditor(tk.Toplevel):
         
         ttk.Button(bottom_frame, text="💾 Save to File", command=self.save_to_file).pack(side=tk.RIGHT, padx=5)
         ttk.Button(bottom_frame, text="Cancel", command=self.destroy).pack(side=tk.RIGHT)
+
+    def auto_split_question(self):
+        """Automatically splits the current question text into chunks by space."""
+        q_text = self.q_entry.get().strip()
+        if not q_text:
+            messagebox.showinfo("Empty", "Please enter a Question first to auto-split it.")
+            return
+            
+        # Clear existing chunk widgets
+        for widget in self.chunks_container.winfo_children():
+            widget.destroy()
+        self.chunk_entries.clear()
+        
+        # Split by spaces and create new chunk fields
+        for word in q_text.split():
+            self.add_chunk_field(word)
+            
+        self.on_field_change()
 
     def refresh_listbox(self):
         self.listbox.delete(0, tk.END)
@@ -327,12 +349,30 @@ class LessonEditor(tk.Toplevel):
         entry.insert(0, text)
         entry.bind("<KeyRelease>", self.on_field_change)
         
+        def move_up():
+            idx = self.chunk_entries.index(entry)
+            if idx > 0:
+                val1, val2 = self.chunk_entries[idx].get(), self.chunk_entries[idx-1].get()
+                self.chunk_entries[idx].delete(0, tk.END); self.chunk_entries[idx].insert(0, val2)
+                self.chunk_entries[idx-1].delete(0, tk.END); self.chunk_entries[idx-1].insert(0, val1)
+                self.on_field_change()
+
+        def move_down():
+            idx = self.chunk_entries.index(entry)
+            if idx < len(self.chunk_entries) - 1:
+                val1, val2 = self.chunk_entries[idx].get(), self.chunk_entries[idx+1].get()
+                self.chunk_entries[idx].delete(0, tk.END); self.chunk_entries[idx].insert(0, val2)
+                self.chunk_entries[idx+1].delete(0, tk.END); self.chunk_entries[idx+1].insert(0, val1)
+                self.on_field_change()
+        
         def remove():
             frame.destroy()
             self.chunk_entries.remove(entry)
             self.on_field_change()
             
-        ttk.Button(frame, text="❌", width=3, command=remove).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(frame, text="❌", width=3, command=remove).pack(side=tk.RIGHT, padx=(5,0))
+        ttk.Button(frame, text="⬇️", width=3, command=move_down).pack(side=tk.RIGHT, padx=(2,0))
+        ttk.Button(frame, text="⬆️", width=3, command=move_up).pack(side=tk.RIGHT, padx=(5,0))
         
         self.chunk_entries.append(entry)
         if text == "": 
@@ -354,10 +394,11 @@ class LessonEditor(tk.Toplevel):
 
     def add_new(self):
         self.save_current_form_to_data()
-        self.edit_data.append({"question": "New Question", "chunks": ["Chunk 1"], "meaning": ""})
+        self.edit_data.append({"question": "", "chunks": [], "meaning": ""})
         self.current_selected_index = len(self.edit_data) - 1
         self.refresh_listbox()
         self.load_form()
+        self.q_entry.focus() # Focus for quick typing
 
     def delete_selected(self):
         if self.current_selected_index is None:
