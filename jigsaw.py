@@ -43,24 +43,223 @@ class FlowFrame(tk.Frame):
         
         self.config(height=y + max_height)
 
+class LessonEditor(tk.Toplevel):
+    def __init__(self, parent, app):
+        super().__init__(parent)
+        self.app = app
+        self.title("Lesson Editor")
+        self.geometry("850x600")
+        self.grab_set() # Make modal
+        
+        # Deep copy existing data
+        self.edit_data = []
+        for d in app.qa_data:
+            self.edit_data.append({
+                'question': d['question'],
+                'chunks': list(d['chunks']),
+                'meaning': d.get('meaning', '')
+            })
+            
+        self.current_selected_index = 0 if self.edit_data else None
+        self.chunk_entries = []
+        
+        self.setup_ui()
+        self.refresh_listbox()
+        if self.current_selected_index is not None:
+            self.load_form()
+        
+    def setup_ui(self):
+        # Left pane (Listbox)
+        left_frame = ttk.Frame(self, padding=10)
+        left_frame.pack(side=tk.LEFT, fill=tk.Y)
+        
+        ttk.Label(left_frame, text="Questions in Lesson:").pack(anchor=tk.W)
+        self.listbox = tk.Listbox(left_frame, width=35, font=("", 11))
+        self.listbox.pack(fill=tk.Y, expand=True, pady=5)
+        self.listbox.bind('<<ListboxSelect>>', self.on_select)
+        
+        btn_frame = ttk.Frame(left_frame)
+        btn_frame.pack(fill=tk.X)
+        ttk.Button(btn_frame, text="➕ Add New", command=self.add_new).pack(side=tk.LEFT, expand=True, padx=2)
+        ttk.Button(btn_frame, text="❌ Delete", command=self.delete_selected).pack(side=tk.LEFT, expand=True, padx=2)
+        
+        # Right pane (Edit Form)
+        self.right_frame = ttk.Frame(self, padding=10)
+        self.right_frame.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        
+        ttk.Label(self.right_frame, text="Question:").pack(anchor=tk.W)
+        self.q_entry = ttk.Entry(self.right_frame, font=("", 12))
+        self.q_entry.pack(fill=tk.X, pady=5)
+        self.q_entry.bind("<KeyRelease>", self.on_field_change)
+        
+        ttk.Label(self.right_frame, text="Meaning / Translation (Optional, for Phase 3):").pack(anchor=tk.W, pady=(10,0))
+        self.m_entry = ttk.Entry(self.right_frame, font=("", 12))
+        self.m_entry.pack(fill=tk.X, pady=5)
+        self.m_entry.bind("<KeyRelease>", self.on_field_change)
+        
+        ttk.Label(self.right_frame, text="Sentence Chunks (in correct order):").pack(anchor=tk.W, pady=(10,0))
+        
+        # Use a canvas/frame for scrollable chunks if needed, but a frame is okay for now
+        self.chunks_container = ttk.Frame(self.right_frame)
+        self.chunks_container.pack(fill=tk.BOTH, expand=True, pady=5)
+        
+        self.add_chunk_btn = ttk.Button(self.right_frame, text="➕ Add Chunk", command=self.add_chunk_field)
+        self.add_chunk_btn.pack(anchor=tk.W, pady=5)
+        
+        # Bottom pane (Save/Cancel)
+        bottom_frame = ttk.Frame(self.right_frame)
+        bottom_frame.pack(side=tk.BOTTOM, fill=tk.X, pady=10)
+        
+        ttk.Button(bottom_frame, text="💾 Save to File", command=self.save_to_file).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(bottom_frame, text="Cancel", command=self.destroy).pack(side=tk.RIGHT)
+
+    def refresh_listbox(self):
+        self.listbox.delete(0, tk.END)
+        for d in self.edit_data:
+            q = d['question']
+            self.listbox.insert(tk.END, q if q else "[Empty Question]")
+        if self.current_selected_index is not None and self.current_selected_index < len(self.edit_data):
+            self.listbox.selection_set(self.current_selected_index)
+            
+    def on_select(self, event):
+        sel = self.listbox.curselection()
+        if not sel:
+            return
+        self.save_current_form_to_data()
+        self.current_selected_index = sel[0]
+        self.load_form()
+
+    def on_field_change(self, event=None):
+        self.save_current_form_to_data()
+        if self.current_selected_index is not None:
+            q = self.edit_data[self.current_selected_index]['question']
+            self.listbox.delete(self.current_selected_index)
+            self.listbox.insert(self.current_selected_index, q if q else "[Empty Question]")
+            self.listbox.selection_set(self.current_selected_index)
+
+    def load_form(self):
+        if self.current_selected_index is None:
+            return
+            
+        data = self.edit_data[self.current_selected_index]
+        
+        self.q_entry.delete(0, tk.END)
+        self.q_entry.insert(0, data.get('question', ''))
+        
+        self.m_entry.delete(0, tk.END)
+        self.m_entry.insert(0, data.get('meaning', ''))
+        
+        for widget in self.chunks_container.winfo_children():
+            widget.destroy()
+        self.chunk_entries.clear()
+        
+        for c in data.get('chunks', []):
+            self.add_chunk_field(c)
+            
+    def add_chunk_field(self, text=""):
+        frame = ttk.Frame(self.chunks_container)
+        frame.pack(fill=tk.X, pady=2)
+        
+        entry = ttk.Entry(frame, font=("", 12))
+        entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        entry.insert(0, text)
+        entry.bind("<KeyRelease>", self.on_field_change)
+        
+        def remove():
+            frame.destroy()
+            self.chunk_entries.remove(entry)
+            self.on_field_change()
+            
+        del_btn = ttk.Button(frame, text="❌", width=3, command=remove)
+        del_btn.pack(side=tk.RIGHT, padx=5)
+        
+        self.chunk_entries.append(entry)
+        if text == "": # User clicked add manually
+            self.on_field_change()
+
+    def save_current_form_to_data(self):
+        if self.current_selected_index is None or self.current_selected_index >= len(self.edit_data):
+            return
+            
+        self.edit_data[self.current_selected_index] = {
+            'question': self.q_entry.get().strip(),
+            'meaning': self.m_entry.get().strip(),
+            'chunks': [e.get().strip() for e in self.chunk_entries if e.get().strip()]
+        }
+
+    def add_new(self):
+        self.save_current_form_to_data()
+        self.edit_data.append({"question": "New Question", "chunks": ["Chunk 1"], "meaning": ""})
+        self.current_selected_index = len(self.edit_data) - 1
+        self.refresh_listbox()
+        self.load_form()
+
+    def delete_selected(self):
+        if self.current_selected_index is None:
+            return
+        del self.edit_data[self.current_selected_index]
+        self.current_selected_index = 0 if self.edit_data else None
+        
+        if not self.edit_data:
+             self.q_entry.delete(0, tk.END)
+             self.m_entry.delete(0, tk.END)
+             for widget in self.chunks_container.winfo_children():
+                 widget.destroy()
+             self.chunk_entries.clear()
+             
+        self.refresh_listbox()
+        if self.current_selected_index is not None:
+            self.load_form()
+
+    def save_to_file(self):
+        self.save_current_form_to_data()
+        
+        filename = self.app.current_filename
+        if not filename:
+            filename = filedialog.asksaveasfilename(
+                title="Save Lesson File",
+                defaultextension=".txt",
+                filetypes=[("Text Files", "*.txt"), ("All Files", "*.*")]
+            )
+            if not filename:
+                return
+
+        try:
+            with open(filename, "w", encoding="utf-8") as f:
+                for d in self.edit_data:
+                    q = d.get('question', '')
+                    chunks = d.get('chunks', [])
+                    m = d.get('meaning', '')
+                    
+                    if not q or not chunks:
+                        continue
+                        
+                    line = f"{q} | " + " | ".join(chunks)
+                    if m:
+                        line += f" | // {m}"
+                    f.write(line + "\n")
+                    
+            messagebox.showinfo("Success", "Lesson saved successfully!")
+            self.app.load_data(filename)
+            self.destroy()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
+
 class SentenceJigsawApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Sentence Jigsaw")
         self.root.geometry("900x650")
         
-        # Configure styles
         self.style = ttk.Style()
-        # Use 'clam' or standard theme to ensure consistent look
         if 'clam' in self.style.theme_names():
             self.style.theme_use('clam')
         
-        # Fonts (Using "" allows Tkinter to pick the best system default font for Unicode, e.g. Japanese/Hindi)
         self.question_font = ("", 16, "bold")
         self.answer_font = ("", 18)
         self.button_font = ("", 14)
 
-        # App State
+        self.current_filename = None
         self.qa_data = []
         self.current_index = 0
         self.original_chunks = []
@@ -73,7 +272,7 @@ class SentenceJigsawApp:
         self.load_initial_file()
 
     def setup_ui(self):
-        # Top Bar (Progress & Load)
+        # Top Bar
         top_frame = ttk.Frame(self.root, padding=10)
         top_frame.pack(fill=tk.X)
         
@@ -84,30 +283,26 @@ class SentenceJigsawApp:
         self.progress_bar.pack(side=tk.LEFT, padx=10)
         
         ttk.Button(top_frame, text="📂 Load File", command=self.open_file_dialog).pack(side=tk.RIGHT)
+        ttk.Button(top_frame, text="✏️ Edit Lesson", command=self.open_editor).pack(side=tk.RIGHT, padx=5)
 
         # Main Content
         content_frame = ttk.Frame(self.root, padding=20)
         content_frame.pack(fill=tk.BOTH, expand=True)
 
-        # Question Area
         ttk.Label(content_frame, text="Question:", font=("", 12), foreground="gray").pack()
         self.question_label = ttk.Label(content_frame, text="", font=self.question_font, wraplength=800, justify="center")
         self.question_label.pack(pady=(0, 20))
 
-        # Answer Display Area
         ttk.Label(content_frame, text="Your Answer:", font=("", 12), foreground="gray").pack()
         
-        # Using a Frame with a distinct background to look like a display board
         self.answer_frame = tk.Frame(content_frame, bg="#f0f8ff", bd=2, relief=tk.GROOVE)
         self.answer_frame.pack(pady=10, fill=tk.X)
         
         self.answer_display = tk.Label(self.answer_frame, text="", font=self.answer_font, fg="blue", bg="#f0f8ff", wraplength=800, justify="center", height=3)
         self.answer_display.pack(pady=10, fill=tk.BOTH)
 
-        # Available Chunks
         ttk.Label(content_frame, text="Click blocks in the correct order:", font=("", 12), foreground="gray").pack(pady=(20, 5))
         
-        # Use our custom FlowFrame for responsive button wrapping
         self.buttons_frame = FlowFrame(content_frame)
         self.buttons_frame.pack(fill=tk.X, pady=10, expand=True)
 
@@ -137,8 +332,12 @@ class SentenceJigsawApp:
         if os.path.exists(default_file):
             self.load_data(default_file)
         else:
-            messagebox.showinfo("Welcome", "Welcome to Sentence Jigsaw!\n\nPlease select a text file containing your sentences to start.")
-            self.open_file_dialog()
+            messagebox.showinfo("Welcome", "Welcome to Sentence Jigsaw!\n\nPlease select a text file containing your sentences to start, or click 'Edit Lesson' to create a new one.")
+            # Don't auto open file dialog if we have a lesson editor now
+            # self.open_file_dialog()
+
+    def open_editor(self):
+        LessonEditor(self.root, self)
 
     def open_file_dialog(self):
         filename = filedialog.askopenfilename(
@@ -158,14 +357,21 @@ class SentenceJigsawApp:
                         parts = [p.strip() for p in line.split("|")]
                         if len(parts) > 1:
                             question = parts[0]
-                            chunks = parts[1:]
-                            new_data.append({"question": question, "chunks": chunks})
+                            chunks = []
+                            meaning = ""
+                            for p in parts[1:]:
+                                if p.startswith("//"):
+                                    meaning = p[2:].strip()
+                                else:
+                                    chunks.append(p)
+                            new_data.append({"question": question, "chunks": chunks, "meaning": meaning})
             
             if not new_data:
                 messagebox.showerror("Error", "No valid Q&A found in file! Make sure to use the '|' separator.")
                 return
                 
             self.qa_data = new_data
+            self.current_filename = filename
             self.current_index = 0
             self.progress_bar['maximum'] = len(self.qa_data)
             self.load_current_qa()
@@ -190,29 +396,23 @@ class SentenceJigsawApp:
         self.clear_btn.config(state=tk.NORMAL)
         self.hint_btn.config(state=tk.NORMAL)
 
-        # Update Progress
         self.progress_label.config(text=f"Question {self.current_index + 1} of {len(self.qa_data)}")
         self.progress_bar['value'] = self.current_index
 
-        # Clear old buttons
         self.buttons_frame.clear_widgets()
         self.chunk_buttons.clear()
 
-        # Scramble chunks
         scrambled = self.original_chunks.copy()
         while len(scrambled) > 1 and scrambled == self.original_chunks:
             random.shuffle(scrambled)
 
-        # Create buttons
         for chunk in scrambled:
-            # We use standard tk.Button here inside FlowFrame because it is easier to style with background colors dynamically for interaction
             btn = tk.Button(self.buttons_frame, text=chunk, font=self.button_font, 
                             command=lambda c=chunk: self.select_chunk(c),
                             relief=tk.RAISED, bg="#ffffff", padx=10, pady=5)
             self.buttons_frame.add_widget(btn)
             self.chunk_buttons.append((chunk, btn))
             
-        # Give FlowFrame a moment to layout before showing
         self.root.update_idletasks()
 
     def select_chunk(self, chunk):
@@ -220,22 +420,18 @@ class SentenceJigsawApp:
         self.update_answer_display()
         self.undo_btn.config(state=tk.NORMAL)
 
-        # Disable clicked button
         for c, btn in self.chunk_buttons:
             if c == chunk and btn['state'] == tk.NORMAL:
                 btn.config(state=tk.DISABLED, bg="#e0e0e0")
                 break
         
-        # Check if done
         if len(self.user_selected_chunks) == len(self.original_chunks):
             self.check_answer()
 
     def give_hint(self):
-        # Find the next correct chunk that hasn't been selected yet
         current_len = len(self.user_selected_chunks)
         if current_len < len(self.original_chunks):
             correct_next_chunk = self.original_chunks[current_len]
-            # Select it automatically
             self.select_chunk(correct_next_chunk)
 
     def undo_last(self):
@@ -248,7 +444,6 @@ class SentenceJigsawApp:
         if not self.user_selected_chunks:
             self.undo_btn.config(state=tk.DISABLED)
 
-        # Re-enable that specific button
         for c, btn in self.chunk_buttons:
             if c == last_chunk and btn['state'] == tk.DISABLED:
                 btn.config(state=tk.NORMAL, bg="#ffffff")
@@ -270,7 +465,6 @@ class SentenceJigsawApp:
             self.undo_btn.config(state=tk.DISABLED) 
             self.hint_btn.config(state=tk.DISABLED)
             
-            # Progress bar update to show completion
             self.progress_bar['value'] = self.current_index + 1
         else:
             self.answer_display.config(fg="red", bg="#ffe6e6")
