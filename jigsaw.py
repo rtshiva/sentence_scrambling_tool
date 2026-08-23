@@ -310,10 +310,14 @@ class LessonEditor(tk.Toplevel):
         if self.current_selected_index is None or self.current_selected_index >= len(self.edit_data):
             return
             
+        def sanitize(text):
+            # Replace ASCII pipe with proper Hindi Purna Viram to prevent delimiter collisions
+            return text.replace("|", "।").strip()
+            
         self.edit_data[self.current_selected_index] = {
-            'question': self.q_entry.get().strip(),
-            'meaning': self.m_entry.get().strip(),
-            'chunks': [e.get().strip() for e in self.chunk_entries if e.get().strip()]
+            'question': sanitize(self.q_entry.get()),
+            'meaning': sanitize(self.m_entry.get()),
+            'chunks': [sanitize(e.get()) for e in self.chunk_entries if sanitize(e.get())]
         }
 
     def add_new(self):
