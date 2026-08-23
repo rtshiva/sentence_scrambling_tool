@@ -266,15 +266,19 @@ class LessonEditor(tk.Toplevel):
         split_frame = ttk.Frame(self.right_frame)
         split_frame.pack(fill=tk.X, pady=(15, 0))
         ttk.Label(split_frame, text="Quick Split Text:").pack(side=tk.LEFT)
-        self.split_source_entry = tk.Text(split_frame, font=("", 12), height=2, wrap=tk.WORD)
-        self.split_source_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
-        ttk.Label(split_frame, text="By:").pack(side=tk.LEFT)
+        # Pack right-side controls FIRST to claim horizontal space
+        ttk.Button(split_frame, text="⚡ Auto-Split", command=self.auto_split_source).pack(side=tk.RIGHT)
+        
         self.delimiter_var = tk.StringVar(value="Space")
         self.delimiter_cb = ttk.Combobox(split_frame, textvariable=self.delimiter_var, values=["Space", ",", "|", "-", ";"], width=7)
-        self.delimiter_cb.pack(side=tk.LEFT, padx=5)
+        self.delimiter_cb.pack(side=tk.RIGHT, padx=5)
         
-        ttk.Button(split_frame, text="⚡ Auto-Split", command=self.auto_split_source).pack(side=tk.LEFT)
+        ttk.Label(split_frame, text="By:").pack(side=tk.RIGHT)
+        
+        # Pack Text widget LAST so it only takes up the remaining available space
+        self.split_source_entry = tk.Text(split_frame, font=("", 12), height=2, wrap=tk.WORD)
+        self.split_source_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
 
         # Chunks Label
         ttk.Label(self.right_frame, text="Sentence Chunks (in correct order):").pack(anchor=tk.W, pady=(15, 5))
