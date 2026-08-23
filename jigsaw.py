@@ -348,8 +348,16 @@ class LessonEditor(tk.Toplevel):
         ttk.Label(header_frame, text="Split by:").pack(side=tk.RIGHT, padx=5)
         self.delimiter_cb.bind("<<ComboboxSelected>>", self.on_delimiter_change)
         
-        self.split_source_entry = tk.Text(text_frame, font=("", 12), height=4, wrap=tk.WORD)
-        self.split_source_entry.pack(fill=tk.BOTH, expand=True, pady=5)
+        text_scroll_frame = ttk.Frame(text_frame)
+        text_scroll_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        
+        self.split_source_scroll = ttk.Scrollbar(text_scroll_frame)
+        self.split_source_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.split_source_entry = tk.Text(text_scroll_frame, font=("", 12), height=4, wrap=tk.WORD, yscrollcommand=self.split_source_scroll.set)
+        self.split_source_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.split_source_scroll.config(command=self.split_source_entry.yview)
+        
         self.split_source_entry.bind("<KeyRelease>", self.on_field_change)
         
         # Chunks Preview
