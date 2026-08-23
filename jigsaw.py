@@ -366,18 +366,19 @@ class LessonEditor(tk.Toplevel):
             messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
 
 
+import sv_ttk
+
 # --- UI: Main Application ---
 class SentenceJigsawApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Sentence Jigsaw")
-        self.root.geometry("900x700") # Slightly taller window for the new meaning textbox
+        self.root.geometry("900x700") 
         
         self.model = LessonModel()
         
-        self.style = ttk.Style()
-        if 'clam' in self.style.theme_names():
-            self.style.theme_use('clam')
+        # Apply modern Sun Valley theme
+        sv_ttk.set_theme("light")
         
         self.question_font = ("", 16, "bold")
         self.answer_font = ("", 18)
