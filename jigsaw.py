@@ -207,8 +207,10 @@ class ScrollableFrame(ttk.Frame):
 
     def _on_mousewheel(self, event):
         # Check if cursor is over this widget or its children
-        x, y = self.winfo_pointerxy()
         try:
+            if not self.winfo_exists():
+                return
+            x, y = self.winfo_pointerxy()
             widget = self.winfo_containing(x, y)
             # If the hovered widget is a child of our ScrollableFrame, scroll it
             if widget and str(self) in str(widget):
