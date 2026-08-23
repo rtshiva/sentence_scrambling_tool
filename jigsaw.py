@@ -266,8 +266,8 @@ class LessonEditor(tk.Toplevel):
         split_frame = ttk.Frame(self.right_frame)
         split_frame.pack(fill=tk.X, pady=(15, 0))
         ttk.Label(split_frame, text="Quick Split Text:").pack(side=tk.LEFT)
-        self.split_source_entry = ttk.Entry(split_frame, font=("", 12))
-        self.split_source_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
+        self.split_source_entry = tk.Text(split_frame, font=("", 12), height=2, wrap=tk.WORD)
+        self.split_source_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=5)
         
         ttk.Label(split_frame, text="By:").pack(side=tk.LEFT)
         self.delimiter_var = tk.StringVar(value="Space")
@@ -294,7 +294,7 @@ class LessonEditor(tk.Toplevel):
 
     def auto_split_source(self):
         """Automatically splits the source text into chunks based on chosen delimiter."""
-        source_text = self.split_source_entry.get().strip()
+        source_text = self.split_source_entry.get("1.0", tk.END).strip()
         if not source_text:
             messagebox.showinfo("Empty", "Please enter text into the 'Quick Split Text' box first.")
             return
