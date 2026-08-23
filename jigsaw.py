@@ -366,7 +366,11 @@ class LessonEditor(tk.Toplevel):
             messagebox.showerror("Error", f"Failed to save:\n{str(e)}")
 
 
-import sv_ttk
+try:
+    import sv_ttk
+    HAS_SV_TTK = True
+except ImportError:
+    HAS_SV_TTK = False
 
 # --- UI: Main Application ---
 class SentenceJigsawApp:
@@ -377,8 +381,13 @@ class SentenceJigsawApp:
         
         self.model = LessonModel()
         
-        # Apply modern Sun Valley theme
-        sv_ttk.set_theme("light")
+        # Apply modern Sun Valley theme if installed, otherwise fallback
+        if HAS_SV_TTK:
+            sv_ttk.set_theme("light")
+        else:
+            self.style = ttk.Style()
+            if 'clam' in self.style.theme_names():
+                self.style.theme_use('clam')
         
         self.question_font = ("", 16, "bold")
         self.answer_font = ("", 18)
