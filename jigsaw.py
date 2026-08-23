@@ -262,20 +262,22 @@ class LessonEditor(tk.Toplevel):
         self.m_entry.pack(fill=tk.X, pady=5)
         self.m_entry.bind("<KeyRelease>", self.on_field_change)
         
-        # Dynamic chunk editing section with auto-split feature
-        lbl_frame = ttk.Frame(self.right_frame)
-        lbl_frame.pack(fill=tk.X, pady=(15, 5))
-        ttk.Label(lbl_frame, text="Sentence Chunks (in correct order):").pack(side=tk.LEFT)
+        # Auto-split tool row
+        split_frame = ttk.Frame(self.right_frame)
+        split_frame.pack(fill=tk.X, pady=(15, 0))
+        ttk.Label(split_frame, text="Quick Split Text:").pack(side=tk.LEFT)
+        self.split_source_entry = ttk.Entry(split_frame, font=("", 12))
+        self.split_source_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
         
-        split_controls = ttk.Frame(lbl_frame)
-        split_controls.pack(side=tk.RIGHT)
-        
-        ttk.Label(split_controls, text="Split by:").pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Label(split_frame, text="By:").pack(side=tk.LEFT)
         self.delimiter_var = tk.StringVar(value="Space")
-        self.delimiter_cb = ttk.Combobox(split_controls, textvariable=self.delimiter_var, values=["Space", ",", "|", "-", ";"], width=8)
-        self.delimiter_cb.pack(side=tk.LEFT, padx=(0, 10))
+        self.delimiter_cb = ttk.Combobox(split_frame, textvariable=self.delimiter_var, values=["Space", ",", "|", "-", ";"], width=7)
+        self.delimiter_cb.pack(side=tk.LEFT, padx=5)
         
-        ttk.Button(split_controls, text="⚡ Auto-Split", command=self.auto_split_question).pack(side=tk.LEFT)
+        ttk.Button(split_frame, text="⚡ Auto-Split", command=self.auto_split_source).pack(side=tk.LEFT)
+
+        # Chunks Label
+        ttk.Label(self.right_frame, text="Sentence Chunks (in correct order):").pack(anchor=tk.W, pady=(15, 5))
         
         self.chunks_container = ttk.Frame(self.right_frame)
         self.chunks_container.pack(fill=tk.BOTH, expand=True, pady=5)
@@ -290,19 +292,19 @@ class LessonEditor(tk.Toplevel):
         ttk.Button(bottom_frame, text="💾 Save to File", command=self.save_to_file).pack(side=tk.RIGHT, padx=5)
         ttk.Button(bottom_frame, text="Cancel", command=self.destroy).pack(side=tk.RIGHT)
 
-    def auto_split_question(self):
-        """Automatically splits the current question text into chunks based on chosen delimiter."""
-        q_text = self.q_entry.get().strip()
-        if not q_text:
-            messagebox.showinfo("Empty", "Please enter a Question first to auto-split it.")
+    def auto_split_source(self):
+        """Automatically splits the source text into chunks based on chosen delimiter."""
+        source_text = self.split_source_entry.get().strip()
+        if not source_text:
+            messagebox.showinfo("Empty", "Please enter text into the 'Quick Split Text' box first.")
             return
             
         delimiter = self.delimiter_var.get()
         if delimiter == "Space" or delimiter == "":
-            chunks = q_text.split()
+            chunks = source_text.split()
         else:
             # Split by the chosen delimiter and strip whitespace from phrases
-            chunks = [c.strip() for c in q_text.split(delimiter) if c.strip()]
+            chunks = [c.strip() for c in source_text.split(delimiter) if c.strip()]
             
         if not chunks:
             return
