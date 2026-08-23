@@ -424,6 +424,9 @@ class SentenceJigsawApp:
                                        bg=THEME["board_bg_default"], wraplength=800, justify="center", height=3)
         self.answer_display.pack(pady=10, fill=tk.BOTH)
 
+        self.meaning_display = tk.Label(content_frame, text="", font=("", 14, "italic"), fg="#555555")
+        self.meaning_display.pack(pady=(0, 10))
+
         ttk.Label(content_frame, text="Click blocks in the correct order:", font=("", 12), foreground="gray").pack(pady=(20, 5))
         
         self.buttons_frame = FlowFrame(content_frame)
@@ -494,6 +497,7 @@ class SentenceJigsawApp:
         
         self.update_board_visuals(THEME["board_bg_default"], THEME["text_default"])
         self.score_label.config(text="") # Reset stars
+        self.meaning_display.config(text="") # Reset meaning
         
         self.next_btn.config(state=tk.DISABLED)
         self.undo_btn.config(state=tk.DISABLED)
@@ -587,6 +591,10 @@ class SentenceJigsawApp:
         if self.user_selected_chunks == self.original_chunks:
             SoundPlayer.play_success()
             self.update_board_visuals(THEME["board_bg_correct"], THEME["text_correct"])
+            
+            meaning = self.model.get_current_question().get('meaning')
+            if meaning:
+                self.meaning_display.config(text=f"Meaning: {meaning}")
             
             # Star Rating based on hints used
             stars = 3
