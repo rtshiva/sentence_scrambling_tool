@@ -371,7 +371,7 @@ class SentenceJigsawApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Sentence Jigsaw")
-        self.root.geometry("900x650")
+        self.root.geometry("900x700") # Slightly taller window for the new meaning textbox
         
         self.model = LessonModel()
         
@@ -428,8 +428,11 @@ class SentenceJigsawApp:
                                        bg=THEME["board_bg_default"], wraplength=800, justify="center", height=3)
         self.answer_display.pack(pady=10, fill=tk.BOTH)
 
-        self.meaning_display = tk.Label(content_frame, text="", font=("", 14, "italic"), fg="#555555")
-        self.meaning_display.pack(pady=(0, 10))
+        # Meaning Display (Text Box to prevent long sentence clipping)
+        self.meaning_display = tk.Text(content_frame, font=("", 14, "italic"), fg="#555555", 
+                                       bg="#fafafa", height=3, wrap=tk.WORD, bd=1, relief=tk.SUNKEN)
+        self.meaning_display.pack(pady=(0, 10), fill=tk.X)
+        self.meaning_display.config(state=tk.DISABLED)
 
         ttk.Label(content_frame, text="Click blocks in the correct order:", font=("", 12), foreground="gray").pack(pady=(20, 5))
         
@@ -501,7 +504,7 @@ class SentenceJigsawApp:
         
         self.update_board_visuals(THEME["board_bg_default"], THEME["text_default"])
         self.score_label.config(text="") # Reset stars
-        self.meaning_display.config(text="") # Reset meaning
+        self.set_meaning_text("") # Reset meaning
         
         self.next_btn.config(state=tk.DISABLED)
         self.undo_btn.config(state=tk.DISABLED)
@@ -534,6 +537,14 @@ class SentenceJigsawApp:
         self.answer_display.config(fg=fg_color, bg=bg_color)
         self.answer_frame.config(bg=bg_color)
         
+    def set_meaning_text(self, text):
+        """Helper to cleanly update the meaning text box."""
+        self.meaning_display.config(state=tk.NORMAL)
+        self.meaning_display.delete("1.0", tk.END)
+        if text:
+            self.meaning_display.insert(tk.END, text)
+        self.meaning_display.config(state=tk.DISABLED)
+
     def render_answer_text(self):
         self.answer_display.config(text=" ".join(self.user_selected_chunks))
 
@@ -578,6 +589,7 @@ class SentenceJigsawApp:
         self.next_btn.config(state=tk.DISABLED)
         self.hint_btn.config(state=tk.NORMAL)
         self.update_board_visuals(THEME["board_bg_default"], THEME["text_default"])
+        self.set_meaning_text("") # Hide meaning on undo
 
     def clear_selection(self):
         self.user_selected_chunks.clear()
@@ -587,6 +599,7 @@ class SentenceJigsawApp:
         self.undo_btn.config(state=tk.DISABLED)
         self.next_btn.config(state=tk.DISABLED)
         self.hint_btn.config(state=tk.NORMAL)
+        self.set_meaning_text("") # Hide meaning on clear
         
         for _, btn in self.chunk_buttons:
             btn.config(state=tk.NORMAL, bg=THEME["button_bg"])
@@ -598,7 +611,7 @@ class SentenceJigsawApp:
             
             meaning = self.model.get_current_question().get('meaning')
             if meaning:
-                self.meaning_display.config(text=f"Meaning: {meaning}")
+                self.set_meaning_text(f"Meaning: {meaning}")
             
             # Star Rating based on hints used
             stars = 3
