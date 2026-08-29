@@ -7,6 +7,7 @@ import threading
 import webbrowser
 import tempfile
 import time
+import json
 
 # Platform specific sound imports
 try:
@@ -42,21 +43,52 @@ THEME = {
 PASTEL_COLORS = ['#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff', '#e8baff']
 ENCOURAGEMENTS = ['Awesome!', 'Great Job!', 'Super!', 'Fantastic!', 'Well Done!', 'Brilliant!']
 
+# --- App Settings Manager ---
+DEFAULT_SETTINGS = {
+    'speed_run_duration_seconds': 180,  # Default 3 minutes
+    'fill_blanks_count_mode': 'auto',   # 'auto', '1', '2', '3'
+    'sound_enabled': True
+}
+
+SETTINGS_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_settings.json')
+
+def load_settings():
+    settings = DEFAULT_SETTINGS.copy()
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                saved = json.load(f)
+                settings.update(saved)
+        except Exception:
+            pass
+    return settings
+
+def save_settings(settings):
+    try:
+        with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, indent=2)
+    except Exception:
+        pass
+
 # --- Sound Manager (Cross-Platform) ---
 class SoundPlayer:
     '''Plays lightweight UI sounds asynchronously without freezing the GUI.'''
+    sound_enabled = True
     
-    @staticmethod
-    def play_click():
-        SoundPlayer._play_async('click')
+    @classmethod
+    def play_click(cls):
+        if cls.sound_enabled:
+            cls._play_async('click')
 
-    @staticmethod
-    def play_success():
-        SoundPlayer._play_async('success')
+    @classmethod
+    def play_success(cls):
+        if cls.sound_enabled:
+            cls._play_async('success')
 
-    @staticmethod
-    def play_error():
-        SoundPlayer._play_async('error')
+    @classmethod
+    def play_error(cls):
+        if cls.sound_enabled:
+            cls._play_async('error')
 
     @staticmethod
     def _play_async(sound_type):
@@ -451,11 +483,125 @@ class DraggablePoolButton(tk.Button):
             self.on_drag_status_callback(False)
 
         if self._is_dragging:
-            # Check if dropped onto the answer board
             target = self.winfo_containing(event.x_root, event.y_root)
             self.on_drop_callback(self.chunk, target)
         else:
             self.on_click_callback(self.chunk)
+
+# --- UI: Settings Dialog ---
+class SettingsDialog(tk.Toplevel):
+    '''Modal settings dialog for configuring game mode parameters.'''
+    def __init__(self, parent, current_settings, on_save_callback):
+        super().__init__(parent)
+        self.current_settings = current_settings
+        self.on_save_callback = on_save_callback
+        
+        self.title('⚙️ Game Settings')
+        self.geometry('480x420')
+        self.resizable(False, False)
+        self.grab_set()
+        
+        self.setup_ui()
+        
+    def setup_ui(self):
+        main_frame = ttk.Frame(self, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+        
+        # --- Speed Run Section ---
+        speed_group = ttk.LabelFrame(main_frame, text='⏱️ Speed Run Settings', padding=12)
+        speed_group.pack(fill=tk.X, pady=(0, 15))
+        
+        ttk.Label(speed_group, text='Duration / Time Limit:').pack(anchor=tk.W, pady=(0, 5))
+        self.duration_var = tk.StringVar()
+        curr_dur = self.current_settings.get('speed_run_duration_seconds', 180)
+        # Map seconds to label
+        dur_map_rev = {60: '1 Minute (60s)', 120: '2 Minutes (120s)', 180: '3 Minutes (180s - Default)', 300: '5 Minutes (300s)'}
+        self.duration_var.set(dur_map_rev.get(curr_dur, '3 Minutes (180s - Default)'))
+        
+        self.duration_cb = ttk.Combobox(
+            speed_group,
+            textvariable=self.duration_var,
+            values=['1 Minute (60s)', '2 Minutes (120s)', '3 Minutes (180s - Default)', '5 Minutes (300s)'],
+            state='readonly',
+            font=('', 11)
+        )
+        self.duration_cb.pack(fill=tk.X, pady=3)
+        
+        # --- Fill in the Blanks Section ---
+        blanks_group = ttk.LabelFrame(main_frame, text='🧩 Fill-in-the-Blanks Settings', padding=12)
+        blanks_group.pack(fill=tk.X, pady=(0, 15))
+        
+        ttk.Label(blanks_group, text='Number of Hidden Blanks per Sentence:').pack(anchor=tk.W, pady=(0, 5))
+        self.blanks_var = tk.StringVar()
+        curr_blanks = self.current_settings.get('fill_blanks_count_mode', 'auto')
+        blanks_map_rev = {'auto': 'Adaptive Auto (1-2 depending on length)', '1': '1 Blank per sentence', '2': '2 Blanks per sentence', '3': '3 Blanks per sentence'}
+        self.blanks_var.set(blanks_map_rev.get(str(curr_blanks), 'Adaptive Auto (1-2 depending on length)'))
+        
+        self.blanks_cb = ttk.Combobox(
+            blanks_group,
+            textvariable=self.blanks_var,
+            values=[
+                'Adaptive Auto (1-2 depending on length)',
+                '1 Blank per sentence',
+                '2 Blanks per sentence',
+                '3 Blanks per sentence'
+            ],
+            state='readonly',
+            font=('', 11)
+        )
+        self.blanks_cb.pack(fill=tk.X, pady=3)
+        
+        # --- Audio Sound Effects ---
+        audio_group = ttk.LabelFrame(main_frame, text='🔊 Audio & Sound Effects', padding=12)
+        audio_group.pack(fill=tk.X, pady=(0, 20))
+        
+        self.sound_var = tk.BooleanVar(value=self.current_settings.get('sound_enabled', True))
+        self.sound_check = ttk.Checkbutton(
+            audio_group,
+            text='Enable Sound Effects (Click, Success Chime, Error Tone)',
+            variable=self.sound_var
+        )
+        self.sound_check.pack(anchor=tk.W)
+        
+        # --- Bottom Buttons ---
+        btn_frame = ttk.Frame(main_frame)
+        btn_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        ttk.Button(btn_frame, text='💾 Save Settings', command=self.save).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text='Cancel', command=self.destroy).pack(side=tk.RIGHT)
+
+    def save(self):
+        # Parse duration
+        dur_str = self.duration_var.get()
+        if '1 Minute' in dur_str:
+            dur_sec = 60
+        elif '2 Minutes' in dur_str:
+            dur_sec = 120
+        elif '5 Minutes' in dur_str:
+            dur_sec = 300
+        else:
+            dur_sec = 180
+            
+        # Parse blanks mode
+        b_str = self.blanks_var.get()
+        if '1 Blank' in b_str:
+            b_mode = '1'
+        elif '2 Blanks' in b_str:
+            b_mode = '2'
+        elif '3 Blanks' in b_str:
+            b_mode = '3'
+        else:
+            b_mode = 'auto'
+            
+        new_settings = {
+            'speed_run_duration_seconds': dur_sec,
+            'fill_blanks_count_mode': b_mode,
+            'sound_enabled': self.sound_var.get()
+        }
+        
+        save_settings(new_settings)
+        self.on_save_callback(new_settings)
+        self.destroy()
 
 # --- UI: Lesson Editor ---
 class LessonEditor(tk.Toplevel):
@@ -771,8 +917,10 @@ class SentenceJigsawApp:
     def __init__(self, root):
         self.root = root
         self.root.title('🧩 Sentence Jigsaw')
-        self.root.geometry('980x840')
+        self.root.geometry('1020x840')
         
+        self.settings = load_settings()
+        SoundPlayer.sound_enabled = self.settings.get('sound_enabled', True)
         self.model = LessonModel()
         
         if HAS_SV_TTK:
@@ -799,7 +947,7 @@ class SentenceJigsawApp:
         self.static_display_chunks = []
         
         # Timed Challenge / Speed Run state
-        self.timer_seconds_remaining = 60
+        self.timer_seconds_remaining = self.settings.get('speed_run_duration_seconds', 180)
         self.timer_active = False
         self.timer_after_id = None
         self.speed_run_score = 0
@@ -810,6 +958,11 @@ class SentenceJigsawApp:
         self.setup_bindings()
         self.check_initial_file()
 
+    def get_speed_run_mode_label(self):
+        secs = self.settings.get('speed_run_duration_seconds', 180)
+        mins = secs // 60
+        return f'⏱️ Speed Run ({mins}m)'
+
     def setup_ui(self):
         top_frame = ttk.Frame(self.root, padding=10)
         top_frame.pack(fill=tk.X)
@@ -819,24 +972,25 @@ class SentenceJigsawApp:
         self.mode_cb = ttk.Combobox(
             top_frame, 
             textvariable=self.mode_var, 
-            values=['🎯 Mastery', '⏱️ Speed Run (60s)', '🧩 Fill in Blanks'], 
+            values=['🎯 Mastery', self.get_speed_run_mode_label(), '🧩 Fill in Blanks'], 
             width=18, 
             state='readonly', 
             font=('', 11)
         )
-        self.mode_cb.pack(side=tk.LEFT, padx=(0, 15))
+        self.mode_cb.pack(side=tk.LEFT, padx=(0, 12))
         self.mode_cb.bind('<<ComboboxSelected>>', self.on_mode_change)
 
         self.progress_label = ttk.Label(top_frame, text='No file loaded', font=('', 13, 'bold'))
         self.progress_label.pack(side=tk.LEFT)
         
-        self.progress_bar = ttk.Progressbar(top_frame, orient=tk.HORIZONTAL, length=150, mode='determinate')
+        self.progress_bar = ttk.Progressbar(top_frame, orient=tk.HORIZONTAL, length=140, mode='determinate')
         self.progress_bar.pack(side=tk.LEFT, padx=10)
         
         self.score_label = ttk.Label(top_frame, text='', font=('', 15, 'bold'), foreground='#f39c12')
-        self.score_label.pack(side=tk.LEFT, padx=10)
+        self.score_label.pack(side=tk.LEFT, padx=8)
         
-        ttk.Button(top_frame, text='📂 Load', command=self.open_file_dialog).pack(side=tk.RIGHT)
+        ttk.Button(top_frame, text='⚙️ Settings', command=self.open_settings).pack(side=tk.RIGHT)
+        ttk.Button(top_frame, text='📂 Load', command=self.open_file_dialog).pack(side=tk.RIGHT, padx=4)
         ttk.Button(top_frame, text='✏️ Edit', command=self.open_editor).pack(side=tk.RIGHT, padx=4)
         ttk.Button(top_frame, text='🖨️ Worksheet', command=self.generate_worksheet).pack(side=tk.RIGHT, padx=4)
         ttk.Button(top_frame, text='🔄 Restart', command=self.restart_lesson).pack(side=tk.RIGHT, padx=4)
@@ -846,7 +1000,7 @@ class SentenceJigsawApp:
         content_frame = self.main_scroll.scrollable_frame
 
         ttk.Label(content_frame, text='Question:', font=('', 14), foreground='gray').pack(anchor=tk.W)
-        self.question_label = ttk.Label(content_frame, text='', font=self.question_font, wraplength=880, justify=tk.LEFT, anchor=tk.W, padding=(0, 10))
+        self.question_label = ttk.Label(content_frame, text='', font=self.question_font, wraplength=900, justify=tk.LEFT, anchor=tk.W, padding=(0, 10))
         self.question_label.pack(fill=tk.X, pady=(0, 15))
 
         self.meaning_display = tk.Text(content_frame, font=('', 15, 'italic'), fg='#555555', 
@@ -914,6 +1068,25 @@ class SentenceJigsawApp:
         else:
             self.update_board_visuals(THEME['board_bg_default'])
 
+    def open_settings(self):
+        SettingsDialog(self.root, self.settings, on_save_callback=self.on_settings_saved)
+
+    def on_settings_saved(self, new_settings):
+        self.settings = new_settings
+        SoundPlayer.sound_enabled = new_settings.get('sound_enabled', True)
+        
+        # Update Mode Dropdown Label
+        curr_val = self.mode_var.get()
+        new_speed_lbl = self.get_speed_run_mode_label()
+        self.mode_cb['values'] = ['🎯 Mastery', new_speed_lbl, '🧩 Fill in Blanks']
+        
+        if 'Speed Run' in curr_val:
+            self.mode_var.set(new_speed_lbl)
+            if self.game_mode == 'speed_run':
+                self.start_speed_run()
+        elif self.game_mode == 'fill_blanks':
+            self.load_current_question()
+
     def on_mode_change(self, event=None):
         mode_str = self.mode_var.get()
         if 'Speed Run' in mode_str:
@@ -932,7 +1105,7 @@ class SentenceJigsawApp:
 
     def start_speed_run(self):
         self.stop_timer()
-        self.timer_seconds_remaining = 60
+        self.timer_seconds_remaining = self.settings.get('speed_run_duration_seconds', 180)
         self.speed_run_score = 0
         self.speed_run_streak = 0
         self.speed_run_total_solved = 0
@@ -948,7 +1121,7 @@ class SentenceJigsawApp:
         if self.timer_seconds_remaining > 0:
             mins, secs = divmod(self.timer_seconds_remaining, 60)
             self.progress_label.config(text=f'⏱️ Time Left: {mins:02d}:{secs:02d} | Score: {self.speed_run_score}')
-            self.progress_bar['maximum'] = 60
+            self.progress_bar['maximum'] = self.settings.get('speed_run_duration_seconds', 180)
             self.progress_bar['value'] = self.timer_seconds_remaining
             self.timer_seconds_remaining -= 1
             self.timer_after_id = self.root.after(1000, self._timer_tick)
@@ -964,7 +1137,8 @@ class SentenceJigsawApp:
 
     def end_speed_run(self):
         SoundPlayer.play_success()
-        mins = 1.0
+        total_sec = self.settings.get('speed_run_duration_seconds', 180)
+        mins = max(1.0, total_sec / 60.0)
         wpm = round(self.speed_run_total_solved / mins, 1)
         msg = f'⏱️ Time\'s Up!\n\n' \
               f'Sentences Solved: {self.speed_run_total_solved}\n' \
@@ -1082,13 +1256,25 @@ class SentenceJigsawApp:
 
     def setup_fill_in_blanks_round(self):
         total_chunks = len(self.original_chunks)
-        num_blanks = 1 if total_chunks <= 3 else min(2, total_chunks - 1)
+        mode = self.settings.get('fill_blanks_count_mode', 'auto')
+        
+        if mode == '1':
+            num_blanks = 1
+        elif mode == '2':
+            num_blanks = min(2, total_chunks)
+        elif mode == '3':
+            num_blanks = min(3, total_chunks)
+        else:
+            # Adaptive auto
+            num_blanks = 1 if total_chunks <= 3 else min(2, total_chunks - 1)
+            
+        num_blanks = max(1, min(num_blanks, total_chunks))
         self.hidden_chunk_indices = sorted(random.sample(range(total_chunks), num_blanks))
         
         blank_chunks = [self.original_chunks[i] for i in self.hidden_chunk_indices]
         random.shuffle(blank_chunks)
 
-        self.pool_label.config(text='Pick or drag the missing block(s) into the blanks:')
+        self.pool_label.config(text=f'Pick or drag the missing {num_blanks} block(s) into the blanks:')
         shuffled_colors = PASTEL_COLORS.copy()
         random.shuffle(shuffled_colors)
 
@@ -1112,7 +1298,6 @@ class SentenceJigsawApp:
 
     def handle_pool_drop(self, chunk, target_widget):
         '''Handles dropping a block dragged from the available pool directly onto the board.'''
-        # Check if dropped anywhere inside the answer board or on an existing chip
         is_inside_board = False
         curr = target_widget
         while curr:
