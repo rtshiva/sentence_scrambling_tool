@@ -65,6 +65,7 @@ DEFAULT_SETTINGS = {
 }
 
 SETTINGS_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_settings.json')
+MEMORY_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_memory.json')
 
 def load_settings():
     settings = DEFAULT_SETTINGS.copy()
@@ -83,6 +84,110 @@ def save_settings(settings):
             json.dump(settings, f, indent=2)
     except Exception:
         pass
+
+# --- Long-Term Memory Manager (Spaced Repetition SM-2) ---
+class MemoryManager:
+    '''Manages persistent mastery levels, intervals, and review schedules across sessions.'''
+    _data = None
+    _lock = threading.Lock()
+
+    # Interval steps in days for flawless repetitions: Level 0 (New), Level 1 (1d), Level 2 (3d), Level 3 (7d), Level 4 (16d), Level 5 (35d)
+    INTERVAL_DAYS = [0, 1, 3, 7, 16, 35]
+
+    @classmethod
+    def _load(cls):
+        if cls._data is None:
+            cls._data = {}
+            if os.path.exists(MEMORY_FILE):
+                try:
+                    with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
+                        cls._data = json.load(f)
+                except Exception:
+                    cls._data = {}
+
+    @classmethod
+    def _save(cls):
+        with cls._lock:
+            try:
+                with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(cls._data, f, indent=2, ensure_ascii=False)
+            except Exception:
+                pass
+
+    @classmethod
+    def get_sentence_key(cls, question, chunks):
+        clean_q = re.sub(r'\s+', ' ', question).strip()
+        clean_c = ' '.join(chunks).strip()
+        raw = f'{clean_q}::{clean_c}'
+        return hashlib.md5(raw.encode('utf-8')).hexdigest()
+
+    @classmethod
+    def get_memory_profile(cls, question, chunks):
+        cls._load()
+        key = cls.get_sentence_key(question, chunks)
+        profile = cls._data.get(key, {
+            'repetition_level': 0,
+            'next_review_ts': 0,
+            'total_reviews': 0,
+            'lapses': 0,
+            'last_reviewed_ts': 0
+        })
+        return profile
+
+    @classmethod
+    def is_due(cls, question, chunks):
+        profile = cls.get_memory_profile(question, chunks)
+        # If never seen or due time is past, it is due
+        return time.time() >= profile.get('next_review_ts', 0)
+
+    @classmethod
+    def record_attempt(cls, question, chunks, flawless):
+        cls._load()
+        key = cls.get_sentence_key(question, chunks)
+        profile = cls.get_memory_profile(question, chunks)
+        now = time.time()
+
+        profile['total_reviews'] += 1
+        profile['last_reviewed_ts'] = now
+
+        if flawless:
+            current_level = profile['repetition_level']
+            new_level = min(current_level + 1, len(cls.INTERVAL_DAYS) - 1)
+            profile['repetition_level'] = new_level
+            interval_days = cls.INTERVAL_DAYS[new_level]
+            profile['next_review_ts'] = now + (interval_days * 86400)
+        else:
+            profile['lapses'] += 1
+            profile['repetition_level'] = 0
+            profile['next_review_ts'] = now # Due immediately
+
+        cls._data[key] = profile
+        cls._save()
+        return profile
+
+    @classmethod
+    def reset_all_progress(cls):
+        cls._load()
+        cls._data = {}
+        cls._save()
+
+    @classmethod
+    def get_status_badge(cls, question, chunks):
+        profile = cls.get_memory_profile(question, chunks)
+        level = profile.get('repetition_level', 0)
+        next_ts = profile.get('next_review_ts', 0)
+        now = time.time()
+
+        if profile.get('total_reviews', 0) == 0:
+            return ('🌱 New', '#3498db')
+        elif now >= next_ts:
+            return ('🔄 Due for Review', '#e67e22')
+        else:
+            remaining_days = max(1, int((next_ts - now) / 86400))
+            if level >= 4:
+                return (f'🎓 Mastered (Due in {remaining_days}d)', '#27ae60')
+            else:
+                return (f'⭐ Memorized (Due in {remaining_days}d)', '#2ecc71')
 
 # --- Text-to-Speech Manager (Neural Audio) ---
 class TTSManager:
@@ -137,7 +242,6 @@ class TTSManager:
                         await comm.save(cached_file)
                     asyncio.run(fetch())
                 except Exception as e:
-                    print(f'TTS synthesis error: {e}')
                     cls._is_playing = False
                     if on_finish_callback:
                         on_finish_callback()
@@ -149,8 +253,8 @@ class TTSManager:
                     pygame.mixer.music.play()
                     while pygame.mixer.music.get_busy():
                         pygame.time.Clock().tick(10)
-            except Exception as e:
-                print(f'Audio playback error: {e}')
+            except Exception:
+                pass
             finally:
                 cls._is_playing = False
                 if on_finish_callback:
@@ -211,9 +315,9 @@ class SoundPlayer:
         
         threading.Thread(target=play, daemon=True).start()
 
-# --- Data Model (Session-Based Mastery & Multi-Mode) ---
+# --- Data Model (Session-Based Mastery & Long-Term Memory Deck) ---
 class LessonModel:
-    '''Handles data operations and manages the active deck.'''
+    '''Handles data operations and builds prioritized SM-2 active decks.'''
     def __init__(self):
         self.filename = None
         self.qa_data = []
@@ -266,9 +370,32 @@ class LessonModel:
         self.reset_deck()
 
     def reset_deck(self, shuffle_deck=False):
-        self.deck = list(range(len(self.qa_data)))
+        '''Builds the active queue: Prioritizes (1) Overdue/Due Today, (2) New sentences, and (3) Future reviews.'''
+        if not self.qa_data:
+            self.deck = []
+            self.current_question_idx = None
+            return
+
         if shuffle_deck:
+            self.deck = list(range(len(self.qa_data)))
             random.shuffle(self.deck)
+        else:
+            due_indices = []
+            new_indices = []
+            future_indices = []
+
+            for idx, item in enumerate(self.qa_data):
+                prof = MemoryManager.get_memory_profile(item['question'], item['chunks'])
+                if prof.get('total_reviews', 0) == 0:
+                    new_indices.append(idx)
+                elif MemoryManager.is_due(item['question'], item['chunks']):
+                    due_indices.append(idx)
+                else:
+                    future_indices.append(idx)
+
+            # Queue priority: Due today -> New -> Future reviews
+            self.deck = due_indices + new_indices + future_indices
+
         self.current_question_idx = self.deck[0] if self.deck else None
 
     def get_current_question(self):
@@ -277,10 +404,14 @@ class LessonModel:
         return self.qa_data[self.current_question_idx]
 
     def process_result(self, flawless, repeat_on_error=True):
-        '''Processes the outcome of the current question and updates the deck queue.'''
+        '''Records the attempt in long-term memory and advances the active queue.'''
         if not self.deck:
             return
             
+        curr_idx = self.deck[0]
+        curr_q = self.qa_data[curr_idx]
+        MemoryManager.record_attempt(curr_q['question'], curr_q['chunks'], flawless)
+
         if flawless or not repeat_on_error:
             self.deck.pop(0)
         else:
@@ -616,16 +747,98 @@ class DraggablePoolButton(tk.Frame):
         else:
             self.on_click_callback(self.chunk)
 
+# --- UI: Bulk Story / Text Importer Dialog ---
+class BulkStoryImporter(tk.Toplevel):
+    '''Modal dialog to paste raw stories or paragraphs and auto-split them into chunked lessons.'''
+    def __init__(self, parent, on_import_callback):
+        super().__init__(parent)
+        self.on_import_callback = on_import_callback
+        
+        self.title('🪄 Bulk Story / Paragraph Importer')
+        self.geometry('650x540')
+        self.grab_set()
+        
+        self.setup_ui()
+        
+    def setup_ui(self):
+        frame = ttk.Frame(self, padding=15)
+        frame.pack(fill=tk.BOTH, expand=True)
+        
+        ttk.Label(frame, text='Paste Story / Text Below (Hindi, Japanese, English, etc.):', font=('', 11, 'bold')).pack(anchor=tk.W)
+        ttk.Label(frame, text='Sentences will automatically be detected by punctuation (। . ? ! or newline).', font=('', 10), foreground='gray').pack(anchor=tk.W, pady=(0, 8))
+        
+        self.text_entry = tk.Text(frame, font=('', 12), height=12, wrap=tk.WORD)
+        self.text_entry.pack(fill=tk.BOTH, expand=True, pady=(0, 12))
+        
+        options_frame = ttk.Frame(frame)
+        options_frame.pack(fill=tk.X, pady=(0, 15))
+        
+        ttk.Label(options_frame, text='Words per puzzle block:').pack(side=tk.LEFT, padx=(0, 8))
+        self.chunk_size_var = tk.StringVar(value='3 Words/Block')
+        self.chunk_cb = ttk.Combobox(options_frame, textvariable=self.chunk_size_var, values=['2 Words/Block', '3 Words/Block', '4 Words/Block', '1 Word/Block'], state='readonly', width=16)
+        self.chunk_cb.pack(side=tk.LEFT)
+        
+        btn_frame = ttk.Frame(frame)
+        btn_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        
+        ttk.Button(btn_frame, text='🚀 Generate Lesson', command=self.process_import).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text='Cancel', command=self.destroy).pack(side=tk.RIGHT)
+
+    def process_import(self):
+        raw = self.text_entry.get('1.0', tk.END).strip()
+        if not raw:
+            messagebox.showwarning('Empty', 'Please paste some text first!')
+            return
+            
+        c_str = self.chunk_size_var.get()
+        if '2 Words' in c_str:
+            n = 2
+        elif '4 Words' in c_str:
+            n = 4
+        elif '1 Word' in c_str:
+            n = 1
+        else:
+            n = 3
+            
+        # Split by Hindi Purna Viram, full stop, question mark, exclamation, or newline
+        sentences = re.split(r'[।\.\?\!\n]+', raw)
+        imported_data = []
+
+        for s in sentences:
+            s = s.strip().replace('|', '।')
+            if not s:
+                continue
+            words = s.split()
+            if len(words) < 2:
+                continue
+                
+            chunks = []
+            for i in range(0, len(words), n):
+                chunks.append(' '.join(words[i:i+n]))
+                
+            imported_data.append({
+                'question': s,
+                'chunks': chunks,
+                'meaning': ''
+            })
+            
+        if not imported_data:
+            messagebox.showerror('Error', 'Could not extract valid sentences from the text.')
+            return
+            
+        self.on_import_callback(imported_data)
+        self.destroy()
+
 # --- UI: Settings Dialog ---
 class SettingsDialog(tk.Toplevel):
-    '''Modal settings dialog for configuring game mode parameters & TTS voice speed.'''
+    '''Modal settings dialog for configuring game mode parameters, TTS voice speed & memory reset.'''
     def __init__(self, parent, current_settings, on_save_callback):
         super().__init__(parent)
         self.current_settings = current_settings
         self.on_save_callback = on_save_callback
         
-        self.title('⚙️ Game & Voice Settings')
-        self.geometry('500x520')
+        self.title('⚙️ Game & Memory Settings')
+        self.geometry('500x570')
         self.resizable(False, False)
         self.grab_set()
         
@@ -637,7 +850,7 @@ class SettingsDialog(tk.Toplevel):
         
         # --- Speed Run Section ---
         speed_group = ttk.LabelFrame(main_frame, text='⏱️ Speed Run Settings', padding=12)
-        speed_group.pack(fill=tk.X, pady=(0, 12))
+        speed_group.pack(fill=tk.X, pady=(0, 10))
         
         ttk.Label(speed_group, text='Duration / Time Limit:').pack(anchor=tk.W, pady=(0, 4))
         self.duration_var = tk.StringVar()
@@ -656,7 +869,7 @@ class SettingsDialog(tk.Toplevel):
         
         # --- Fill in the Blanks Section ---
         blanks_group = ttk.LabelFrame(main_frame, text='🧩 Fill-in-the-Blanks Settings', padding=12)
-        blanks_group.pack(fill=tk.X, pady=(0, 12))
+        blanks_group.pack(fill=tk.X, pady=(0, 10))
         
         ttk.Label(blanks_group, text='Hidden Blanks per Sentence:').pack(anchor=tk.W, pady=(0, 4))
         self.blanks_var = tk.StringVar()
@@ -680,7 +893,7 @@ class SettingsDialog(tk.Toplevel):
         
         # --- Neural Speech & Pronunciation Section ---
         tts_group = ttk.LabelFrame(main_frame, text='🔊 Neural Text-to-Speech (Hindi, Japanese, English)', padding=12)
-        tts_group.pack(fill=tk.X, pady=(0, 12))
+        tts_group.pack(fill=tk.X, pady=(0, 10))
         
         ttk.Label(tts_group, text='Speech Playback Speed:').pack(anchor=tk.W, pady=(0, 4))
         self.tts_speed_var = tk.StringVar()
@@ -697,6 +910,11 @@ class SettingsDialog(tk.Toplevel):
         )
         self.tts_speed_cb.pack(fill=tk.X, pady=2)
         
+        # --- Long-Term Memory Section ---
+        mem_group = ttk.LabelFrame(main_frame, text='🧠 Spaced Repetition Long-Term Memory', padding=12)
+        mem_group.pack(fill=tk.X, pady=(0, 10))
+        ttk.Button(mem_group, text='🗑 Reset All Memory Progress', command=self.reset_memory).pack(anchor=tk.W)
+        
         # --- Audio Sound Effects Toggle ---
         self.sound_var = tk.BooleanVar(value=self.current_settings.get('sound_enabled', True))
         self.sound_check = ttk.Checkbutton(
@@ -704,7 +922,7 @@ class SettingsDialog(tk.Toplevel):
             text='Enable Sound Effects (Click, Success Chime, Error Tone)',
             variable=self.sound_var
         )
-        self.sound_check.pack(anchor=tk.W, pady=(0, 15))
+        self.sound_check.pack(anchor=tk.W, pady=(0, 10))
         
         # --- Bottom Buttons ---
         btn_frame = ttk.Frame(main_frame)
@@ -712,6 +930,11 @@ class SettingsDialog(tk.Toplevel):
         
         ttk.Button(btn_frame, text='💾 Save Settings', command=self.save).pack(side=tk.RIGHT, padx=5)
         ttk.Button(btn_frame, text='Cancel', command=self.destroy).pack(side=tk.RIGHT)
+
+    def reset_memory(self):
+        if messagebox.askyesno('Confirm Reset', 'Are you sure you want to reset all long-term memory progress across all lessons?\n\nAll questions will be marked as New again.'):
+            MemoryManager.reset_all_progress()
+            messagebox.showinfo('Memory Reset', 'All spaced repetition memory progress has been reset!')
 
     def save(self):
         dur_str = self.duration_var.get()
@@ -762,7 +985,7 @@ class LessonEditor(tk.Toplevel):
         self.on_save_callback = on_save_callback
         
         self.title('Lesson Editor')
-        self.geometry('920x720')
+        self.geometry('940x740')
         self.grab_set() 
         
         self.edit_data = [dict(d) for d in model.qa_data]
@@ -790,7 +1013,10 @@ class LessonEditor(tk.Toplevel):
         ttk.Button(btn_frame, text='➕ Add New', command=self.add_new).pack(side=tk.LEFT, expand=True, padx=2)
         ttk.Button(btn_frame, text='❌ Delete', command=self.delete_selected).pack(side=tk.LEFT, expand=True, padx=2)
         
-        ttk.Label(left_frame, text='Format Entire Lesson:').pack(anchor=tk.W, pady=(20, 5))
+        # Bulk Story Importer Button
+        ttk.Button(left_frame, text='🪄 Import Story / Text', command=self.open_story_importer).pack(fill=tk.X, pady=(10, 5))
+        
+        ttk.Label(left_frame, text='Format Entire Lesson:').pack(anchor=tk.W, pady=(15, 5))
         all_btn_frame = ttk.Frame(left_frame)
         all_btn_frame.pack(fill=tk.X)
         ttk.Button(all_btn_frame, text='2w', width=4, command=lambda: self.auto_group_all(2)).pack(side=tk.LEFT, expand=True, padx=1)
@@ -856,6 +1082,17 @@ class LessonEditor(tk.Toplevel):
         ttk.Label(self.right_frame, text='Live Preview of Puzzle Blocks:').pack(anchor=tk.W, pady=(15, 5))
         self.chunks_container = ttk.Frame(self.right_frame)
         self.chunks_container.pack(fill=tk.BOTH, expand=True, pady=5)
+
+    def open_story_importer(self):
+        BulkStoryImporter(self, on_import_callback=self.on_story_imported)
+
+    def on_story_imported(self, new_questions):
+        self.save_current_form_to_data()
+        self.edit_data.extend(new_questions)
+        self.current_selected_index = len(self.edit_data) - len(new_questions)
+        self.refresh_listbox()
+        self.load_form()
+        messagebox.showinfo('Import Complete', f'Successfully imported {len(new_questions)} sentences!')
 
     def on_delimiter_change(self, event=None):
         if self.current_selected_index is not None:
@@ -1150,10 +1387,14 @@ class SentenceJigsawApp:
         self.main_scroll.pack(fill=tk.BOTH, expand=True)
         content_frame = self.main_scroll.scrollable_frame
 
-        # --- Question Header with Listen Button ---
+        # --- Question Header with Memory Status & Listen Button ---
         q_header = ttk.Frame(content_frame)
         q_header.pack(fill=tk.X, pady=(0, 5))
         ttk.Label(q_header, text='Question:', font=('', 14), foreground='gray').pack(side=tk.LEFT)
+        
+        # Memory Status Badge
+        self.memory_badge = tk.Label(q_header, text='', font=('', 10, 'bold'), bg='#e8ecef', fg='#333333', padx=8, pady=2, bd=1, relief=tk.SOLID)
+        self.memory_badge.pack(side=tk.LEFT, padx=(12, 0))
         
         self.listen_btn = ttk.Button(q_header, text='🔊 Listen (L)', command=self.speak_current_question)
         self.listen_btn.pack(side=tk.RIGHT)
@@ -1312,7 +1553,7 @@ class SentenceJigsawApp:
             self.mode_var.set(new_speed_lbl)
             if self.game_mode == 'speed_run':
                 self.start_speed_run()
-        elif self.game_mode in ('fill_blanks', 'listening'):
+        else:
             self.load_current_question()
 
     def on_mode_change(self, event=None):
@@ -1432,6 +1673,10 @@ class SentenceJigsawApp:
         self.user_selected_chunks = []
         self.hints_used = 0
         self.flawless_attempt = True
+        
+        # Update Memory Status Badge
+        badge_text, badge_color = MemoryManager.get_status_badge(data['question'], data['chunks'])
+        self.memory_badge.config(text=badge_text, fg=badge_color)
         
         self.update_board_visuals(THEME['board_bg_default'])
         self.score_label.config(text='')
@@ -1749,7 +1994,7 @@ class SentenceJigsawApp:
                 self.speed_run_score += points
                 self.score_label.config(text=f'+{points} pts! 🔥 Streak {self.speed_run_streak}')
             elif not self.flawless_attempt and self.game_mode in ('mastery', 'listening'):
-                self.score_label.config(text=f'{praise} ' + '⭐' * stars + ' (We\'ll practice this again!)')
+                self.score_label.config(text=f'{praise} ' + '⭐' * stars + ' (We\'ll review this soon!)')
             else:
                 self.score_label.config(text=f'{praise} ' + '⭐' * stars)
             
@@ -1771,7 +2016,7 @@ class SentenceJigsawApp:
     def restart_lesson(self):
         if not self.model.qa_data:
             return
-        if messagebox.askyesno('Restart', 'Restart lesson from the beginning?'):
+        if messagebox.askyesno('Restart', 'Restart lesson queue with Spaced Repetition priority?'):
             if self.game_mode == 'speed_run':
                 self.start_speed_run()
             else:
@@ -1800,7 +2045,7 @@ class SentenceJigsawApp:
                 self.progress_label.config(text=f'Mastered: {self.model.total_questions()} / {self.model.total_questions()}')
                 self.progress_bar['value'] = self.model.total_questions()
                 SoundPlayer.play_success()
-                response = messagebox.askyesno('Congratulations!', 'You completely mastered all sentences in this lesson!\n\nLoad a new file?')
+                response = messagebox.askyesno('Congratulations!', 'You completed all due review sentences for this session!\n\nLoad another lesson file?')
                 if response:
                     self.open_file_dialog()
                 else:
