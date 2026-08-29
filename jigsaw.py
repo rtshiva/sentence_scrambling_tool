@@ -8,6 +8,18 @@ import webbrowser
 import tempfile
 import time
 import json
+import re
+import hashlib
+import asyncio
+
+# Optional TTS and Audio modules
+try:
+    import edge_tts
+    import pygame
+    pygame.mixer.init()
+    HAS_TTS = True
+except Exception:
+    HAS_TTS = False
 
 # Platform specific sound imports
 try:
@@ -47,7 +59,9 @@ ENCOURAGEMENTS = ['Awesome!', 'Great Job!', 'Super!', 'Fantastic!', 'Well Done!'
 DEFAULT_SETTINGS = {
     'speed_run_duration_seconds': 180,  # Default 3 minutes
     'fill_blanks_count_mode': 'auto',   # 'auto', '1', '2', '3'
-    'sound_enabled': True
+    'sound_enabled': True,
+    'tts_speed_rate': '+0%',            # '-20%' (Slow), '+0%' (Normal), '+20%' (Fast)
+    'tts_voice_override': 'auto'        # 'auto', 'hi-IN-SwaraNeural', 'hi-IN-MadhurNeural', 'ja-JP-NanamiNeural', 'en-IN-NeerjaNeural'
 }
 
 SETTINGS_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_settings.json')
@@ -69,6 +83,89 @@ def save_settings(settings):
             json.dump(settings, f, indent=2)
     except Exception:
         pass
+
+# --- Text-to-Speech Manager (Neural Audio) ---
+class TTSManager:
+    '''Asynchronously synthesizes and plays natural Hindi, Japanese, and English neural audio.'''
+    _cache_dir = os.path.join(tempfile.gettempdir(), 'sentence_jigsaw_tts_cache')
+    _lock = threading.Lock()
+    _is_playing = False
+
+    VOICES = {
+        'hi': 'hi-IN-SwaraNeural',
+        'ja': 'ja-JP-NanamiNeural',
+        'en': 'en-IN-NeerjaNeural'
+    }
+
+    @classmethod
+    def init(cls):
+        os.makedirs(cls._cache_dir, exist_ok=True)
+
+    @classmethod
+    def detect_language(cls, text):
+        if re.search(r'[ऀ-ॿ]', text):
+            return 'hi'
+        if re.search(r'[぀-ゟ゠-ヿ一-鿿]', text):
+            return 'ja'
+        return 'en'
+
+    @classmethod
+    def get_voice_for_text(cls, text, override_voice=None):
+        if override_voice and override_voice != 'auto':
+            return override_voice
+        lang = cls.detect_language(text)
+        return cls.VOICES.get(lang, 'hi-IN-SwaraNeural')
+
+    @classmethod
+    def speak(cls, text, rate_str='+0%', override_voice=None, on_finish_callback=None):
+        if not HAS_TTS or not text or not text.strip():
+            if on_finish_callback:
+                on_finish_callback()
+            return
+
+        def run():
+            cls._is_playing = True
+            cls.init()
+            voice = cls.get_voice_for_text(text, override_voice)
+            cache_key = hashlib.md5(f'{text}_{voice}_{rate_str}'.encode('utf-8')).hexdigest()
+            cached_file = os.path.join(cls._cache_dir, f'{cache_key}.mp3')
+
+            if not os.path.exists(cached_file):
+                try:
+                    async def fetch():
+                        comm = edge_tts.Communicate(text, voice, rate=rate_str)
+                        await comm.save(cached_file)
+                    asyncio.run(fetch())
+                except Exception as e:
+                    print(f'TTS synthesis error: {e}')
+                    cls._is_playing = False
+                    if on_finish_callback:
+                        on_finish_callback()
+                    return
+
+            try:
+                with cls._lock:
+                    pygame.mixer.music.load(cached_file)
+                    pygame.mixer.music.play()
+                    while pygame.mixer.music.get_busy():
+                        pygame.time.Clock().tick(10)
+            except Exception as e:
+                print(f'Audio playback error: {e}')
+            finally:
+                cls._is_playing = False
+                if on_finish_callback:
+                    on_finish_callback()
+
+        threading.Thread(target=run, daemon=True).start()
+
+    @classmethod
+    def stop(cls):
+        if HAS_TTS:
+            try:
+                pygame.mixer.music.stop()
+            except Exception:
+                pass
+            cls._is_playing = False
 
 # --- Sound Manager (Cross-Platform) ---
 class SoundPlayer:
@@ -335,8 +432,8 @@ class DragGhost:
 
 # --- Interactive Draggable / Clickable Answer Chip ---
 class AnswerChip(tk.Frame):
-    '''An interactive chip widget representing an answer chunk with drag/drop, floating ghost, & click-to-remove.'''
-    def __init__(self, parent, text, color, on_remove_callback, on_swap_callback, on_drag_status_callback=None, is_blank=False, font=('', 18, 'bold')):
+    '''An interactive chip widget representing an answer chunk with drag/drop, right-click pronunciation & click-to-remove.'''
+    def __init__(self, parent, text, color, on_remove_callback, on_swap_callback, on_drag_status_callback=None, is_blank=False, font=('', 18, 'bold'), on_pronounce_callback=None):
         super().__init__(parent, bd=2, relief=tk.RAISED, bg=color, cursor='hand2')
         self.text = text
         self.original_color = color
@@ -344,6 +441,7 @@ class AnswerChip(tk.Frame):
         self.on_remove_callback = on_remove_callback
         self.on_swap_callback = on_swap_callback
         self.on_drag_status_callback = on_drag_status_callback
+        self.on_pronounce_callback = on_pronounce_callback
         self.is_blank = is_blank
         self.font = font
 
@@ -362,11 +460,17 @@ class AnswerChip(tk.Frame):
                 w.bind('<Button-1>', self._on_drag_start)
                 w.bind('<B1-Motion>', self._on_drag_motion)
                 w.bind('<ButtonRelease-1>', self._on_drag_end)
+                # Right click -> pronounce chunk
+                w.bind('<Button-3>', lambda e: self._on_pronounce())
 
         self._drag_start_x = 0
         self._drag_start_y = 0
         self._is_dragging = False
         self._highlighted_target = None
+
+    def _on_pronounce(self):
+        if self.on_pronounce_callback and not self.is_blank:
+            self.on_pronounce_callback(self.text)
 
     def set_highlight(self, active=True):
         if active:
@@ -428,8 +532,8 @@ class AnswerChip(tk.Frame):
 
 # --- Draggable Pool Button ---
 class DraggablePoolButton(tk.Button):
-    '''A pool button that can be either clicked or dragged directly onto the answer board.'''
-    def __init__(self, master, chunk, badge_text, bg_color, font, on_click_callback, on_drop_callback, on_drag_status_callback=None, **kwargs):
+    '''A pool button that can be clicked, dragged, or right-clicked for pronunciation.'''
+    def __init__(self, master, chunk, badge_text, bg_color, font, on_click_callback, on_drop_callback, on_drag_status_callback=None, on_pronounce_callback=None, **kwargs):
         super().__init__(master, text=badge_text, font=font, relief=tk.RAISED, bg=bg_color, padx=15, pady=8, cursor='hand2', **kwargs)
         self.chunk = chunk
         self.bg_color = bg_color
@@ -437,16 +541,22 @@ class DraggablePoolButton(tk.Button):
         self.on_click_callback = on_click_callback
         self.on_drop_callback = on_drop_callback
         self.on_drag_status_callback = on_drag_status_callback
+        self.on_pronounce_callback = on_pronounce_callback
         
         self.bind('<Button-1>', self._on_start)
         self.bind('<B1-Motion>', self._on_motion)
         self.bind('<ButtonRelease-1>', self._on_end)
+        self.bind('<Button-3>', lambda e: self._on_pronounce())
         self.bind('<Enter>', self._on_enter)
         self.bind('<Leave>', self._on_leave)
         
         self._drag_start_x = 0
         self._drag_start_y = 0
         self._is_dragging = False
+
+    def _on_pronounce(self):
+        if self.on_pronounce_callback and self['state'] == tk.NORMAL:
+            self.on_pronounce_callback(self.chunk)
 
     def _on_enter(self, event):
         if self['state'] == tk.NORMAL:
@@ -490,14 +600,14 @@ class DraggablePoolButton(tk.Button):
 
 # --- UI: Settings Dialog ---
 class SettingsDialog(tk.Toplevel):
-    '''Modal settings dialog for configuring game mode parameters.'''
+    '''Modal settings dialog for configuring game mode parameters & TTS voice speed.'''
     def __init__(self, parent, current_settings, on_save_callback):
         super().__init__(parent)
         self.current_settings = current_settings
         self.on_save_callback = on_save_callback
         
-        self.title('⚙️ Game Settings')
-        self.geometry('480x420')
+        self.title('⚙️ Game & Voice Settings')
+        self.geometry('500x520')
         self.resizable(False, False)
         self.grab_set()
         
@@ -509,12 +619,11 @@ class SettingsDialog(tk.Toplevel):
         
         # --- Speed Run Section ---
         speed_group = ttk.LabelFrame(main_frame, text='⏱️ Speed Run Settings', padding=12)
-        speed_group.pack(fill=tk.X, pady=(0, 15))
+        speed_group.pack(fill=tk.X, pady=(0, 12))
         
-        ttk.Label(speed_group, text='Duration / Time Limit:').pack(anchor=tk.W, pady=(0, 5))
+        ttk.Label(speed_group, text='Duration / Time Limit:').pack(anchor=tk.W, pady=(0, 4))
         self.duration_var = tk.StringVar()
         curr_dur = self.current_settings.get('speed_run_duration_seconds', 180)
-        # Map seconds to label
         dur_map_rev = {60: '1 Minute (60s)', 120: '2 Minutes (120s)', 180: '3 Minutes (180s - Default)', 300: '5 Minutes (300s)'}
         self.duration_var.set(dur_map_rev.get(curr_dur, '3 Minutes (180s - Default)'))
         
@@ -523,15 +632,15 @@ class SettingsDialog(tk.Toplevel):
             textvariable=self.duration_var,
             values=['1 Minute (60s)', '2 Minutes (120s)', '3 Minutes (180s - Default)', '5 Minutes (300s)'],
             state='readonly',
-            font=('', 11)
+            font=('', 10)
         )
-        self.duration_cb.pack(fill=tk.X, pady=3)
+        self.duration_cb.pack(fill=tk.X, pady=2)
         
         # --- Fill in the Blanks Section ---
         blanks_group = ttk.LabelFrame(main_frame, text='🧩 Fill-in-the-Blanks Settings', padding=12)
-        blanks_group.pack(fill=tk.X, pady=(0, 15))
+        blanks_group.pack(fill=tk.X, pady=(0, 12))
         
-        ttk.Label(blanks_group, text='Number of Hidden Blanks per Sentence:').pack(anchor=tk.W, pady=(0, 5))
+        ttk.Label(blanks_group, text='Hidden Blanks per Sentence:').pack(anchor=tk.W, pady=(0, 4))
         self.blanks_var = tk.StringVar()
         curr_blanks = self.current_settings.get('fill_blanks_count_mode', 'auto')
         blanks_map_rev = {'auto': 'Adaptive Auto (1-2 depending on length)', '1': '1 Blank per sentence', '2': '2 Blanks per sentence', '3': '3 Blanks per sentence'}
@@ -547,21 +656,37 @@ class SettingsDialog(tk.Toplevel):
                 '3 Blanks per sentence'
             ],
             state='readonly',
-            font=('', 11)
+            font=('', 10)
         )
-        self.blanks_cb.pack(fill=tk.X, pady=3)
+        self.blanks_cb.pack(fill=tk.X, pady=2)
         
-        # --- Audio Sound Effects ---
-        audio_group = ttk.LabelFrame(main_frame, text='🔊 Audio & Sound Effects', padding=12)
-        audio_group.pack(fill=tk.X, pady=(0, 20))
+        # --- Neural Speech & Pronunciation Section ---
+        tts_group = ttk.LabelFrame(main_frame, text='🔊 Neural Text-to-Speech (Hindi, Japanese, English)', padding=12)
+        tts_group.pack(fill=tk.X, pady=(0, 12))
         
+        ttk.Label(tts_group, text='Speech Playback Speed:').pack(anchor=tk.W, pady=(0, 4))
+        self.tts_speed_var = tk.StringVar()
+        curr_rate = self.current_settings.get('tts_speed_rate', '+0%')
+        rate_map_rev = {'-25%': 'Slow (0.75x - Ideal for kids)', '+0%': 'Normal (1.0x - Default)', '+20%': 'Fast (1.2x)'}
+        self.tts_speed_var.set(rate_map_rev.get(curr_rate, 'Normal (1.0x - Default)'))
+        
+        self.tts_speed_cb = ttk.Combobox(
+            tts_group,
+            textvariable=self.tts_speed_var,
+            values=['Slow (0.75x - Ideal for kids)', 'Normal (1.0x - Default)', 'Fast (1.2x)'],
+            state='readonly',
+            font=('', 10)
+        )
+        self.tts_speed_cb.pack(fill=tk.X, pady=2)
+        
+        # --- Audio Sound Effects Toggle ---
         self.sound_var = tk.BooleanVar(value=self.current_settings.get('sound_enabled', True))
         self.sound_check = ttk.Checkbutton(
-            audio_group,
+            main_frame,
             text='Enable Sound Effects (Click, Success Chime, Error Tone)',
             variable=self.sound_var
         )
-        self.sound_check.pack(anchor=tk.W)
+        self.sound_check.pack(anchor=tk.W, pady=(0, 15))
         
         # --- Bottom Buttons ---
         btn_frame = ttk.Frame(main_frame)
@@ -571,7 +696,6 @@ class SettingsDialog(tk.Toplevel):
         ttk.Button(btn_frame, text='Cancel', command=self.destroy).pack(side=tk.RIGHT)
 
     def save(self):
-        # Parse duration
         dur_str = self.duration_var.get()
         if '1 Minute' in dur_str:
             dur_sec = 60
@@ -582,7 +706,6 @@ class SettingsDialog(tk.Toplevel):
         else:
             dur_sec = 180
             
-        # Parse blanks mode
         b_str = self.blanks_var.get()
         if '1 Blank' in b_str:
             b_mode = '1'
@@ -593,10 +716,20 @@ class SettingsDialog(tk.Toplevel):
         else:
             b_mode = 'auto'
             
+        rate_str = self.tts_speed_var.get()
+        if 'Slow' in rate_str:
+            rate_val = '-25%'
+        elif 'Fast' in rate_str:
+            rate_val = '+20%'
+        else:
+            rate_val = '+0%'
+            
         new_settings = {
             'speed_run_duration_seconds': dur_sec,
             'fill_blanks_count_mode': b_mode,
-            'sound_enabled': self.sound_var.get()
+            'sound_enabled': self.sound_var.get(),
+            'tts_speed_rate': rate_val,
+            'tts_voice_override': 'auto'
         }
         
         save_settings(new_settings)
@@ -917,7 +1050,7 @@ class SentenceJigsawApp:
     def __init__(self, root):
         self.root = root
         self.root.title('🧩 Sentence Jigsaw')
-        self.root.geometry('1020x840')
+        self.root.geometry('1040x860')
         
         self.settings = load_settings()
         SoundPlayer.sound_enabled = self.settings.get('sound_enabled', True)
@@ -972,7 +1105,7 @@ class SentenceJigsawApp:
         self.mode_cb = ttk.Combobox(
             top_frame, 
             textvariable=self.mode_var, 
-            values=['🎯 Mastery', self.get_speed_run_mode_label(), '🧩 Fill in Blanks'], 
+            values=['🎯 Mastery', self.get_speed_run_mode_label(), '🧩 Fill in Blanks', '🎧 Listening Mode'], 
             width=18, 
             state='readonly', 
             font=('', 11)
@@ -999,7 +1132,14 @@ class SentenceJigsawApp:
         self.main_scroll.pack(fill=tk.BOTH, expand=True)
         content_frame = self.main_scroll.scrollable_frame
 
-        ttk.Label(content_frame, text='Question:', font=('', 14), foreground='gray').pack(anchor=tk.W)
+        # --- Question Header with Listen Button ---
+        q_header = ttk.Frame(content_frame)
+        q_header.pack(fill=tk.X, pady=(0, 5))
+        ttk.Label(q_header, text='Question:', font=('', 14), foreground='gray').pack(side=tk.LEFT)
+        
+        self.listen_btn = ttk.Button(q_header, text='🔊 Listen (L)', command=self.speak_current_question)
+        self.listen_btn.pack(side=tk.RIGHT)
+
         self.question_label = ttk.Label(content_frame, text='', font=self.question_font, wraplength=900, justify=tk.LEFT, anchor=tk.W, padding=(0, 10))
         self.question_label.pack(fill=tk.X, pady=(0, 15))
 
@@ -1011,7 +1151,7 @@ class SentenceJigsawApp:
         answer_header = ttk.Frame(content_frame)
         answer_header.pack(fill=tk.X, pady=(5, 5))
         ttk.Label(answer_header, text='Your Answer (Click or Drag blocks here):', font=('', 14), foreground='gray').pack(side=tk.LEFT)
-        self.tip_label = ttk.Label(answer_header, text='💡 Tip: Drag blocks to move / Press 1-9 on keyboard', font=('', 11, 'italic'), foreground='#2980b9')
+        self.tip_label = ttk.Label(answer_header, text='💡 Right-Click block to hear pronunciation | Keys 1-9 to select', font=('', 11, 'italic'), foreground='#2980b9')
         self.tip_label.pack(side=tk.RIGHT)
         
         self.answer_board = tk.Frame(content_frame, bg=THEME['board_bg_default'], bd=3, relief=tk.GROOVE, padx=15, pady=15)
@@ -1020,7 +1160,7 @@ class SentenceJigsawApp:
         self.answer_flow = FlowFrame(self.answer_board, bg=THEME['board_bg_default'], h_spacing=10, v_spacing=10)
         self.answer_flow.pack(fill=tk.X, expand=True)
 
-        self.pool_label = ttk.Label(content_frame, text='Available Blocks (Click or drag up to answer):', font=('', 14), foreground='gray')
+        self.pool_label = ttk.Label(content_frame, text='Available Blocks (Click, drag, or Right-Click to pronounce):', font=('', 14), foreground='gray')
         self.pool_label.pack(anchor=tk.W, pady=(20, 5))
         
         self.buttons_frame = FlowFrame(content_frame, h_spacing=12, v_spacing=12)
@@ -1052,6 +1192,8 @@ class SentenceJigsawApp:
         self.root.bind('<H>', lambda e: self.give_hint() if str(self.hint_btn['state']) == 'normal' else None)
         self.root.bind('<s>', lambda e: self.skip_sentence() if str(self.skip_btn['state']) == 'normal' else None)
         self.root.bind('<S>', lambda e: self.skip_sentence() if str(self.skip_btn['state']) == 'normal' else None)
+        self.root.bind('<l>', lambda e: self.speak_current_question())
+        self.root.bind('<L>', lambda e: self.speak_current_question())
 
         for i in range(1, 10):
             self.root.bind(str(i), lambda e, idx=i-1: self.trigger_chunk_by_index(idx))
@@ -1061,6 +1203,34 @@ class SentenceJigsawApp:
         if index < len(active_chunks):
             chunk = active_chunks[index]['text']
             self.select_chunk(chunk)
+
+    def speak_chunk(self, chunk_text):
+        '''Pronounces an individual word block using neural voice.'''
+        rate = self.settings.get('tts_speed_rate', '+0%')
+        voice_override = self.settings.get('tts_voice_override', 'auto')
+        TTSManager.speak(chunk_text, rate_str=rate, override_voice=voice_override)
+
+    def speak_current_question(self):
+        '''Reads the full sentence aloud using high-quality neural voice.'''
+        data = self.model.get_current_question()
+        if not data:
+            return
+        text = data.get('question', '')
+        if not text:
+            return
+            
+        rate = self.settings.get('tts_speed_rate', '+0%')
+        voice_override = self.settings.get('tts_voice_override', 'auto')
+        
+        self.listen_btn.config(text='🔊 Playing...', state=tk.DISABLED)
+        def on_done():
+            try:
+                if self.root.winfo_exists():
+                    self.listen_btn.config(text='🔊 Listen (L)', state=tk.NORMAL)
+            except Exception:
+                pass
+                
+        TTSManager.speak(text, rate_str=rate, override_voice=voice_override, on_finish_callback=on_done)
 
     def set_board_drag_highlight(self, is_dragging):
         if is_dragging:
@@ -1075,16 +1245,15 @@ class SentenceJigsawApp:
         self.settings = new_settings
         SoundPlayer.sound_enabled = new_settings.get('sound_enabled', True)
         
-        # Update Mode Dropdown Label
         curr_val = self.mode_var.get()
         new_speed_lbl = self.get_speed_run_mode_label()
-        self.mode_cb['values'] = ['🎯 Mastery', new_speed_lbl, '🧩 Fill in Blanks']
+        self.mode_cb['values'] = ['🎯 Mastery', new_speed_lbl, '🧩 Fill in Blanks', '🎧 Listening Mode']
         
         if 'Speed Run' in curr_val:
             self.mode_var.set(new_speed_lbl)
             if self.game_mode == 'speed_run':
                 self.start_speed_run()
-        elif self.game_mode == 'fill_blanks':
+        elif self.game_mode in ('fill_blanks', 'listening'):
             self.load_current_question()
 
     def on_mode_change(self, event=None):
@@ -1094,6 +1263,11 @@ class SentenceJigsawApp:
             self.start_speed_run()
         elif 'Fill in Blanks' in mode_str:
             self.game_mode = 'fill_blanks'
+            self.stop_timer()
+            self.model.reset_deck()
+            self.load_current_question()
+        elif 'Listening' in mode_str:
+            self.game_mode = 'listening'
             self.stop_timer()
             self.model.reset_deck()
             self.load_current_question()
@@ -1190,7 +1364,11 @@ class SentenceJigsawApp:
         if not data:
             return
             
-        self.question_label.config(text=data['question'])
+        if self.game_mode == 'listening':
+            self.question_label.config(text='🎧 [ Click "Listen (L)" to hear the sentence ]', foreground='#2980b9')
+        else:
+            self.question_label.config(text=data['question'], foreground='#000000')
+            
         self.original_chunks = list(data['chunks'])
         self.user_selected_chunks = []
         self.hints_used = 0
@@ -1210,7 +1388,7 @@ class SentenceJigsawApp:
             self.progress_label.config(text=f'Mastered: {self.model.mastered_questions()} / {self.model.total_questions()}')
             self.progress_bar['maximum'] = self.model.total_questions()
             self.progress_bar['value'] = self.model.mastered_questions()
-        elif self.game_mode == 'fill_blanks':
+        elif self.game_mode in ('fill_blanks', 'listening'):
             self.progress_label.config(text=f'Progress: {self.model.mastered_questions()} / {self.model.total_questions()}')
             self.progress_bar['maximum'] = self.model.total_questions()
             self.progress_bar['value'] = self.model.mastered_questions()
@@ -1224,6 +1402,10 @@ class SentenceJigsawApp:
         else:
             self.setup_standard_round()
 
+        # In listening mode, automatically pronounce the sentence on round start
+        if self.game_mode == 'listening':
+            self.root.after(300, self.speak_current_question)
+
         self.root.update_idletasks()
         self.main_scroll.canvas.yview_moveto(0)
 
@@ -1235,7 +1417,7 @@ class SentenceJigsawApp:
         shuffled_colors = PASTEL_COLORS.copy()
         random.shuffle(shuffled_colors)
         
-        self.pool_label.config(text='Click, drag, or press 1-9 to place blocks:')
+        self.pool_label.config(text='Click, drag, or Right-Click to pronounce blocks:')
         for idx, chunk in enumerate(scrambled):
             bg_color = shuffled_colors[idx % len(shuffled_colors)]
             badge_text = f'[{idx+1}] {chunk}' if idx < 9 else chunk
@@ -1247,7 +1429,8 @@ class SentenceJigsawApp:
                 font=self.button_font,
                 on_click_callback=self.select_chunk,
                 on_drop_callback=self.handle_pool_drop,
-                on_drag_status_callback=self.set_board_drag_highlight
+                on_drag_status_callback=self.set_board_drag_highlight,
+                on_pronounce_callback=self.speak_chunk
             )
             self.buttons_frame.add_widget(btn)
             self.chunk_buttons.append({'text': chunk, 'btn': btn, 'color': bg_color, 'badge': badge_text})
@@ -1265,7 +1448,6 @@ class SentenceJigsawApp:
         elif mode == '3':
             num_blanks = min(3, total_chunks)
         else:
-            # Adaptive auto
             num_blanks = 1 if total_chunks <= 3 else min(2, total_chunks - 1)
             
         num_blanks = max(1, min(num_blanks, total_chunks))
@@ -1274,7 +1456,7 @@ class SentenceJigsawApp:
         blank_chunks = [self.original_chunks[i] for i in self.hidden_chunk_indices]
         random.shuffle(blank_chunks)
 
-        self.pool_label.config(text=f'Pick or drag the missing {num_blanks} block(s) into the blanks:')
+        self.pool_label.config(text=f'Pick, drag, or Right-Click to pronounce missing block(s):')
         shuffled_colors = PASTEL_COLORS.copy()
         random.shuffle(shuffled_colors)
 
@@ -1289,7 +1471,8 @@ class SentenceJigsawApp:
                 font=self.button_font,
                 on_click_callback=self.select_chunk,
                 on_drop_callback=self.handle_pool_drop,
-                on_drag_status_callback=self.set_board_drag_highlight
+                on_drag_status_callback=self.set_board_drag_highlight,
+                on_pronounce_callback=self.speak_chunk
             )
             self.buttons_frame.add_widget(btn)
             self.chunk_buttons.append({'text': chunk, 'btn': btn, 'color': bg_color, 'badge': badge_text})
@@ -1337,6 +1520,7 @@ class SentenceJigsawApp:
                             on_remove_callback=lambda chip, c=filled_val: self.remove_chunk(c),
                             on_swap_callback=self.swap_answer_chips,
                             on_drag_status_callback=self.set_board_drag_highlight,
+                            on_pronounce_callback=self.speak_chunk,
                             is_blank=False,
                             font=self.answer_font
                         )
@@ -1348,6 +1532,7 @@ class SentenceJigsawApp:
                             on_remove_callback=lambda c: None,
                             on_swap_callback=lambda c1, c2: None,
                             on_drag_status_callback=None,
+                            on_pronounce_callback=None,
                             is_blank=True,
                             font=self.answer_font
                         )
@@ -1373,6 +1558,7 @@ class SentenceJigsawApp:
                         on_remove_callback=lambda chip, c=chunk: self.remove_chunk(c),
                         on_swap_callback=self.swap_answer_chips,
                         on_drag_status_callback=self.set_board_drag_highlight,
+                        on_pronounce_callback=self.speak_chunk,
                         is_blank=False,
                         font=self.answer_font
                     )
@@ -1474,6 +1660,11 @@ class SentenceJigsawApp:
             SoundPlayer.play_success()
             self.update_board_visuals(THEME['board_bg_correct'])
             
+            # If in listening mode, now reveal the full text question to the student
+            if self.game_mode == 'listening':
+                data = self.model.get_current_question()
+                self.question_label.config(text=data['question'], foreground='#1e8449')
+                
             meaning = self.model.get_current_question().get('meaning')
             if meaning:
                 self.set_meaning_text(f'Meaning: {meaning}')
@@ -1492,7 +1683,7 @@ class SentenceJigsawApp:
                 points = 100 + (self.speed_run_streak * 20)
                 self.speed_run_score += points
                 self.score_label.config(text=f'+{points} pts! 🔥 Streak {self.speed_run_streak}')
-            elif not self.flawless_attempt and self.game_mode == 'mastery':
+            elif not self.flawless_attempt and self.game_mode in ('mastery', 'listening'):
                 self.score_label.config(text=f'{praise} ' + '⭐' * stars + ' (We\'ll practice this again!)')
             else:
                 self.score_label.config(text=f'{praise} ' + '⭐' * stars)
@@ -1531,7 +1722,7 @@ class SentenceJigsawApp:
         self.load_current_question()
 
     def next_sentence(self):
-        repeat = (self.game_mode == 'mastery')
+        repeat = (self.game_mode in ('mastery', 'listening'))
         self.model.process_result(flawless=self.flawless_attempt, repeat_on_error=repeat)
         
         if not self.model.is_finished():
