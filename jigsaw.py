@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, simpledialog
 import random
 import os
 import platform
@@ -54,8 +54,9 @@ THEME = {
 
 PASTEL_COLORS = ['#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff', '#e8baff']
 ENCOURAGEMENTS = ['Awesome!', 'Great Job!', 'Super!', 'Fantastic!', 'Well Done!', 'Brilliant!']
+AVATAR_OPTIONS = ['🦁', '🚀', '🐼', '🎨', '🦊', '⭐', '🦉', '🦄', '🐱', '🐶', '⚽', '👑']
 
-# --- App Settings Manager ---
+# --- App Settings Defaults ---
 DEFAULT_SETTINGS = {
     'speed_run_duration_seconds': 180,  # Default 3 minutes
     'fill_blanks_count_mode': 'auto',   # 'auto', '1', '2', '3'
@@ -64,55 +65,148 @@ DEFAULT_SETTINGS = {
     'tts_voice_override': 'auto'        # 'auto', 'hi-IN-SwaraNeural', 'hi-IN-MadhurNeural', 'ja-JP-NanamiNeural', 'en-IN-NeerjaNeural'
 }
 
-SETTINGS_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_settings.json')
-MEMORY_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_memory.json')
+PROFILES_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_profiles.json')
+OLD_SETTINGS_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_settings.json')
+OLD_MEMORY_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_memory.json')
 
-def load_settings():
-    settings = DEFAULT_SETTINGS.copy()
-    if os.path.exists(SETTINGS_FILE):
-        try:
-            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
-                saved = json.load(f)
-                settings.update(saved)
-        except Exception:
-            pass
-    return settings
-
-def save_settings(settings):
-    try:
-        with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(settings, f, indent=2)
-    except Exception:
-        pass
-
-# --- Long-Term Memory Manager (Spaced Repetition SM-2) ---
-class MemoryManager:
-    '''Manages persistent mastery levels, intervals, and review schedules across sessions.'''
+# --- Multi-User Profile Manager ---
+class ProfileManager:
+    '''Manages multiple user accounts, active profile switching, and isolated settings/memory.'''
     _data = None
     _lock = threading.Lock()
 
-    # Interval steps in days for flawless repetitions: Level 0 (New), Level 1 (1d), Level 2 (3d), Level 3 (7d), Level 4 (16d), Level 5 (35d)
-    INTERVAL_DAYS = [0, 1, 3, 7, 16, 35]
-
     @classmethod
     def _load(cls):
-        if cls._data is None:
-            cls._data = {}
-            if os.path.exists(MEMORY_FILE):
+        if cls._data is not None:
+            return
+            
+        cls._data = {
+            'active_profile': 'Default',
+            'profiles': {
+                'Default': {
+                    'avatar': '👤',
+                    'settings': DEFAULT_SETTINGS.copy(),
+                    'memory': {}
+                }
+            }
+        }
+
+        # Check if new profiles file exists
+        if os.path.exists(PROFILES_FILE):
+            try:
+                with open(PROFILES_FILE, 'r', encoding='utf-8') as f:
+                    saved = json.load(f)
+                    if 'profiles' in saved and saved['profiles']:
+                        cls._data = saved
+            except Exception:
+                pass
+        else:
+            # Migration: Import legacy settings & memory into 'Default' profile if present
+            if os.path.exists(OLD_SETTINGS_FILE):
                 try:
-                    with open(MEMORY_FILE, 'r', encoding='utf-8') as f:
-                        cls._data = json.load(f)
+                    with open(OLD_SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                        old_s = json.load(f)
+                        cls._data['profiles']['Default']['settings'].update(old_s)
                 except Exception:
-                    cls._data = {}
+                    pass
+            if os.path.exists(OLD_MEMORY_FILE):
+                try:
+                    with open(OLD_MEMORY_FILE, 'r', encoding='utf-8') as f:
+                        old_m = json.load(f)
+                        cls._data['profiles']['Default']['memory'].update(old_m)
+                except Exception:
+                    pass
+            cls._save()
 
     @classmethod
     def _save(cls):
         with cls._lock:
             try:
-                with open(MEMORY_FILE, 'w', encoding='utf-8') as f:
+                with open(PROFILES_FILE, 'w', encoding='utf-8') as f:
                     json.dump(cls._data, f, indent=2, ensure_ascii=False)
             except Exception:
                 pass
+
+    @classmethod
+    def get_profile_names(cls):
+        cls._load()
+        return list(cls._data.get('profiles', {}).keys())
+
+    @classmethod
+    def get_active_profile_name(cls):
+        cls._load()
+        return cls._data.get('active_profile', 'Default')
+
+    @classmethod
+    def get_active_profile(cls):
+        cls._load()
+        active = cls.get_active_profile_name()
+        if active not in cls._data['profiles']:
+            active = list(cls._data['profiles'].keys())[0]
+            cls._data['active_profile'] = active
+        return cls._data['profiles'][active]
+
+    @classmethod
+    def switch_profile(cls, name):
+        cls._load()
+        if name in cls._data['profiles']:
+            cls._data['active_profile'] = name
+            cls._save()
+            return True
+        return False
+
+    @classmethod
+    def create_profile(cls, name, avatar='👤'):
+        cls._load()
+        clean_name = name.strip()
+        if not clean_name or clean_name in cls._data['profiles']:
+            return False
+        cls._data['profiles'][clean_name] = {
+            'avatar': avatar,
+            'settings': DEFAULT_SETTINGS.copy(),
+            'memory': {}
+        }
+        cls._data['active_profile'] = clean_name
+        cls._save()
+        return True
+
+    @classmethod
+    def delete_profile(cls, name):
+        cls._load()
+        if name in cls._data['profiles'] and len(cls._data['profiles']) > 1:
+            del cls._data['profiles'][name]
+            if cls._data['active_profile'] == name:
+                cls._data['active_profile'] = list(cls._data['profiles'].keys())[0]
+            cls._save()
+            return True
+        return False
+
+    @classmethod
+    def get_settings(cls):
+        cls._load()
+        profile = cls.get_active_profile()
+        s = DEFAULT_SETTINGS.copy()
+        s.update(profile.get('settings', {}))
+        return s
+
+    @classmethod
+    def save_settings(cls, new_settings):
+        cls._load()
+        profile = cls.get_active_profile()
+        profile['settings'] = new_settings
+        cls._save()
+
+    @classmethod
+    def reset_active_memory(cls):
+        cls._load()
+        profile = cls.get_active_profile()
+        profile['memory'] = {}
+        cls._save()
+
+# --- Long-Term Memory Manager (Spaced Repetition SM-2) ---
+class MemoryManager:
+    '''Manages persistent mastery levels, intervals, and review schedules across sessions.'''
+    INTERVAL_DAYS = [0, 1, 3, 7, 16, 35]
 
     @classmethod
     def get_sentence_key(cls, question, chunks):
@@ -123,26 +217,26 @@ class MemoryManager:
 
     @classmethod
     def get_memory_profile(cls, question, chunks):
-        cls._load()
+        active = ProfileManager.get_active_profile()
+        memory = active.setdefault('memory', {})
         key = cls.get_sentence_key(question, chunks)
-        profile = cls._data.get(key, {
+        return memory.get(key, {
             'repetition_level': 0,
             'next_review_ts': 0,
             'total_reviews': 0,
             'lapses': 0,
             'last_reviewed_ts': 0
         })
-        return profile
 
     @classmethod
     def is_due(cls, question, chunks):
         profile = cls.get_memory_profile(question, chunks)
-        # If never seen or due time is past, it is due
         return time.time() >= profile.get('next_review_ts', 0)
 
     @classmethod
     def record_attempt(cls, question, chunks, flawless):
-        cls._load()
+        active = ProfileManager.get_active_profile()
+        memory = active.setdefault('memory', {})
         key = cls.get_sentence_key(question, chunks)
         profile = cls.get_memory_profile(question, chunks)
         now = time.time()
@@ -159,17 +253,11 @@ class MemoryManager:
         else:
             profile['lapses'] += 1
             profile['repetition_level'] = 0
-            profile['next_review_ts'] = now # Due immediately
+            profile['next_review_ts'] = now
 
-        cls._data[key] = profile
-        cls._save()
+        memory[key] = profile
+        ProfileManager._save()
         return profile
-
-    @classmethod
-    def reset_all_progress(cls):
-        cls._load()
-        cls._data = {}
-        cls._save()
 
     @classmethod
     def get_status_badge(cls, question, chunks):
@@ -370,7 +458,7 @@ class LessonModel:
         self.reset_deck()
 
     def reset_deck(self, shuffle_deck=False):
-        '''Builds the active queue: Prioritizes (1) Overdue/Due Today, (2) New sentences, and (3) Future reviews.'''
+        '''Builds active queue prioritizing: (1) Due Today, (2) New sentences, (3) Future reviews.'''
         if not self.qa_data:
             self.deck = []
             self.current_question_idx = None
@@ -393,7 +481,6 @@ class LessonModel:
                 else:
                     future_indices.append(idx)
 
-            # Queue priority: Due today -> New -> Future reviews
             self.deck = due_indices + new_indices + future_indices
 
         self.current_question_idx = self.deck[0] if self.deck else None
@@ -404,7 +491,7 @@ class LessonModel:
         return self.qa_data[self.current_question_idx]
 
     def process_result(self, flawless, repeat_on_error=True):
-        '''Records the attempt in long-term memory and advances the active queue.'''
+        '''Records attempt in long-term memory for active user and advances deck.'''
         if not self.deck:
             return
             
@@ -747,6 +834,83 @@ class DraggablePoolButton(tk.Frame):
         else:
             self.on_click_callback(self.chunk)
 
+# --- UI: Profile Management Dialog ---
+class ProfileManagementDialog(tk.Toplevel):
+    '''Modal dialog to add, switch, or remove user profiles.'''
+    def __init__(self, parent, on_profile_changed_callback):
+        super().__init__(parent)
+        self.on_profile_changed_callback = on_profile_changed_callback
+        
+        self.title('👤 Manage User Profiles')
+        self.geometry('420x440')
+        self.resizable(False, False)
+        self.grab_set()
+        
+        self.setup_ui()
+        
+    def setup_ui(self):
+        frame = ttk.Frame(self, padding=15)
+        frame.pack(fill=tk.BOTH, expand=True)
+        
+        ttk.Label(frame, text='User Accounts / Students:', font=('', 11, 'bold')).pack(anchor=tk.W)
+        
+        self.profile_listbox = tk.Listbox(frame, font=('', 12), height=8)
+        self.profile_listbox.pack(fill=tk.BOTH, expand=True, pady=8)
+        self.refresh_list()
+        
+        btn_box = ttk.Frame(frame)
+        btn_box.pack(fill=tk.X, pady=(0, 15))
+        
+        ttk.Button(btn_box, text='➕ New Account', command=self.create_new).pack(side=tk.LEFT, expand=True, padx=2)
+        ttk.Button(btn_box, text='❌ Delete Account', command=self.delete_selected).pack(side=tk.LEFT, expand=True, padx=2)
+        ttk.Button(btn_box, text='✅ Select / Use', command=self.use_selected).pack(side=tk.LEFT, expand=True, padx=2)
+        
+        close_btn = ttk.Button(frame, text='Close', command=self.destroy)
+        close_btn.pack(side=tk.BOTTOM, fill=tk.X)
+
+    def refresh_list(self):
+        self.profile_listbox.delete(0, tk.END)
+        active = ProfileManager.get_active_profile_name()
+        for name in ProfileManager.get_profile_names():
+            p = ProfileManager._data['profiles'][name]
+            avatar = p.get('avatar', '👤')
+            tag = ' (Active)' if name == active else ''
+            self.profile_listbox.insert(tk.END, f'{avatar} {name}{tag}')
+
+    def create_new(self):
+        name = simpledialog.askstring('New Profile', 'Enter student / learner name:', parent=self)
+        if not name or not name.strip():
+            return
+        name = name.strip()
+        avatar = random.choice(AVATAR_OPTIONS)
+        if ProfileManager.create_profile(name, avatar=avatar):
+            self.refresh_list()
+            self.on_profile_changed_callback(name)
+        else:
+            messagebox.showerror('Error', f'Profile "{name}" already exists!', parent=self)
+
+    def delete_selected(self):
+        sel = self.profile_listbox.curselection()
+        if not sel:
+            return
+        name = ProfileManager.get_profile_names()[sel[0]]
+        if len(ProfileManager.get_profile_names()) <= 1:
+            messagebox.showwarning('Warning', 'You must have at least one active profile.', parent=self)
+            return
+        if messagebox.askyesno('Confirm Delete', f'Delete profile "{name}" and all its learning progress?', parent=self):
+            ProfileManager.delete_profile(name)
+            self.refresh_list()
+            self.on_profile_changed_callback(ProfileManager.get_active_profile_name())
+
+    def use_selected(self):
+        sel = self.profile_listbox.curselection()
+        if not sel:
+            return
+        name = ProfileManager.get_profile_names()[sel[0]]
+        ProfileManager.switch_profile(name)
+        self.on_profile_changed_callback(name)
+        self.destroy()
+
 # --- UI: Bulk Story / Text Importer Dialog ---
 class BulkStoryImporter(tk.Toplevel):
     '''Modal dialog to paste raw stories or paragraphs and auto-split them into chunked lessons.'''
@@ -800,7 +964,6 @@ class BulkStoryImporter(tk.Toplevel):
         else:
             n = 3
             
-        # Split by Hindi Purna Viram, full stop, question mark, exclamation, or newline
         sentences = re.split(r'[।\.\?\!\n]+', raw)
         imported_data = []
 
@@ -837,7 +1000,7 @@ class SettingsDialog(tk.Toplevel):
         self.current_settings = current_settings
         self.on_save_callback = on_save_callback
         
-        self.title('⚙️ Game & Memory Settings')
+        self.title('⚙️ Game & Account Settings')
         self.geometry('500x570')
         self.resizable(False, False)
         self.grab_set()
@@ -911,9 +1074,10 @@ class SettingsDialog(tk.Toplevel):
         self.tts_speed_cb.pack(fill=tk.X, pady=2)
         
         # --- Long-Term Memory Section ---
-        mem_group = ttk.LabelFrame(main_frame, text='🧠 Spaced Repetition Long-Term Memory', padding=12)
+        active_name = ProfileManager.get_active_profile_name()
+        mem_group = ttk.LabelFrame(main_frame, text=f'🧠 Long-Term Memory for "{active_name}"', padding=12)
         mem_group.pack(fill=tk.X, pady=(0, 10))
-        ttk.Button(mem_group, text='🗑 Reset All Memory Progress', command=self.reset_memory).pack(anchor=tk.W)
+        ttk.Button(mem_group, text=f'🗑 Reset Progress for {active_name}', command=self.reset_memory).pack(anchor=tk.W)
         
         # --- Audio Sound Effects Toggle ---
         self.sound_var = tk.BooleanVar(value=self.current_settings.get('sound_enabled', True))
@@ -932,9 +1096,10 @@ class SettingsDialog(tk.Toplevel):
         ttk.Button(btn_frame, text='Cancel', command=self.destroy).pack(side=tk.RIGHT)
 
     def reset_memory(self):
-        if messagebox.askyesno('Confirm Reset', 'Are you sure you want to reset all long-term memory progress across all lessons?\n\nAll questions will be marked as New again.'):
-            MemoryManager.reset_all_progress()
-            messagebox.showinfo('Memory Reset', 'All spaced repetition memory progress has been reset!')
+        active_name = ProfileManager.get_active_profile_name()
+        if messagebox.askyesno('Confirm Reset', f'Reset all spaced repetition memory progress for "{active_name}"?'):
+            ProfileManager.reset_active_memory()
+            messagebox.showinfo('Memory Reset', f'Memory progress for {active_name} has been reset!')
 
     def save(self):
         dur_str = self.duration_var.get()
@@ -973,7 +1138,7 @@ class SettingsDialog(tk.Toplevel):
             'tts_voice_override': 'auto'
         }
         
-        save_settings(new_settings)
+        ProfileManager.save_settings(new_settings)
         self.on_save_callback(new_settings)
         self.destroy()
 
@@ -1305,9 +1470,9 @@ class SentenceJigsawApp:
     def __init__(self, root):
         self.root = root
         self.root.title('🧩 Sentence Jigsaw')
-        self.root.geometry('1040x860')
+        self.root.geometry('1060x860')
         
-        self.settings = load_settings()
+        self.settings = ProfileManager.get_settings()
         SoundPlayer.sound_enabled = self.settings.get('sound_enabled', True)
         self.model = LessonModel()
         
@@ -1355,33 +1520,43 @@ class SentenceJigsawApp:
         top_frame = ttk.Frame(self.root, padding=10)
         top_frame.pack(fill=tk.X)
         
-        ttk.Label(top_frame, text='Mode:', font=('', 12, 'bold')).pack(side=tk.LEFT, padx=(0, 4))
+        # User Profile Switcher
+        ttk.Label(top_frame, text='👤 Account:', font=('', 11, 'bold')).pack(side=tk.LEFT, padx=(0, 3))
+        self.profile_var = tk.StringVar()
+        self.profile_cb = ttk.Combobox(top_frame, textvariable=self.profile_var, width=14, state='readonly', font=('', 10))
+        self.profile_cb.pack(side=tk.LEFT, padx=(0, 6))
+        self.profile_cb.bind('<<ComboboxSelected>>', self.on_profile_dropdown_select)
+        self.update_profile_dropdown()
+        
+        ttk.Button(top_frame, text='⚙️ Profiles', width=10, command=self.open_profile_manager).pack(side=tk.LEFT, padx=(0, 15))
+
+        ttk.Label(top_frame, text='Mode:', font=('', 11, 'bold')).pack(side=tk.LEFT, padx=(0, 4))
         self.mode_var = tk.StringVar(value='🎯 Mastery')
         self.mode_cb = ttk.Combobox(
             top_frame, 
             textvariable=self.mode_var, 
             values=['🎯 Mastery', self.get_speed_run_mode_label(), '🧩 Fill in Blanks', '🎧 Listening Mode'], 
-            width=18, 
+            width=16, 
             state='readonly', 
-            font=('', 11)
+            font=('', 10)
         )
-        self.mode_cb.pack(side=tk.LEFT, padx=(0, 12))
+        self.mode_cb.pack(side=tk.LEFT, padx=(0, 10))
         self.mode_cb.bind('<<ComboboxSelected>>', self.on_mode_change)
 
-        self.progress_label = ttk.Label(top_frame, text='No file loaded', font=('', 13, 'bold'))
+        self.progress_label = ttk.Label(top_frame, text='No file loaded', font=('', 12, 'bold'))
         self.progress_label.pack(side=tk.LEFT)
         
-        self.progress_bar = ttk.Progressbar(top_frame, orient=tk.HORIZONTAL, length=140, mode='determinate')
-        self.progress_bar.pack(side=tk.LEFT, padx=10)
+        self.progress_bar = ttk.Progressbar(top_frame, orient=tk.HORIZONTAL, length=120, mode='determinate')
+        self.progress_bar.pack(side=tk.LEFT, padx=8)
         
-        self.score_label = ttk.Label(top_frame, text='', font=('', 15, 'bold'), foreground='#f39c12')
-        self.score_label.pack(side=tk.LEFT, padx=8)
+        self.score_label = ttk.Label(top_frame, text='', font=('', 13, 'bold'), foreground='#f39c12')
+        self.score_label.pack(side=tk.LEFT, padx=6)
         
         ttk.Button(top_frame, text='⚙️ Settings', command=self.open_settings).pack(side=tk.RIGHT)
-        ttk.Button(top_frame, text='📂 Load', command=self.open_file_dialog).pack(side=tk.RIGHT, padx=4)
-        ttk.Button(top_frame, text='✏️ Edit', command=self.open_editor).pack(side=tk.RIGHT, padx=4)
-        ttk.Button(top_frame, text='🖨️ Worksheet', command=self.generate_worksheet).pack(side=tk.RIGHT, padx=4)
-        ttk.Button(top_frame, text='🔄 Restart', command=self.restart_lesson).pack(side=tk.RIGHT, padx=4)
+        ttk.Button(top_frame, text='📂 Load', command=self.open_file_dialog).pack(side=tk.RIGHT, padx=3)
+        ttk.Button(top_frame, text='✏️ Edit', command=self.open_editor).pack(side=tk.RIGHT, padx=3)
+        ttk.Button(top_frame, text='🖨️ Worksheet', command=self.generate_worksheet).pack(side=tk.RIGHT, padx=3)
+        ttk.Button(top_frame, text='🔄 Restart', command=self.restart_lesson).pack(side=tk.RIGHT, padx=3)
 
         self.main_scroll = ScrollableFrame(self.root, padding=20)
         self.main_scroll.pack(fill=tk.BOTH, expand=True)
@@ -1447,6 +1622,36 @@ class SentenceJigsawApp:
 
         self.next_btn = ttk.Button(self.controls_frame, text='Next ➔ (Enter)', command=self.next_sentence, state=tk.DISABLED, width=14)
         self.next_btn.pack(side=tk.LEFT, padx=5)
+
+    def update_profile_dropdown(self):
+        profiles = []
+        active = ProfileManager.get_active_profile_name()
+        for name in ProfileManager.get_profile_names():
+            p = ProfileManager._data['profiles'][name]
+            avatar = p.get('avatar', '👤')
+            item_str = f'{avatar} {name}'
+            profiles.append(item_str)
+            if name == active:
+                self.profile_var.set(item_str)
+        self.profile_cb['values'] = profiles
+
+    def on_profile_dropdown_select(self, event=None):
+        val = self.profile_var.get()
+        for name in ProfileManager.get_profile_names():
+            if name in val:
+                self.switch_to_profile(name)
+                break
+
+    def open_profile_manager(self):
+        ProfileManagementDialog(self.root, on_profile_changed_callback=self.switch_to_profile)
+
+    def switch_to_profile(self, profile_name):
+        ProfileManager.switch_profile(profile_name)
+        self.settings = ProfileManager.get_settings()
+        SoundPlayer.sound_enabled = self.settings.get('sound_enabled', True)
+        self.update_profile_dropdown()
+        self.model.reset_deck()
+        self.load_current_question()
 
     def setup_bindings(self):
         self.root.bind('<BackSpace>', lambda e: self.undo_last() if str(self.undo_btn['state']) == 'normal' else None)
@@ -2045,7 +2250,8 @@ class SentenceJigsawApp:
                 self.progress_label.config(text=f'Mastered: {self.model.total_questions()} / {self.model.total_questions()}')
                 self.progress_bar['value'] = self.model.total_questions()
                 SoundPlayer.play_success()
-                response = messagebox.askyesno('Congratulations!', 'You completed all due review sentences for this session!\n\nLoad another lesson file?')
+                active_name = ProfileManager.get_active_profile_name()
+                response = messagebox.askyesno('Congratulations!', f'Great job {active_name}! You completed all due review sentences for this session!\n\nLoad another lesson file?')
                 if response:
                     self.open_file_dialog()
                 else:
