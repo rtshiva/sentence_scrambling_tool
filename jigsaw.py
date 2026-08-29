@@ -60,7 +60,7 @@ DEFAULT_SETTINGS = {
     'speed_run_duration_seconds': 180,  # Default 3 minutes
     'fill_blanks_count_mode': 'auto',   # 'auto', '1', '2', '3'
     'sound_enabled': True,
-    'tts_speed_rate': '+0%',            # '-20%' (Slow), '+0%' (Normal), '+20%' (Fast)
+    'tts_speed_rate': '+0%',            # '-25%' (Slow), '+0%' (Normal), '+20%' (Fast)
     'tts_voice_override': 'auto'        # 'auto', 'hi-IN-SwaraNeural', 'hi-IN-MadhurNeural', 'ja-JP-NanamiNeural', 'en-IN-NeerjaNeural'
 }
 
@@ -460,7 +460,6 @@ class AnswerChip(tk.Frame):
                 w.bind('<Button-1>', self._on_drag_start)
                 w.bind('<B1-Motion>', self._on_drag_motion)
                 w.bind('<ButtonRelease-1>', self._on_drag_end)
-                # Right click -> pronounce chunk
                 w.bind('<Button-3>', lambda e: self._on_pronounce())
 
         self._drag_start_x = 0
@@ -531,10 +530,10 @@ class AnswerChip(tk.Frame):
             self.on_remove_callback(self)
 
 # --- Draggable Pool Button ---
-class DraggablePoolButton(tk.Button):
-    '''A pool button that can be clicked, dragged, or right-clicked for pronunciation.'''
+class DraggablePoolButton(tk.Frame):
+    '''A reliable pool button that supports single-click, drag-and-drop, and right-click pronunciation.'''
     def __init__(self, master, chunk, badge_text, bg_color, font, on_click_callback, on_drop_callback, on_drag_status_callback=None, on_pronounce_callback=None, **kwargs):
-        super().__init__(master, text=badge_text, font=font, relief=tk.RAISED, bg=bg_color, padx=15, pady=8, cursor='hand2', **kwargs)
+        super().__init__(master, bd=2, relief=tk.RAISED, bg=bg_color, cursor='hand2', padx=10, pady=6)
         self.chunk = chunk
         self.bg_color = bg_color
         self.font = font
@@ -542,39 +541,57 @@ class DraggablePoolButton(tk.Button):
         self.on_drop_callback = on_drop_callback
         self.on_drag_status_callback = on_drag_status_callback
         self.on_pronounce_callback = on_pronounce_callback
+        self.state = tk.NORMAL
         
-        self.bind('<Button-1>', self._on_start)
-        self.bind('<B1-Motion>', self._on_motion)
-        self.bind('<ButtonRelease-1>', self._on_end)
-        self.bind('<Button-3>', lambda e: self._on_pronounce())
-        self.bind('<Enter>', self._on_enter)
-        self.bind('<Leave>', self._on_leave)
+        self.lbl = tk.Label(self, text=badge_text, font=font, bg=bg_color, cursor='hand2')
+        self.lbl.pack(fill=tk.BOTH, expand=True)
+        
+        for w in (self, self.lbl):
+            w.bind('<Button-1>', self._on_start)
+            w.bind('<B1-Motion>', self._on_motion)
+            w.bind('<ButtonRelease-1>', self._on_end)
+            w.bind('<Button-3>', lambda e: self._on_pronounce())
+            w.bind('<Enter>', self._on_enter)
+            w.bind('<Leave>', self._on_leave)
         
         self._drag_start_x = 0
         self._drag_start_y = 0
         self._is_dragging = False
 
+    def set_state(self, state, bg=None):
+        self.state = state
+        target_bg = bg if bg else self.bg_color
+        self.config(bg=target_bg)
+        self.lbl.config(bg=target_bg)
+        if state == tk.DISABLED:
+            self.config(relief=tk.FLAT, cursor='arrow')
+            self.lbl.config(cursor='arrow', fg='#888888')
+        else:
+            self.config(relief=tk.RAISED, cursor='hand2')
+            self.lbl.config(cursor='hand2', fg='#000000')
+
     def _on_pronounce(self):
-        if self.on_pronounce_callback and self['state'] == tk.NORMAL:
+        if self.on_pronounce_callback and self.state == tk.NORMAL:
             self.on_pronounce_callback(self.chunk)
 
     def _on_enter(self, event):
-        if self['state'] == tk.NORMAL:
+        if self.state == tk.NORMAL:
             self.config(relief=tk.GROOVE)
 
     def _on_leave(self, event):
-        if self['state'] == tk.NORMAL:
+        if self.state == tk.NORMAL:
             self.config(relief=tk.RAISED)
 
     def _on_start(self, event):
-        if self['state'] != tk.NORMAL:
+        if self.state != tk.NORMAL:
             return
         self._drag_start_x = event.x_root
         self._drag_start_y = event.y_root
         self._is_dragging = False
+        self.config(relief=tk.SUNKEN)
 
     def _on_motion(self, event):
-        if self['state'] != tk.NORMAL:
+        if self.state != tk.NORMAL:
             return
         if not self._is_dragging and (abs(event.x_root - self._drag_start_x) > 6 or abs(event.y_root - self._drag_start_y) > 6):
             self._is_dragging = True
@@ -586,8 +603,9 @@ class DraggablePoolButton(tk.Button):
             DragGhost.move(event.x_root, event.y_root)
 
     def _on_end(self, event):
-        if self['state'] != tk.NORMAL:
+        if self.state != tk.NORMAL:
             return
+        self.config(relief=tk.RAISED)
         DragGhost.stop()
         if self.on_drag_status_callback:
             self.on_drag_status_callback(False)
@@ -1148,10 +1166,15 @@ class SentenceJigsawApp:
         self.meaning_display.pack(pady=(0, 15), fill=tk.X)
         self.meaning_display.config(state=tk.DISABLED)
 
+        # --- Answer Board Header with Answer Listen Button ---
         answer_header = ttk.Frame(content_frame)
         answer_header.pack(fill=tk.X, pady=(5, 5))
         ttk.Label(answer_header, text='Your Answer (Click or Drag blocks here):', font=('', 14), foreground='gray').pack(side=tk.LEFT)
-        self.tip_label = ttk.Label(answer_header, text='💡 Right-Click block to hear pronunciation | Keys 1-9 to select', font=('', 11, 'italic'), foreground='#2980b9')
+        
+        self.listen_answer_btn = ttk.Button(answer_header, text='🔊 Hear Answer (A)', command=self.speak_current_answer, state=tk.DISABLED)
+        self.listen_answer_btn.pack(side=tk.RIGHT, padx=(10, 0))
+
+        self.tip_label = ttk.Label(answer_header, text='💡 Right-Click block to hear pronunciation', font=('', 11, 'italic'), foreground='#2980b9')
         self.tip_label.pack(side=tk.RIGHT)
         
         self.answer_board = tk.Frame(content_frame, bg=THEME['board_bg_default'], bd=3, relief=tk.GROOVE, padx=15, pady=15)
@@ -1194,12 +1217,14 @@ class SentenceJigsawApp:
         self.root.bind('<S>', lambda e: self.skip_sentence() if str(self.skip_btn['state']) == 'normal' else None)
         self.root.bind('<l>', lambda e: self.speak_current_question())
         self.root.bind('<L>', lambda e: self.speak_current_question())
+        self.root.bind('<a>', lambda e: self.speak_current_answer() if str(self.listen_answer_btn['state']) == 'normal' else None)
+        self.root.bind('<A>', lambda e: self.speak_current_answer() if str(self.listen_answer_btn['state']) == 'normal' else None)
 
         for i in range(1, 10):
             self.root.bind(str(i), lambda e, idx=i-1: self.trigger_chunk_by_index(idx))
 
     def trigger_chunk_by_index(self, index):
-        active_chunks = [item for item in self.chunk_buttons if item['btn']['state'] == tk.NORMAL]
+        active_chunks = [item for item in self.chunk_buttons if item['btn'].state == tk.NORMAL]
         if index < len(active_chunks):
             chunk = active_chunks[index]['text']
             self.select_chunk(chunk)
@@ -1211,7 +1236,7 @@ class SentenceJigsawApp:
         TTSManager.speak(chunk_text, rate_str=rate, override_voice=voice_override)
 
     def speak_current_question(self):
-        '''Reads the full sentence aloud using high-quality neural voice.'''
+        '''Reads the full sentence question aloud using high-quality neural voice.'''
         data = self.model.get_current_question()
         if not data:
             return
@@ -1231,6 +1256,40 @@ class SentenceJigsawApp:
                 pass
                 
         TTSManager.speak(text, rate_str=rate, override_voice=voice_override, on_finish_callback=on_done)
+
+    def speak_current_answer(self):
+        '''Reads the user\'s constructed answer sentence aloud.'''
+        if not self.user_selected_chunks:
+            return
+            
+        if self.game_mode == 'fill_blanks':
+            full_sentence_chunks = []
+            fill_iter = iter(self.user_selected_chunks)
+            for i, chunk in enumerate(self.original_chunks):
+                if i in self.hidden_chunk_indices:
+                    v = next(fill_iter, None)
+                    if v: full_sentence_chunks.append(v)
+                else:
+                    full_sentence_chunks.append(chunk)
+            sentence_text = ' '.join(full_sentence_chunks)
+        else:
+            sentence_text = ' '.join(self.user_selected_chunks)
+            
+        if not sentence_text.strip():
+            return
+            
+        rate = self.settings.get('tts_speed_rate', '+0%')
+        voice_override = self.settings.get('tts_voice_override', 'auto')
+        
+        self.listen_answer_btn.config(text='🔊 Playing...', state=tk.DISABLED)
+        def on_done():
+            try:
+                if self.root.winfo_exists():
+                    self.listen_answer_btn.config(text='🔊 Hear Answer (A)', state=tk.NORMAL)
+            except Exception:
+                pass
+                
+        TTSManager.speak(sentence_text, rate_str=rate, override_voice=voice_override, on_finish_callback=on_done)
 
     def set_board_drag_highlight(self, is_dragging):
         if is_dragging:
@@ -1383,6 +1442,7 @@ class SentenceJigsawApp:
         self.clear_btn.config(state=tk.NORMAL)
         self.hint_btn.config(state=tk.NORMAL)
         self.skip_btn.config(state=tk.NORMAL)
+        self.listen_answer_btn.config(state=tk.DISABLED)
 
         if self.game_mode == 'mastery':
             self.progress_label.config(text=f'Mastered: {self.model.mastered_questions()} / {self.model.total_questions()}')
@@ -1402,7 +1462,6 @@ class SentenceJigsawApp:
         else:
             self.setup_standard_round()
 
-        # In listening mode, automatically pronounce the sentence on round start
         if self.game_mode == 'listening':
             self.root.after(300, self.speak_current_question)
 
@@ -1507,6 +1566,11 @@ class SentenceJigsawApp:
         '''Renders interactive draggable/clickable answer chips into the answer flow area.'''
         self.answer_flow.clear_widgets()
 
+        if self.user_selected_chunks:
+            self.listen_answer_btn.config(state=tk.NORMAL)
+        else:
+            self.listen_answer_btn.config(state=tk.DISABLED)
+
         if self.game_mode == 'fill_blanks':
             blank_fill_iter = iter(self.user_selected_chunks)
             for i, chunk in enumerate(self.original_chunks):
@@ -1571,8 +1635,8 @@ class SentenceJigsawApp:
         self.undo_btn.config(state=tk.NORMAL)
 
         for item in self.chunk_buttons:
-            if item['text'] == chunk and item['btn']['state'] == tk.NORMAL:
-                item['btn'].config(state=tk.DISABLED, bg=THEME['button_disabled'])
+            if item['text'] == chunk and item['btn'].state == tk.NORMAL:
+                item['btn'].set_state(tk.DISABLED, bg=THEME['button_disabled'])
                 break
         
         expected_len = len(self.hidden_chunk_indices) if self.game_mode == 'fill_blanks' else len(self.original_chunks)
@@ -1586,12 +1650,13 @@ class SentenceJigsawApp:
             self.render_answer_chips()
             
             for item in self.chunk_buttons:
-                if item['text'] == chunk and item['btn']['state'] == tk.DISABLED:
-                    item['btn'].config(state=tk.NORMAL, bg=item['color'])
+                if item['text'] == chunk and item['btn'].state == tk.DISABLED:
+                    item['btn'].set_state(tk.NORMAL, bg=item['color'])
                     break
                     
             if not self.user_selected_chunks:
                 self.undo_btn.config(state=tk.DISABLED)
+                self.listen_answer_btn.config(state=tk.DISABLED)
                 
             self.next_btn.config(state=tk.DISABLED)
             self.hint_btn.config(state=tk.NORMAL)
@@ -1643,10 +1708,11 @@ class SentenceJigsawApp:
         self.undo_btn.config(state=tk.DISABLED)
         self.next_btn.config(state=tk.DISABLED)
         self.hint_btn.config(state=tk.NORMAL)
+        self.listen_answer_btn.config(state=tk.DISABLED)
         self.set_meaning_text('') 
         
         for item in self.chunk_buttons:
-            item['btn'].config(state=tk.NORMAL, bg=item['color'])
+            item['btn'].set_state(tk.NORMAL, bg=item['color'])
 
     def check_answer(self):
         is_correct = False
@@ -1660,7 +1726,6 @@ class SentenceJigsawApp:
             SoundPlayer.play_success()
             self.update_board_visuals(THEME['board_bg_correct'])
             
-            # If in listening mode, now reveal the full text question to the student
             if self.game_mode == 'listening':
                 data = self.model.get_current_question()
                 self.question_label.config(text=data['question'], foreground='#1e8449')
