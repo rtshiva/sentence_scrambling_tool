@@ -35,7 +35,8 @@ THEME = {
     'chip_bg': '#d4efdf',
     'chip_border': '#27ae60',
     'blank_bg': '#fcf3cf',
-    'blank_border': '#f39c12'
+    'blank_border': '#f39c12',
+    'drop_highlight': '#f9e79f'
 }
 
 PASTEL_COLORS = ['#ffb3ba', '#ffdfba', '#ffffba', '#baffc9', '#bae1ff', '#e8baff']
@@ -265,15 +266,52 @@ class FlowFrame(tk.Frame):
         
         self.config(height=y + max_height + 5)
 
+# --- Drag & Drop Visual Ghost Avatar ---
+class DragGhost:
+    '''Floating translucent preview window that follows the cursor while dragging.'''
+    _window = None
+    _label = None
+
+    @classmethod
+    def start(cls, text, color, x, y, font=('', 18, 'bold')):
+        if cls._window:
+            cls.stop()
+        cls._window = tk.Toplevel()
+        cls._window.overrideredirect(True)
+        cls._window.attributes('-topmost', True)
+        try:
+            cls._window.attributes('-alpha', 0.85)
+        except Exception:
+            pass
+        frame = tk.Frame(cls._window, bd=3, relief=tk.SOLID, bg=color)
+        frame.pack(fill=tk.BOTH, expand=True)
+        cls._label = tk.Label(frame, text=f'✊ {text}', font=font, bg=color, padx=14, pady=8)
+        cls._label.pack()
+        cls.move(x, y)
+
+    @classmethod
+    def move(cls, x, y):
+        if cls._window:
+            cls._window.geometry(f'+{x + 12}+{y + 12}')
+
+    @classmethod
+    def stop(cls):
+        if cls._window:
+            cls._window.destroy()
+            cls._window = None
+            cls._label = None
+
 # --- Interactive Draggable / Clickable Answer Chip ---
 class AnswerChip(tk.Frame):
-    '''An interactive chip widget representing an answer chunk with drag/drop & click-to-remove.'''
-    def __init__(self, parent, text, color, on_remove_callback, on_swap_callback, is_blank=False, font=('', 18, 'bold')):
+    '''An interactive chip widget representing an answer chunk with drag/drop, floating ghost, & click-to-remove.'''
+    def __init__(self, parent, text, color, on_remove_callback, on_swap_callback, on_drag_status_callback=None, is_blank=False, font=('', 18, 'bold')):
         super().__init__(parent, bd=2, relief=tk.RAISED, bg=color, cursor='hand2')
         self.text = text
+        self.original_color = color
         self.color = color
         self.on_remove_callback = on_remove_callback
         self.on_swap_callback = on_swap_callback
+        self.on_drag_status_callback = on_drag_status_callback
         self.is_blank = is_blank
         self.font = font
 
@@ -282,9 +320,11 @@ class AnswerChip(tk.Frame):
         self.lbl.pack(side=tk.LEFT)
 
         if not is_blank:
-            self.close_btn = tk.Label(self, text='✕', font=('', 11, 'bold'), fg='#888888', bg=color, padx=4)
+            self.close_btn = tk.Label(self, text='✕', font=('', 11, 'bold'), fg='#777777', bg=color, padx=4)
             self.close_btn.pack(side=tk.RIGHT, padx=(0, 4))
             self.close_btn.bind('<Button-1>', lambda e: self.on_remove_callback(self))
+            self.close_btn.bind('<Enter>', lambda e: self.close_btn.config(fg='#c0392b'))
+            self.close_btn.bind('<Leave>', lambda e: self.close_btn.config(fg='#777777'))
 
             for w in (self, self.lbl):
                 w.bind('<Button-1>', self._on_drag_start)
@@ -294,6 +334,19 @@ class AnswerChip(tk.Frame):
         self._drag_start_x = 0
         self._drag_start_y = 0
         self._is_dragging = False
+        self._highlighted_target = None
+
+    def set_highlight(self, active=True):
+        if active:
+            self.config(bg=THEME['drop_highlight'], bd=3, relief=tk.SOLID)
+            self.lbl.config(bg=THEME['drop_highlight'])
+            if hasattr(self, 'close_btn'):
+                self.close_btn.config(bg=THEME['drop_highlight'])
+        else:
+            self.config(bg=self.original_color, bd=2, relief=tk.RAISED)
+            self.lbl.config(bg=self.original_color)
+            if hasattr(self, 'close_btn'):
+                self.close_btn.config(bg=self.original_color)
 
     def _on_drag_start(self, event):
         self._drag_start_x = event.x_root
@@ -301,12 +354,37 @@ class AnswerChip(tk.Frame):
         self._is_dragging = False
 
     def _on_drag_motion(self, event):
-        if abs(event.x_root - self._drag_start_x) > 6 or abs(event.y_root - self._drag_start_y) > 6:
+        if not self._is_dragging and (abs(event.x_root - self._drag_start_x) > 6 or abs(event.y_root - self._drag_start_y) > 6):
             self._is_dragging = True
             self.config(relief=tk.SUNKEN)
+            DragGhost.start(self.text, self.original_color, event.x_root, event.y_root, font=self.font)
+            if self.on_drag_status_callback:
+                self.on_drag_status_callback(True)
+
+        if self._is_dragging:
+            DragGhost.move(event.x_root, event.y_root)
+            target = self.winfo_containing(event.x_root, event.y_root)
+            while target and not isinstance(target, AnswerChip) and target != self.master:
+                target = target.master
+
+            if self._highlighted_target and self._highlighted_target != target:
+                self._highlighted_target.set_highlight(False)
+                self._highlighted_target = None
+
+            if isinstance(target, AnswerChip) and target != self and not target.is_blank:
+                target.set_highlight(True)
+                self._highlighted_target = target
 
     def _on_drag_end(self, event):
+        DragGhost.stop()
         self.config(relief=tk.RAISED)
+        if self._highlighted_target:
+            self._highlighted_target.set_highlight(False)
+            self._highlighted_target = None
+
+        if self.on_drag_status_callback:
+            self.on_drag_status_callback(False)
+
         if self._is_dragging:
             target = self.winfo_containing(event.x_root, event.y_root)
             while target and not isinstance(target, AnswerChip) and target != self.master:
@@ -315,6 +393,69 @@ class AnswerChip(tk.Frame):
                 self.on_swap_callback(self, target)
         else:
             self.on_remove_callback(self)
+
+# --- Draggable Pool Button ---
+class DraggablePoolButton(tk.Button):
+    '''A pool button that can be either clicked or dragged directly onto the answer board.'''
+    def __init__(self, master, chunk, badge_text, bg_color, font, on_click_callback, on_drop_callback, on_drag_status_callback=None, **kwargs):
+        super().__init__(master, text=badge_text, font=font, relief=tk.RAISED, bg=bg_color, padx=15, pady=8, cursor='hand2', **kwargs)
+        self.chunk = chunk
+        self.bg_color = bg_color
+        self.font = font
+        self.on_click_callback = on_click_callback
+        self.on_drop_callback = on_drop_callback
+        self.on_drag_status_callback = on_drag_status_callback
+        
+        self.bind('<Button-1>', self._on_start)
+        self.bind('<B1-Motion>', self._on_motion)
+        self.bind('<ButtonRelease-1>', self._on_end)
+        self.bind('<Enter>', self._on_enter)
+        self.bind('<Leave>', self._on_leave)
+        
+        self._drag_start_x = 0
+        self._drag_start_y = 0
+        self._is_dragging = False
+
+    def _on_enter(self, event):
+        if self['state'] == tk.NORMAL:
+            self.config(relief=tk.GROOVE)
+
+    def _on_leave(self, event):
+        if self['state'] == tk.NORMAL:
+            self.config(relief=tk.RAISED)
+
+    def _on_start(self, event):
+        if self['state'] != tk.NORMAL:
+            return
+        self._drag_start_x = event.x_root
+        self._drag_start_y = event.y_root
+        self._is_dragging = False
+
+    def _on_motion(self, event):
+        if self['state'] != tk.NORMAL:
+            return
+        if not self._is_dragging and (abs(event.x_root - self._drag_start_x) > 6 or abs(event.y_root - self._drag_start_y) > 6):
+            self._is_dragging = True
+            DragGhost.start(self.chunk, self.bg_color, event.x_root, event.y_root, font=self.font)
+            if self.on_drag_status_callback:
+                self.on_drag_status_callback(True)
+
+        if self._is_dragging:
+            DragGhost.move(event.x_root, event.y_root)
+
+    def _on_end(self, event):
+        if self['state'] != tk.NORMAL:
+            return
+        DragGhost.stop()
+        if self.on_drag_status_callback:
+            self.on_drag_status_callback(False)
+
+        if self._is_dragging:
+            # Check if dropped onto the answer board
+            target = self.winfo_containing(event.x_root, event.y_root)
+            self.on_drop_callback(self.chunk, target)
+        else:
+            self.on_click_callback(self.chunk)
 
 # --- UI: Lesson Editor ---
 class LessonEditor(tk.Toplevel):
@@ -404,7 +545,7 @@ class LessonEditor(tk.Toplevel):
         
         self.split_source_entry = tk.Text(text_scroll_frame, font=('', 12), height=4, wrap=tk.WORD, yscrollcommand=self.split_source_scroll.set)
         self.split_source_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.split_source_scroll.config(command=self.split_source_entry.yview)
+        self.split_source_entry.config(command=self.split_source_entry.yview)
         
         self.split_source_entry.bind('<KeyRelease>', self.on_field_change)
         
@@ -715,17 +856,17 @@ class SentenceJigsawApp:
 
         answer_header = ttk.Frame(content_frame)
         answer_header.pack(fill=tk.X, pady=(5, 5))
-        ttk.Label(answer_header, text='Your Answer (Click/drag blocks to arrange):', font=('', 14), foreground='gray').pack(side=tk.LEFT)
-        self.tip_label = ttk.Label(answer_header, text='💡 Tip: Press 1-9 on keyboard to select blocks', font=('', 11, 'italic'), foreground='#2980b9')
+        ttk.Label(answer_header, text='Your Answer (Click or Drag blocks here):', font=('', 14), foreground='gray').pack(side=tk.LEFT)
+        self.tip_label = ttk.Label(answer_header, text='💡 Tip: Drag blocks to move / Press 1-9 on keyboard', font=('', 11, 'italic'), foreground='#2980b9')
         self.tip_label.pack(side=tk.RIGHT)
         
-        self.answer_board = tk.Frame(content_frame, bg=THEME['board_bg_default'], bd=2, relief=tk.GROOVE, padx=15, pady=15)
+        self.answer_board = tk.Frame(content_frame, bg=THEME['board_bg_default'], bd=3, relief=tk.GROOVE, padx=15, pady=15)
         self.answer_board.pack(pady=5, fill=tk.X)
         
         self.answer_flow = FlowFrame(self.answer_board, bg=THEME['board_bg_default'], h_spacing=10, v_spacing=10)
         self.answer_flow.pack(fill=tk.X, expand=True)
 
-        self.pool_label = ttk.Label(content_frame, text='Available Blocks:', font=('', 14), foreground='gray')
+        self.pool_label = ttk.Label(content_frame, text='Available Blocks (Click or drag up to answer):', font=('', 14), foreground='gray')
         self.pool_label.pack(anchor=tk.W, pady=(20, 5))
         
         self.buttons_frame = FlowFrame(content_frame, h_spacing=12, v_spacing=12)
@@ -766,6 +907,12 @@ class SentenceJigsawApp:
         if index < len(active_chunks):
             chunk = active_chunks[index]['text']
             self.select_chunk(chunk)
+
+    def set_board_drag_highlight(self, is_dragging):
+        if is_dragging:
+            self.answer_board.config(bd=3, relief=tk.DASHED if hasattr(tk, 'DASHED') else tk.RIDGE, bg='#eaf2f8')
+        else:
+            self.update_board_visuals(THEME['board_bg_default'])
 
     def on_mode_change(self, event=None):
         mode_str = self.mode_var.get()
@@ -914,20 +1061,19 @@ class SentenceJigsawApp:
         shuffled_colors = PASTEL_COLORS.copy()
         random.shuffle(shuffled_colors)
         
-        self.pool_label.config(text='Click or press 1-9 to select blocks:')
+        self.pool_label.config(text='Click, drag, or press 1-9 to place blocks:')
         for idx, chunk in enumerate(scrambled):
             bg_color = shuffled_colors[idx % len(shuffled_colors)]
             badge_text = f'[{idx+1}] {chunk}' if idx < 9 else chunk
-            btn = tk.Button(
+            btn = DraggablePoolButton(
                 self.buttons_frame, 
-                text=badge_text, 
-                font=self.button_font, 
-                command=lambda c=chunk: self.select_chunk(c),
-                relief=tk.RAISED, 
-                bg=bg_color, 
-                padx=15, 
-                pady=8, 
-                cursor='hand2'
+                chunk=chunk,
+                badge_text=badge_text,
+                bg_color=bg_color,
+                font=self.button_font,
+                on_click_callback=self.select_chunk,
+                on_drop_callback=self.handle_pool_drop,
+                on_drag_status_callback=self.set_board_drag_highlight
             )
             self.buttons_frame.add_widget(btn)
             self.chunk_buttons.append({'text': chunk, 'btn': btn, 'color': bg_color, 'badge': badge_text})
@@ -942,31 +1088,44 @@ class SentenceJigsawApp:
         blank_chunks = [self.original_chunks[i] for i in self.hidden_chunk_indices]
         random.shuffle(blank_chunks)
 
-        self.pool_label.config(text='Pick the missing block(s) to fill the blanks:')
+        self.pool_label.config(text='Pick or drag the missing block(s) into the blanks:')
         shuffled_colors = PASTEL_COLORS.copy()
         random.shuffle(shuffled_colors)
 
         for idx, chunk in enumerate(blank_chunks):
             bg_color = shuffled_colors[idx % len(shuffled_colors)]
             badge_text = f'[{idx+1}] {chunk}' if idx < 9 else chunk
-            btn = tk.Button(
+            btn = DraggablePoolButton(
                 self.buttons_frame, 
-                text=badge_text, 
-                font=self.button_font, 
-                command=lambda c=chunk: self.select_chunk(c),
-                relief=tk.RAISED, 
-                bg=bg_color, 
-                padx=15, 
-                pady=8, 
-                cursor='hand2'
+                chunk=chunk,
+                badge_text=badge_text,
+                bg_color=bg_color,
+                font=self.button_font,
+                on_click_callback=self.select_chunk,
+                on_drop_callback=self.handle_pool_drop,
+                on_drag_status_callback=self.set_board_drag_highlight
             )
             self.buttons_frame.add_widget(btn)
             self.chunk_buttons.append({'text': chunk, 'btn': btn, 'color': bg_color, 'badge': badge_text})
 
         self.render_answer_chips()
 
+    def handle_pool_drop(self, chunk, target_widget):
+        '''Handles dropping a block dragged from the available pool directly onto the board.'''
+        # Check if dropped anywhere inside the answer board or on an existing chip
+        is_inside_board = False
+        curr = target_widget
+        while curr:
+            if curr in (self.answer_board, self.answer_flow):
+                is_inside_board = True
+                break
+            curr = getattr(curr, 'master', None)
+
+        if is_inside_board:
+            self.select_chunk(chunk)
+
     def update_board_visuals(self, bg_color):
-        self.answer_board.config(bg=bg_color)
+        self.answer_board.config(bg=bg_color, relief=tk.GROOVE)
         self.answer_flow.config(bg=bg_color)
 
     def set_meaning_text(self, text):
@@ -992,6 +1151,7 @@ class SentenceJigsawApp:
                             color=THEME['chip_bg'], 
                             on_remove_callback=lambda chip, c=filled_val: self.remove_chunk(c),
                             on_swap_callback=self.swap_answer_chips,
+                            on_drag_status_callback=self.set_board_drag_highlight,
                             is_blank=False,
                             font=self.answer_font
                         )
@@ -1002,6 +1162,7 @@ class SentenceJigsawApp:
                             color=THEME['blank_bg'], 
                             on_remove_callback=lambda c: None,
                             on_swap_callback=lambda c1, c2: None,
+                            on_drag_status_callback=None,
                             is_blank=True,
                             font=self.answer_font
                         )
@@ -1011,7 +1172,7 @@ class SentenceJigsawApp:
                     self.answer_flow.add_widget(lbl)
         else:
             if not self.user_selected_chunks:
-                placeholder = tk.Label(self.answer_flow, text='Click blocks below or use keys 1-9 to start...', font=('', 14, 'italic'), fg='#888888', bg=THEME['board_bg_default'])
+                placeholder = tk.Label(self.answer_flow, text='Click or drag blocks here / Press keys 1-9 to answer...', font=('', 14, 'italic'), fg='#888888', bg=THEME['board_bg_default'])
                 self.answer_flow.add_widget(placeholder)
             else:
                 for chunk in self.user_selected_chunks:
@@ -1026,6 +1187,7 @@ class SentenceJigsawApp:
                         color=color, 
                         on_remove_callback=lambda chip, c=chunk: self.remove_chunk(c),
                         on_swap_callback=self.swap_answer_chips,
+                        on_drag_status_callback=self.set_board_drag_highlight,
                         is_blank=False,
                         font=self.answer_font
                     )
