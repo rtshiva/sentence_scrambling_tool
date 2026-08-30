@@ -18,12 +18,21 @@ class TextParser:
 
     @classmethod
     def parse_lesson_text(cls, raw_content: str) -> List[QuestionItem]:
-        """Parses a multi-line lesson text with '|||' (or legacy '|') and '//' meaning comments."""
+        """Parses multi-line lesson text with '|||' (or legacy '|'), comments, and '=== Lesson Name ===' headers."""
         items = []
+        current_lesson = ""
         for line in raw_content.splitlines():
             line = line.strip()
             if not line:
                 continue
+
+            # Check for lesson / level header: === Lesson 1: Basics === or ## Lesson 1 or # Lesson 1
+            if (line.startswith('===') and line.endswith('===')) or line.startswith('#'):
+                header_name = line.strip('=#').strip()
+                if header_name:
+                    current_lesson = header_name
+                continue
+
             # Prefer '|||' triple pipe, fallback to single '|'
             if '|||' in line:
                 parts = [p.strip() for p in line.split('|||')]
@@ -43,16 +52,28 @@ class TextParser:
                     # If question has Hindi purna viram and chunks don't end with it, adjust last chunk
                     if question.endswith('।') and not chunks[-1].endswith(('।', '?', '!', '.')):
                         chunks[-1] += '।'
-                    items.append(QuestionItem(question=question, chunks=chunks, meaning=meaning))
+                    items.append(QuestionItem(
+                        question=question, 
+                        chunks=chunks, 
+                        meaning=meaning,
+                        lesson_name=current_lesson
+                    ))
         return items
 
     @classmethod
     def serialize_lesson_text(cls, items: List[QuestionItem]) -> str:
-        """Formats a list of QuestionItem objects into saveable text format using '|||'."""
+        """Formats a list of QuestionItem objects into saveable text format with === Lesson Name === headers."""
         lines = []
+        current_lesson = None
         for item in items:
             if not item.question or not item.chunks:
                 continue
+            if item.lesson_name and item.lesson_name != current_lesson:
+                if lines:
+                    lines.append("")
+                lines.append(f"=== {item.lesson_name} ===")
+                current_lesson = item.lesson_name
+
             line = f"{item.question} ||| " + " ||| ".join(item.chunks)
             if item.meaning:
                 line += f" ||| // {item.meaning}"

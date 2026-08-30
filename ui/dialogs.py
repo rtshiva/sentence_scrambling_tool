@@ -396,6 +396,11 @@ class LessonEditor(tk.Toplevel):
         
         self.right_frame = self.right_scroll.scrollable_frame
         
+        ttk.Label(self.right_frame, text='Lesson / Level Name (e.g. "Lesson 1: Basics"):').pack(anchor=tk.W)
+        self.lvl_entry = ttk.Entry(self.right_frame, font=('', 11))
+        self.lvl_entry.pack(fill=tk.X, pady=(2, 8))
+        self.lvl_entry.bind('<KeyRelease>', self.on_field_change)
+
         ttk.Label(self.right_frame, text='Question (Clean text shown to student):').pack(anchor=tk.W)
         self.q_entry = ttk.Entry(self.right_frame, font=('', 12))
         self.q_entry.pack(fill=tk.X, pady=5)
@@ -450,7 +455,17 @@ class LessonEditor(tk.Toplevel):
         self.current_selected_index = len(self.edit_data) - len(new_questions)
         self.refresh_listbox()
         self.load_form()
-        messagebox.showinfo('Import Complete', f'Successfully imported {len(new_questions)} sentences!')
+
+        # Automatically save to the active user's lesson file
+        active_name = ProfileManager.get_active_profile_name()
+        target_file = self.model.filename or ProfileManager.get_active_last_file() or ProfileManager.get_profile_questions_filepath(active_name)
+        try:
+            self.model.save_file(target_file, self.edit_data)
+            ProfileManager.set_active_last_file(target_file)
+        except Exception:
+            pass
+
+        messagebox.showinfo('Import Complete', f'Successfully imported and saved {len(new_questions)} sentences to your account!')
 
     def on_delimiter_change(self, event=None):
         if self.current_selected_index is not None:
@@ -524,6 +539,9 @@ class LessonEditor(tk.Toplevel):
             
         data = self.edit_data[self.current_selected_index]
         
+        self.lvl_entry.delete(0, tk.END)
+        self.lvl_entry.insert(0, data.get('lesson_name', ''))
+
         self.q_entry.delete(0, tk.END)
         self.q_entry.insert(0, data.get('question', ''))
         
@@ -564,6 +582,7 @@ class LessonEditor(tk.Toplevel):
             chunks = [c.strip() for c in source_text.split(delim_choice) if c.strip()]
             
         self.edit_data[self.current_selected_index] = {
+            'lesson_name': sanitize(self.lvl_entry.get()),
             'question': sanitize(self.q_entry.get()),
             'meaning': sanitize(self.m_entry.get()),
             'chunks': [sanitize(c) for c in chunks if sanitize(c)]
@@ -618,16 +637,12 @@ class LessonEditor(tk.Toplevel):
         self.save_current_form_to_data()
         filename = self.model.filename
         if not filename:
-            filename = filedialog.asksaveasfilename(
-                title='Save Lesson File',
-                defaultextension='.txt',
-                filetypes=[('Text Files', '*.txt'), ('All Files', '*.*')]
-            )
-            if not filename:
-                return
+            active_name = ProfileManager.get_active_profile_name()
+            filename = ProfileManager.get_profile_questions_filepath(active_name)
 
         try:
             self.model.save_file(filename, self.edit_data)
+            ProfileManager.set_active_last_file(filename)
             messagebox.showinfo('Success', 'Lesson saved successfully!')
             self.on_save_callback()
             self.destroy()
@@ -704,7 +719,15 @@ class ProgressDashboardDialog(tk.Toplevel):
         tk.Label(hdr, text='4. 🎙️ Voice', font=('', 9, 'bold'), width=12, bg='#eaecee').pack(side=tk.LEFT)
         tk.Label(hdr, text='5. 🎓 Status', font=('', 9, 'bold'), width=14, bg='#eaecee').pack(side=tk.LEFT)
 
+        current_lvl = None
         for i, item in enumerate(self.lesson_deck.qa_data, 1):
+            item_lvl = self.lesson_deck.get_level_for_index(i - 1)
+            if item_lvl != current_lvl:
+                current_lvl = item_lvl
+                lvl_banner = tk.Frame(content, bg='#d5dbdb', padx=8, pady=4)
+                lvl_banner.pack(fill=tk.X, pady=(8, 3))
+                tk.Label(lvl_banner, text=f"📖 {current_lvl}", font=('', 10, 'bold'), bg='#d5dbdb', fg='#2c3e50').pack(side=tk.LEFT)
+
             key = MemoryManager.get_sentence_key(item.question, item.chunks)
             info = ProgressTracker.get_milestone_summary(tracker_store, key)
 

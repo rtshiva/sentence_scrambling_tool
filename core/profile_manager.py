@@ -1,7 +1,7 @@
 import os
 import json
 import threading
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from core.models import DEFAULT_SETTINGS
 
 DEFAULT_PROFILES_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_profiles.json')
@@ -220,6 +220,27 @@ class ProfileManager:
         cls._load()
         profile = cls.get_active_profile()
         profile['tracker'] = tracker_store
+        cls._save()
+
+    @classmethod
+    def get_profile_questions_filepath(cls, profile_name: str) -> str:
+        """Returns standard per-student questions file path in user home directory."""
+        safe_name = "".join(c for c in profile_name if c.isalnum() or c in ('_', '-')).strip()
+        if not safe_name:
+            safe_name = "default"
+        return os.path.join(os.path.expanduser('~'), f'.sentence_jigsaw_{safe_name}_questions.txt')
+
+    @classmethod
+    def get_active_last_file(cls) -> Optional[str]:
+        cls._load()
+        profile = cls.get_active_profile()
+        return profile.get('last_lesson_file')
+
+    @classmethod
+    def set_active_last_file(cls, filepath: str):
+        cls._load()
+        profile = cls.get_active_profile()
+        profile['last_lesson_file'] = filepath
         cls._save()
 
     @classmethod

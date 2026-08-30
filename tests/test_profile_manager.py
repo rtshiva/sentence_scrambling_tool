@@ -79,5 +79,21 @@ class TestProfileManager(unittest.TestCase):
         ProfileManager._data = None
         self.assertIn("PermanentKid", ProfileManager.get_profile_names())
 
+    def test_profile_last_lesson_file_persistence(self):
+        ProfileManager.create_profile("LearnerA", "🦁")
+        ProfileManager.create_profile("LearnerB", "🐼")
+
+        ProfileManager.switch_profile("LearnerA")
+        ProfileManager.set_active_last_file("lesson_a.txt")
+
+        ProfileManager.switch_profile("LearnerB")
+        ProfileManager.set_active_last_file("lesson_b.txt")
+
+        ProfileManager.switch_profile("LearnerA")
+        self.assertEqual(ProfileManager.get_active_last_file(), "lesson_a.txt")
+
+        ProfileManager.switch_profile("LearnerB")
+        self.assertEqual(ProfileManager.get_active_last_file(), "lesson_b.txt")
+
 if __name__ == '__main__':
     unittest.main()

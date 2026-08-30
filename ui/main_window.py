@@ -108,6 +108,19 @@ class SentenceJigsawApp:
         self.mode_cb.pack(side=tk.LEFT, padx=(0, 10))
         self.mode_cb.bind('<<ComboboxSelected>>', self.on_mode_change)
 
+        # Level / Lesson Selector
+        ttk.Label(self.top_frame, text='📖 Level:', font=('', 11, 'bold')).pack(side=tk.LEFT, padx=(0, 4))
+        self.level_var = tk.StringVar(value='⭐ All Lessons')
+        self.level_cb = ttk.Combobox(
+            self.top_frame,
+            textvariable=self.level_var,
+            width=16,
+            state='readonly',
+            font=('', 10)
+        )
+        self.level_cb.pack(side=tk.LEFT, padx=(0, 10))
+        self.level_cb.bind('<<ComboboxSelected>>', self.on_level_change)
+
         self.progress_label = ttk.Label(self.top_frame, text='No file loaded', font=('', 12, 'bold'))
         self.progress_label.pack(side=tk.LEFT)
         
@@ -227,6 +240,39 @@ class SentenceJigsawApp:
                 pass
         VoiceRecorder.play_recording(on_finish_callback=on_done)
 
+    def update_level_dropdown(self):
+        levels = self.model.get_available_levels()
+        total_q = len(self.model.qa_data)
+        dropdown_vals = [f'⭐ All Lessons ({total_q})']
+        
+        for lvl in levels:
+            count = len([i for i in range(total_q) if self.model.get_level_for_index(i) == lvl])
+            dropdown_vals.append(f'📖 {lvl} ({count})')
+
+        self.level_cb['values'] = dropdown_vals
+        if self.model.active_level:
+            for v in dropdown_vals:
+                if self.model.active_level in v:
+                    self.level_var.set(v)
+                    break
+        else:
+            self.level_var.set(dropdown_vals[0] if dropdown_vals else '⭐ All Lessons')
+
+    def on_level_change(self, event=None):
+        val = self.level_var.get()
+        if 'All Lessons' in val:
+            self.model.set_active_level(None)
+        else:
+            # Extract level name: '📖 Level 1 (5)' -> 'Level 1'
+            lvl_name = val.split('(', 1)[0].replace('📖', '').strip()
+            self.model.set_active_level(lvl_name)
+
+        self.progress_bar['maximum'] = self.model.total_questions()
+        if self.game_mode == 'speed_run':
+            self.start_speed_run()
+        else:
+            self.load_current_question()
+
     def update_profile_dropdown(self):
         profiles = []
         active = ProfileManager.get_active_profile_name()
@@ -261,8 +307,25 @@ class SentenceJigsawApp:
         self.apply_ttk_theme()
         SoundPlayer.sound_enabled = self.settings.get('sound_enabled', True)
         self.update_profile_dropdown()
-        self.model.reset_deck()
-        self.load_current_question()
+
+        # Restore last active lesson file for this learner if present
+        last_file = ProfileManager.get_active_last_file()
+        prof_file = ProfileManager.get_profile_questions_filepath(profile_name)
+        
+        target_file = None
+        if last_file and os.path.exists(last_file):
+            target_file = last_file
+        elif os.path.exists(prof_file):
+            target_file = prof_file
+        elif os.path.exists('sentences.txt'):
+            target_file = 'sentences.txt'
+
+        if target_file:
+            self.load_lesson_file(target_file, save_to_profile=False)
+        else:
+            self.model.reset_deck()
+            self.update_level_dropdown()
+            self.load_current_question()
 
     def setup_bindings(self):
         self.root.bind('<BackSpace>', lambda e: self.undo_last() if str(self.undo_btn['state']) == 'normal' else None)
@@ -478,9 +541,16 @@ class SentenceJigsawApp:
             self.on_mode_change()
 
     def check_initial_file(self):
-        default_file = 'sentences.txt'
-        if os.path.exists(default_file):
-            self.load_lesson_file(default_file)
+        active_prof = ProfileManager.get_active_profile_name()
+        last_file = ProfileManager.get_active_last_file()
+        prof_file = ProfileManager.get_profile_questions_filepath(active_prof)
+
+        if last_file and os.path.exists(last_file):
+            self.load_lesson_file(last_file, save_to_profile=False)
+        elif os.path.exists(prof_file):
+            self.load_lesson_file(prof_file, save_to_profile=False)
+        elif os.path.exists('sentences.txt'):
+            self.load_lesson_file('sentences.txt', save_to_profile=True)
         else:
             messagebox.showinfo('Welcome', 'Welcome to Sentence Jigsaw!\n\nPlease load a sentence file or click "Edit" to create one.')
 
@@ -489,6 +559,7 @@ class SentenceJigsawApp:
         LessonEditor(self.root, self.model, on_save_callback=self.on_editor_saved)
         
     def on_editor_saved(self):
+        self.update_level_dropdown()
         self.model.reset_deck()
         self.load_current_question()
 
@@ -498,12 +569,16 @@ class SentenceJigsawApp:
             filetypes=[('Text Files', '*.txt'), ('All Files', '*.*')]
         )
         if filename:
-            self.load_lesson_file(filename)
+            self.load_lesson_file(filename, save_to_profile=True)
 
-    def load_lesson_file(self, filename):
+    def load_lesson_file(self, filename, save_to_profile=True):
         try:
             self.model.load_file(filename)
+            self.update_level_dropdown()
             self.progress_bar['maximum'] = self.model.total_questions()
+
+            if save_to_profile:
+                ProfileManager.set_active_last_file(filename)
             
             words = []
             for item in self.model.qa_data:

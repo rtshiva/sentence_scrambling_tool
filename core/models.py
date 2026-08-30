@@ -16,12 +16,14 @@ class QuestionItem:
     question: str
     chunks: List[str]
     meaning: str = ""
+    lesson_name: str = ""
 
     def to_dict(self):
         return {
             'question': self.question,
             'chunks': list(self.chunks),
-            'meaning': self.meaning
+            'meaning': self.meaning,
+            'lesson_name': self.lesson_name
         }
 
     @classmethod
@@ -29,5 +31,6 @@ class QuestionItem:
         return cls(
             question=data.get('question', ''),
             chunks=list(data.get('chunks', [])),
-            meaning=data.get('meaning', '')
+            meaning=data.get('meaning', ''),
+            lesson_name=data.get('lesson_name', '')
         )

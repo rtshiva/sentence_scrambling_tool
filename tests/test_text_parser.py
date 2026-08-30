@@ -56,5 +56,22 @@ class TestTextParser(unittest.TestCase):
         self.assertEqual(items[1].question, "ख) कहानी के अंत में बच्चे को महसूस हुआ कि उसे स्कूल जाना चाहिए था। क्या आपको लगता है उसका निर्णय सही था? क्यों?")
         self.assertIn("हाँ, उसका निर्णय", items[1].chunks[0])
 
+    def test_lesson_headers_and_serialization(self):
+        text_with_headers = """
+=== Lesson 1: Introduction ===
+यह एक सेब है ||| यह एक ||| सेब है ||| // It is an apple
+
+=== Lesson 2: Advanced ===
+सूरज चमक रहा है ||| सूरज ||| चमक रहा है ||| // Sun is shining
+"""
+        items = TextParser.parse_lesson_text(text_with_headers)
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0].lesson_name, "Lesson 1: Introduction")
+        self.assertEqual(items[1].lesson_name, "Lesson 2: Advanced")
+
+        serialized = TextParser.serialize_lesson_text(items)
+        self.assertIn("=== Lesson 1: Introduction ===", serialized)
+        self.assertIn("=== Lesson 2: Advanced ===", serialized)
+
 if __name__ == '__main__':
     unittest.main()

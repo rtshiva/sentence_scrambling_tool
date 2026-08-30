@@ -40,5 +40,30 @@ class TestLessonDeck(unittest.TestCase):
         deck.process_result(flawless=False, repeat_on_error=False, memory_store=mem)
         self.assertEqual(deck.deck, [0])
 
+    def test_level_filtering_and_auto_grouping(self):
+        deck = LessonDeck()
+        # 12 questions without explicit lesson name -> auto Level 1 (0-4), Level 2 (5-9), Level 3 (10-11)
+        deck.qa_data = [QuestionItem(f"Q{i}", ["word"]) for i in range(12)]
+        deck.level_chunk_size = 5
+
+        available = deck.get_available_levels()
+        self.assertEqual(available, ["Level 1", "Level 2", "Level 3"])
+
+        # Filter to Level 2
+        deck.set_active_level("Level 2")
+        self.assertEqual(deck.total_questions(), 5)
+        self.assertEqual(deck.get_current_question().question, "Q5")
+
+        # Set to All
+        deck.set_active_level(None)
+        self.assertEqual(deck.total_questions(), 12)
+
+        # With explicit lesson headers
+        deck.qa_data[0].lesson_name = "Basics"
+        deck.qa_data[1].lesson_name = "Basics"
+        deck.qa_data[2].lesson_name = "Advanced"
+        self.assertEqual(deck.get_level_for_index(0), "Basics")
+        self.assertEqual(deck.get_level_for_index(2), "Advanced")
+
 if __name__ == '__main__':
     unittest.main()

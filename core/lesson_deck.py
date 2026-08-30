@@ -12,13 +12,52 @@ class LessonDeck:
         self.qa_data: List[QuestionItem] = []
         self.deck: List[int] = []
         self.current_question_idx: Optional[int] = None
+        self.active_level: Optional[str] = None  # None = "All Lessons/Levels"
+        self.level_chunk_size: int = 5
+
+    def get_level_for_index(self, idx: int) -> str:
+        """Returns the assigned lesson name or automatic Level N tag."""
+        if idx < 0 or idx >= len(self.qa_data):
+            return "Level 1"
+        item = self.qa_data[idx]
+        if item.lesson_name and item.lesson_name.strip():
+            return item.lesson_name.strip()
+        lvl_num = (idx // self.level_chunk_size) + 1
+        return f"Level {lvl_num}"
+
+    def get_available_levels(self) -> List[str]:
+        """Returns ordered list of all distinct levels/lessons present in qa_data."""
+        if not self.qa_data:
+            return []
+        levels = []
+        for idx in range(len(self.qa_data)):
+            lvl = self.get_level_for_index(idx)
+            if lvl not in levels:
+                levels.append(lvl)
+        return levels
+
+    def set_active_level(self, level_name: Optional[str]):
+        """Sets active level filter ('All' or None for all questions)."""
+        if level_name in (None, "", "All", "All Lessons", "All Questions"):
+            self.active_level = None
+        else:
+            self.active_level = level_name
+        self.reset_deck()
+
+    def get_active_question_indices(self) -> List[int]:
+        """Returns indices in qa_data matching the active level filter."""
+        if not self.qa_data:
+            return []
+        if self.active_level is None:
+            return list(range(len(self.qa_data)))
+        return [i for i in range(len(self.qa_data)) if self.get_level_for_index(i) == self.active_level]
 
     def load_file(self, filename: str):
         with open(filename, 'r', encoding='utf-8') as f:
             raw = f.read()
         items = TextParser.parse_lesson_text(raw)
         if not items:
-            raise ValueError('No valid Q&A found in file! Make sure to use the "|" separator.')
+            raise ValueError('No valid Q&A found in file! Make sure to use the "|||" separator.')
         self.qa_data = items
         self.filename = filename
         self.reset_deck()
@@ -34,7 +73,8 @@ class LessonDeck:
 
     def reset_deck(self, shuffle_deck: bool = False, memory_store: dict = None, now_ts: float = None):
         """Builds active queue prioritizing: (1) Due Today, (2) New sentences, (3) Future reviews."""
-        if not self.qa_data:
+        active_indices = self.get_active_question_indices()
+        if not active_indices:
             self.deck = []
             self.current_question_idx = None
             return
@@ -43,14 +83,15 @@ class LessonDeck:
             memory_store = ProfileManager.get_active_memory_store()
 
         if shuffle_deck:
-            self.deck = list(range(len(self.qa_data)))
+            self.deck = list(active_indices)
             random.shuffle(self.deck)
         else:
             due_indices = []
             new_indices = []
             future_indices = []
 
-            for idx, item in enumerate(self.qa_data):
+            for idx in active_indices:
+                item = self.qa_data[idx]
                 prof = MemoryManager.get_memory_profile(item.question, item.chunks, memory_store)
                 if prof.get('total_reviews', 0) == 0:
                     new_indices.append(idx)
@@ -91,7 +132,7 @@ class LessonDeck:
         return len(self.deck) == 0
 
     def total_questions(self) -> int:
-        return len(self.qa_data)
+        return len(self.get_active_question_indices())
 
     def mastered_questions(self) -> int:
-        return len(self.qa_data) - len(self.deck)
+        return len(self.get_active_question_indices()) - len(self.deck)
