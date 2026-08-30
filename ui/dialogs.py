@@ -245,13 +245,23 @@ class SettingsDialog(tk.Toplevel):
         ttk.Label(tts_group, text='Speech Playback Speed:').pack(anchor=tk.W, pady=(0, 2))
         self.tts_speed_var = tk.StringVar()
         curr_rate = self.current_settings.get('tts_speed_rate', '+0%')
-        rate_map_rev = {'-25%': 'Slow (0.75x - Ideal for kids)', '+0%': 'Normal (1.0x - Default)', '+20%': 'Fast (1.2x)'}
+        rate_map_rev = {
+            '-50%': 'Extra Slow (0.50x - 50% Speed)',
+            '-25%': 'Slow (0.75x - Ideal for kids)',
+            '+0%': 'Normal (1.0x - Default)',
+            '+20%': 'Fast (1.2x)'
+        }
         self.tts_speed_var.set(rate_map_rev.get(curr_rate, 'Normal (1.0x - Default)'))
         
         self.tts_speed_cb = ttk.Combobox(
             tts_group,
             textvariable=self.tts_speed_var,
-            values=['Slow (0.75x - Ideal for kids)', 'Normal (1.0x - Default)', 'Fast (1.2x)'],
+            values=[
+                'Extra Slow (0.50x - 50% Speed)',
+                'Slow (0.75x - Ideal for kids)',
+                'Normal (1.0x - Default)',
+                'Fast (1.2x)'
+            ],
             state='readonly',
             font=('', 10)
         )
@@ -306,7 +316,9 @@ class SettingsDialog(tk.Toplevel):
             b_mode = 'auto'
             
         rate_str = self.tts_speed_var.get()
-        if 'Slow' in rate_str:
+        if '0.50x' in rate_str or '50%' in rate_str or 'Extra Slow' in rate_str:
+            rate_val = '-50%'
+        elif 'Slow' in rate_str:
             rate_val = '-25%'
         elif 'Fast' in rate_str:
             rate_val = '+20%'

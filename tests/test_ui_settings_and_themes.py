@@ -41,5 +41,19 @@ class TestUISettingsAndThemes(unittest.TestCase):
         self.assertEqual(self.app.theme, THEMES['space'])
         self.assertEqual(self.app.answer_board['bg'], THEMES['space']['board_bg_default'])
 
+    def test_tts_speed_rate_setting_50_percent(self):
+        from ui.dialogs import SettingsDialog
+        dialog = SettingsDialog(self.root, self.app.settings, self.app.on_settings_saved)
+        
+        # Verify 50% speed option is available in combobox
+        options = dialog.tts_speed_cb['values']
+        self.assertIn('Extra Slow (0.50x - 50% Speed)', options)
+
+        # Select 50% speed and test save mapping
+        dialog.tts_speed_var.set('Extra Slow (0.50x - 50% Speed)')
+        dialog.save()
+        
+        self.assertEqual(self.app.settings.get('tts_speed_rate'), '-50%')
+
 if __name__ == '__main__':
     unittest.main()
