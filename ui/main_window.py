@@ -33,6 +33,7 @@ class SentenceJigsawApp:
         self.root.title('🧩 Sentence Jigsaw')
         self.root.geometry('1080x880')
         self.root.minsize(960, 680)
+        self.root.protocol('WM_DELETE_WINDOW', self.on_close)
         
         self.settings = ProfileManager.get_settings()
         self.theme = get_theme(self.settings.get('theme', 'pastel'))
@@ -1290,3 +1291,16 @@ class SentenceJigsawApp:
             webbrowser.open(f'file://{path}')
         except Exception as e:
             messagebox.showerror('Error', f'Could not generate worksheet:\n{str(e)}')
+
+    def on_close(self):
+        """Clean shutdown handler to stop timers, halt audio, and clean up temporary caches."""
+        try:
+            self.stop_timer()
+            TTSManager.stop()
+            TTSManager.cleanup_cache(max_files=150)
+            if VoiceRecorder.is_recording():
+                VoiceRecorder.stop_recording()
+        except Exception:
+            pass
+        finally:
+            self.root.destroy()

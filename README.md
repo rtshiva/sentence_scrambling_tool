@@ -1,37 +1,108 @@
-# Sentence Scrambling Tool 🧩
+# 🧩 Sentence Jigsaw (Sentence Scrambling Tool)
 
-A simple, interactive Python desktop application designed to help children and students learn languages and memorize answers by assembling scrambled sentence chunks. 
+An interactive, pedagogical Python desktop application designed to help children and students master sentence construction, grammar, and pronunciation across languages (Hindi, Japanese, English, and more) by assembling scrambled phrase chunks.
 
-Perfect for bridging the gap between single-word flashcards and full-sentence recall!
+Built with **Apple Human Interface Guidelines (HIG)** aesthetics, modern flat pill containers, 3-zone visual drag-and-drop mechanics, spaced repetition memory algorithms, and neural text-to-speech audio.
 
-## ✨ Features
-* **Adaptive Learning Queue:** Uses a session-based mastery algorithm. Questions you get wrong or use hints on are automatically shuffled back into the deck until you answer them flawlessly.
-* **Gamification:** Features engaging pastel-colored UI blocks, star ratings based on hint usage, and satisfying cross-platform sound effects (works natively on Windows & macOS).
-* **Built-in Lesson Editor:** Easily create or modify your own lessons. Includes an **Auto-Split** tool where you can paste a full sentence and instantly generate puzzle chunks.
-* **Instant Translation Reveal:** Displays the meaning of the sentence the moment you assemble it correctly.
-* **Universal Language Support:** Safely handles Unicode characters and delimiters, making it perfect for Hindi (Devanagari), Japanese, English, and more.
+---
+
+## ✨ Key Features
+
+### 🎮 4 Distinct Learning Modes
+1. **🎯 2-Stage Progressive Mastery Mode**:
+   - Uses an active session learning queue with spaced repetition. Mistakes and hint-assisted attempts are automatically requeued.
+   - Progresses from **4-words-per-block** down to granular **2-words-per-block** for deep structural recall.
+2. **⚡ Speed Run / Timed Challenge**:
+   - Race against the clock (1–5 min) with dynamic point multipliers and fire streaks (`🔥 Streak x3`).
+3. **🧩 Fill in the Blanks**:
+   - Masks select slots in the sentence (1 blank, 2 blanks, or auto 30%) with amber slot placeholders (`____`).
+4. **🎧 Listening Comprehension Mode**:
+   - Conceals the question text; students listen to the neural speech audio and reconstruct the sentence purely by ear.
+
+---
+
+### 🎨 Apple HIG Modern Interface & 3-Zone Drag-and-Drop
+- **Two-Tier Header**: Top tier for student profiles, mode switches, and level filters; second tier for progress bars and utility shortcuts.
+- **Docked Action Bar**: Bottom control bar (`💡 Hint`, `⟲ Undo`, `🗑 Clear`, `Skip ⏭`, `Next ➔`) remains permanently visible and accessible regardless of monitor scaling or sentence length.
+- **3-Zone Interactive Drag & Drop**:
+  - **Between Blocks Insertion**: Dragging over the edge between two blocks highlights *both* neighbor boxes in **Sky Blue (`#0284c7`)**, seamlessly inserting the block between them.
+  - **Direct Swap / Replace**: Dragging over the center of a block highlights that single box in **Amber (`#eab308`)**, swapping positions or replacing the selected chunk.
+- **Translucent Glass Ghost (`DragGhost`)**: High-performance translucent pill preview window that tracks cursor movement during drag operations.
+- **Pill Badging & Direct Click Removal**: Flat 1px border chips with instant single-click removal back to the pool.
+
+---
+
+### 🔊 Neural Speech & Voice Recording
+- **Natural Multilingual TTS**: Uses Microsoft Edge Neural Text-to-Speech (`Swara` for Hindi, `Nanami` for Japanese, `Neerja` for English) with adjustable playback rates (0.50x to 1.25x).
+- **Voice Recorder & Playback**: Students can record their own pronunciation and compare side-by-side with the teacher's neural audio.
+- **Dictionary Cache & Instant Translation**: Automatically fetches, caches, and translates full sentences and words offline with auto-collapsing disclosure callouts.
+
+---
+
+### 📊 Progress Tracking & Profiles
+- **Multi-Student Profile Isolation**: Switch between student profiles with isolated memory stores, settings, and progress logs.
+- **Visual Learning Dashboard**: Displays total mastery percentage, accuracy radar, streak counts, and smart mode recommendations.
+- **Printable HTML Worksheet Generator**: Generates formatted, ready-to-print homework worksheets with answer keys.
+
+---
+
+## ⌨️ Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `1` – `9`, `0` | Select phrases 1 through 10 |
+| `A` – `Z` | Select extended phrases (11+) |
+| `Ctrl + H` | 💡 Give Hint |
+| `Ctrl + L` | 🔊 Hear Teacher Pronunciation |
+| `Ctrl + A` | 🔊 Hear Current Assembled Answer |
+| `Ctrl + R` | 🎙️ Start / Stop Voice Recording |
+| `Ctrl + P` | ▶️ Play Back Student Recording |
+| `Ctrl + S` | ⏭ Skip Sentence |
+| `Backspace` | ⟲ Undo Last Block |
+| `Escape` | 🗑 Clear Answer & Reshuffle Blocks |
+| `Return` / `Enter` | ➔ Advance to Next Question |
+
+---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-Make sure you have Python 3 installed. The application uses modern UI themes via `sv_ttk`.
+- Python 3.10+ installed
+- Audio output device (speakers or headphones)
 
 ### Installation
-1. Clone the repository:
 ```bash
+# 1. Clone the repository
 git clone https://github.com/rtshiva/sentence_scrambling_tool.git
 cd sentence_scrambling_tool
-```
 
-2. Install the required dependencies:
-```bash
+# 2. Install dependencies
 pip install -r requirements.txt
-```
 
-3. Run the application:
-```bash
+# 3. Launch the application
 python jigsaw.py
 ```
 
-## 📂 Customizing Lessons
-By default, the app will look for a `sentences.txt` file. You can load any custom `.txt` file using the **"Load File"** button, or build one from scratch using the **"Edit Lesson"** window directly inside the app.
+### Running the Autonomous Visual Demo Bot
+```bash
+python bot.py
+```
+
+---
+
+## 🧪 Testing & Validation
+The project includes a comprehensive test suite covering game engines, SM-2 memory intervals, UI event routing, TTS rate bounds, and profile persistence:
+```bash
+python -m unittest discover tests -v
+```
+
+---
+
+## 📂 Lesson Format
+Create custom lessons in simple plain text files or using the built-in **✏️ Edit Lesson** GUI:
+```text
+# Title: Everyday Conversations
+Level: 1
+Q: नमस्ते, आप कैसे हैं? | A: नमस्ते, / आप / कैसे हैं? | M: Hello, how are you?
+Q: यह एक बहुत सुंदर बगीचा है। | A: यह एक / बहुत सुंदर / बगीचा है। | M: This is a very beautiful garden.
+```

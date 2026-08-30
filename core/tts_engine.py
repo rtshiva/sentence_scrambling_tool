@@ -97,3 +97,19 @@ class TTSManager:
             except Exception:
                 pass
             cls._is_playing = False
+
+    @classmethod
+    def cleanup_cache(cls, max_files: int = 200):
+        """Purges old temp audio files if cache directory exceeds max threshold."""
+        try:
+            if os.path.exists(cls._cache_dir):
+                files = [os.path.join(cls._cache_dir, f) for f in os.listdir(cls._cache_dir) if f.endswith('.mp3')]
+                if len(files) > max_files:
+                    files.sort(key=os.path.getmtime)
+                    for f in files[:-max_files]:
+                        try:
+                            os.remove(f)
+                        except Exception:
+                            pass
+        except Exception:
+            pass
