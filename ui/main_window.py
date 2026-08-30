@@ -328,33 +328,76 @@ class SentenceJigsawApp:
             self.load_current_question()
 
     def setup_bindings(self):
-        self.root.bind('<BackSpace>', lambda e: self.undo_last() if str(self.undo_btn['state']) == 'normal' else None)
-        self.root.bind('<Escape>', lambda e: self.clear_selection() if str(self.clear_btn['state']) == 'normal' else None)
-        self.root.bind('<Return>', lambda e: self.next_sentence() if str(self.next_btn['state']) == 'normal' else None)
-        self.root.bind('<h>', lambda e: self.give_hint() if str(self.hint_btn['state']) == 'normal' else None)
-        self.root.bind('<H>', lambda e: self.give_hint() if str(self.hint_btn['state']) == 'normal' else None)
-        self.root.bind('<s>', lambda e: self.skip_sentence() if str(self.skip_btn['state']) == 'normal' else None)
-        self.root.bind('<S>', lambda e: self.skip_sentence() if str(self.skip_btn['state']) == 'normal' else None)
-        self.root.bind('<l>', lambda e: self.speak_current_question())
-        self.root.bind('<L>', lambda e: self.speak_current_question())
-        self.root.bind('<a>', lambda e: self.speak_current_answer() if str(self.listen_answer_btn['state']) == 'normal' else None)
-        self.root.bind('<A>', lambda e: self.speak_current_answer() if str(self.listen_answer_btn['state']) == 'normal' else None)
-        self.root.bind('<r>', lambda e: self.toggle_recording())
-        self.root.bind('<R>', lambda e: self.toggle_recording())
-        self.root.bind('<p>', lambda e: self.play_my_recording() if str(self.play_my_voice_btn['state']) == 'normal' else None)
-        self.root.bind('<P>', lambda e: self.play_my_recording() if str(self.play_my_voice_btn['state']) == 'normal' else None)
+        # Reserved keys for core gameplay controls (excluded from tile shortcuts):
+        # h/H: Hint, s/S: Skip, l/L: Question Audio, a/A: Answer Audio, r/R: Record Voice, p/P: Play Voice,
+        # u/U, Backspace, Ctrl+Z: Undo, c/C, Escape: Clear
+        self.root.bind('<BackSpace>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
+        self.root.bind('<Control-z>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
+        self.root.bind('<Control-Z>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
+        self.root.bind('<u>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
+        self.root.bind('<U>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
 
-        # Bind 1-9, 0, and A-Z shortcuts (excluding reserved control keys: h, s, l, a, r, p)
-        reserved_keys = {'h', 's', 'l', 'a', 'r', 'p'}
+        self.root.bind('<Escape>', lambda e: self._handle_control_action(self.clear_selection, self.clear_btn))
+        self.root.bind('<c>', lambda e: self._handle_control_action(self.clear_selection, self.clear_btn))
+        self.root.bind('<C>', lambda e: self._handle_control_action(self.clear_selection, self.clear_btn))
+
+        self.root.bind('<Return>', lambda e: self._handle_control_action(self.next_sentence, self.next_btn))
+        self.root.bind('<h>', lambda e: self._handle_control_action(self.give_hint, self.hint_btn))
+        self.root.bind('<H>', lambda e: self._handle_control_action(self.give_hint, self.hint_btn))
+        self.root.bind('<s>', lambda e: self._handle_control_action(self.skip_sentence, self.skip_btn))
+        self.root.bind('<S>', lambda e: self._handle_control_action(self.skip_sentence, self.skip_btn))
+        self.root.bind('<l>', lambda e: self._handle_control_action(self.speak_current_question))
+        self.root.bind('<L>', lambda e: self._handle_control_action(self.speak_current_question))
+        self.root.bind('<a>', lambda e: self._handle_control_action(self.speak_current_answer, self.listen_answer_btn))
+        self.root.bind('<A>', lambda e: self._handle_control_action(self.speak_current_answer, self.listen_answer_btn))
+        self.root.bind('<r>', lambda e: self._handle_control_action(self.toggle_recording))
+        self.root.bind('<R>', lambda e: self._handle_control_action(self.toggle_recording))
+        self.root.bind('<p>', lambda e: self._handle_control_action(self.play_my_recording, self.play_my_voice_btn))
+        self.root.bind('<P>', lambda e: self._handle_control_action(self.play_my_recording, self.play_my_voice_btn))
+
+        # Tile shortcuts: 1-9, 0, and remaining alphabet characters
+        reserved_keys = {'h', 's', 'l', 'a', 'r', 'p', 'u', 'c'}
         shortcuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] + [chr(c) for c in range(ord('a'), ord('z')+1) if chr(c) not in reserved_keys]
 
         for idx, key_char in enumerate(shortcuts):
-            self.root.bind(f'<{key_char.lower()}>', lambda e, i=idx: self.trigger_chunk_by_index(i))
-            self.root.bind(f'<{key_char.upper()}>', lambda e, i=idx: self.trigger_chunk_by_index(i))
+            self.root.bind(f'<{key_char.lower()}>', lambda e, i=idx: self._handle_gameplay_shortcut(i))
+            self.root.bind(f'<{key_char.upper()}>', lambda e, i=idx: self._handle_gameplay_shortcut(i))
+
+    def _is_focus_in_text_or_modal(self) -> bool:
+        """Returns True if the current focus is within an entry/text field or a modal dialog is active."""
+        try:
+            if self.root.grab_current() is not None:
+                return True
+            focused = self.root.focus_get()
+            if focused is not None:
+                if isinstance(focused, (tk.Entry, ttk.Entry, tk.Text, ttk.Combobox, tk.Spinbox, ttk.Spinbox)):
+                    return True
+                widget_class = focused.winfo_class().lower()
+                if any(k in widget_class for k in ('entry', 'text', 'combobox', 'spinbox')):
+                    return True
+                top = focused.winfo_toplevel()
+                if top != self.root:
+                    return True
+        except Exception:
+            pass
+        return False
+
+    def _handle_control_action(self, action_callable, button_widget=None):
+        if self._is_focus_in_text_or_modal():
+            return
+        if button_widget is not None:
+            if str(button_widget['state']) != 'normal':
+                return
+        action_callable()
+
+    def _handle_gameplay_shortcut(self, index: int):
+        if self._is_focus_in_text_or_modal():
+            return
+        self.trigger_chunk_by_index(index)
 
     @staticmethod
     def get_badge_for_index(idx: int) -> str:
-        reserved_keys = {'h', 's', 'l', 'a', 'r', 'p'}
+        reserved_keys = {'h', 's', 'l', 'a', 'r', 'p', 'u', 'c'}
         shortcuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] + [chr(c).upper() for c in range(ord('a'), ord('z')+1) if chr(c) not in reserved_keys]
         if idx < len(shortcuts):
             return f"[{shortcuts[idx]}]"
@@ -647,6 +690,10 @@ class SentenceJigsawApp:
 
         self.root.update_idletasks()
         self.main_scroll.canvas.yview_moveto(0)
+        try:
+            self.root.focus_set()
+        except Exception:
+            pass
 
     def setup_standard_round(self):
         scrambled = GameEngine.scramble_chunks(self.original_chunks)
