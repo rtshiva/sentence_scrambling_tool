@@ -252,6 +252,80 @@ class AnswerChip(tk.Frame):
         self._drag_start_y = event.y_root
         self._is_dragging = False
 
+    def set_drop_cue(self, cue: str = None):
+        """
+        Visually renders Apple HIG cues for insertion vs swapping:
+        - 'swap': Amber border indicating swap/replace
+        - 'insert_left' or 'insert_right': Sky blue insertion highlight
+        - None: Resets highlight
+        """
+        if cue == 'swap':
+            self.config(bg='#fef08a', bd=1, relief=tk.SOLID, highlightthickness=2, highlightbackground='#eab308', highlightcolor='#eab308')
+            self.lbl.config(bg='#fef08a')
+        elif cue in ('insert_left', 'insert_right'):
+            self.config(bg=self.original_color, bd=1, relief=tk.SOLID, highlightthickness=3, highlightbackground='#0284c7', highlightcolor='#0284c7')
+            self.lbl.config(bg=self.original_color)
+        else:
+            self.config(bg=self.original_color, bd=1, relief=tk.SOLID, highlightthickness=0)
+            self.lbl.config(bg=self.original_color)
+
+    def _find_answer_chip_under_pointer(self, x_root, y_root):
+        try:
+            target = self.winfo_containing(x_root, y_root)
+            curr = target
+            while curr and curr != self.master:
+                if isinstance(curr, AnswerChip):
+                    return curr
+                curr = getattr(curr, 'master', None)
+        except Exception:
+            pass
+        return None
+
+    def _clear_all_board_cues(self):
+        try:
+            if hasattr(self, 'master') and self.master:
+                for child in self.master.winfo_children():
+                    if isinstance(child, AnswerChip):
+                        child.set_drop_cue(None)
+        except Exception:
+            pass
+
+    def _update_board_drop_cues(self, target_chip, x_root):
+        self._clear_all_board_cues()
+        if not target_chip or target_chip.is_blank or not hasattr(self, 'master') or not self.master:
+            return 'insert_left'
+        
+        tx = target_chip.winfo_rootx()
+        tw = target_chip.winfo_width()
+        rel_x = (x_root - tx) / max(1, tw)
+
+        # 3-Zone Apple HIG Interaction:
+        # 0.00 - 0.28: Insert Before (between target and previous neighbor)
+        # 0.28 - 0.72: Swap / Replace (single box amber highlight)
+        # 0.72 - 1.00: Insert After (between target and next neighbor)
+        chips = [c for c in self.master.winfo_children() if isinstance(c, AnswerChip) and not c.is_blank]
+        try:
+            idx = chips.index(target_chip)
+        except ValueError:
+            return 'swap'
+
+        if rel_x < 0.28:
+            # Highlight both this box and the left neighbor so user sees drop happens between them
+            target_chip.set_drop_cue('insert_left')
+            if idx > 0:
+                chips[idx - 1].set_drop_cue('insert_right')
+            return 'insert_left'
+        elif rel_x > 0.72:
+            # Highlight both this box and the right neighbor
+            target_chip.set_drop_cue('insert_right')
+            if idx < len(chips) - 1:
+                chips[idx + 1].set_drop_cue('insert_left')
+            return 'insert_right'
+        else:
+            # Single box amber highlight = direct swap / replace
+            target_chip.set_drop_cue('swap')
+            return 'swap'
+
     def _on_drag_motion(self, event):
         if not self._is_dragging and (abs(event.x_root - self._drag_start_x) > 6 or abs(event.y_root - self._drag_start_y) > 6):
             self._is_dragging = True
@@ -262,34 +336,25 @@ class AnswerChip(tk.Frame):
 
         if self._is_dragging:
             DragGhost.move(event.x_root, event.y_root)
-            target = self.winfo_containing(event.x_root, event.y_root)
-            while target and not isinstance(target, AnswerChip) and target != self.master:
-                target = target.master
-
-            if self._highlighted_target and self._highlighted_target != target:
-                self._highlighted_target.set_highlight(False)
-                self._highlighted_target = None
-
-            if isinstance(target, AnswerChip) and target != self and not target.is_blank:
-                self._highlighted_target = target
-                target.set_highlight(True)
+            target = self._find_answer_chip_under_pointer(event.x_root, event.y_root)
+            if target != self:
+                self._current_mode = self._update_board_drop_cues(target, event.x_root)
+            else:
+                self._clear_all_board_cues()
 
     def _on_drag_end(self, event):
         DragGhost.stop()
         self.config(relief=tk.SOLID)
-        if self._highlighted_target:
-            self._highlighted_target.set_highlight(False)
-            self._highlighted_target = None
+        self._clear_all_board_cues()
 
         if self.on_drag_status_callback:
             self.on_drag_status_callback(False)
 
         if self._is_dragging:
-            target = self.winfo_containing(event.x_root, event.y_root)
-            while target and not isinstance(target, AnswerChip) and target != self.master:
-                target = target.master
+            target = self._find_answer_chip_under_pointer(event.x_root, event.y_root)
             if isinstance(target, AnswerChip) and target != self and not target.is_blank:
-                self.on_swap_callback(self, target)
+                mode = getattr(self, '_current_mode', 'swap')
+                self.on_swap_callback(self, target, mode)
         else:
             # Clean direct click-to-remove
             self.on_remove_callback(self)
@@ -361,6 +426,47 @@ class DraggablePoolButton(tk.Frame):
         self._is_dragging = False
         self.config(relief=tk.SUNKEN)
 
+    def _clear_all_board_cues(self, target_chip):
+        try:
+            if target_chip and hasattr(target_chip, 'master') and target_chip.master:
+                for child in target_chip.master.winfo_children():
+                    if isinstance(child, AnswerChip):
+                        child.set_drop_cue(None)
+        except Exception:
+            pass
+
+    def _update_pool_drop_cues(self, target_chip, x_root):
+        if not target_chip or target_chip.is_blank or not hasattr(target_chip, 'master') or not target_chip.master:
+            return 'insert_left'
+        self._clear_all_board_cues(target_chip)
+
+        tx = target_chip.winfo_rootx()
+        tw = target_chip.winfo_width()
+        rel_x = (x_root - tx) / max(1, tw)
+
+        chips = [c for c in target_chip.master.winfo_children() if isinstance(c, AnswerChip) and not c.is_blank]
+        try:
+            idx = chips.index(target_chip)
+        except ValueError:
+            return 'swap'
+
+        if rel_x < 0.28:
+            # Highlight both this box and previous neighbor with sky blue
+            target_chip.set_drop_cue('insert_left')
+            if idx > 0:
+                chips[idx - 1].set_drop_cue('insert_right')
+            return 'insert_left'
+        elif rel_x > 0.72:
+            # Highlight both this box and next neighbor with sky blue
+            target_chip.set_drop_cue('insert_right')
+            if idx < len(chips) - 1:
+                chips[idx + 1].set_drop_cue('insert_left')
+            return 'insert_right'
+        else:
+            # Single box amber highlight = replace/swap slot
+            target_chip.set_drop_cue('swap')
+            return 'swap'
+
     def _on_motion(self, event):
         if self.state != tk.NORMAL:
             return
@@ -372,17 +478,40 @@ class DraggablePoolButton(tk.Frame):
 
         if self._is_dragging:
             DragGhost.move(event.x_root, event.y_root)
+            try:
+                target = self.winfo_containing(event.x_root, event.y_root)
+                curr = target
+                target_chip = None
+                while curr:
+                    if isinstance(curr, AnswerChip) and not curr.is_blank:
+                        target_chip = curr
+                        break
+                    curr = getattr(curr, 'master', None)
+
+                if target_chip:
+                    self._last_active_chip = target_chip
+                    self._pool_drop_mode = self._update_pool_drop_cues(target_chip, event.x_root)
+                elif getattr(self, '_last_active_chip', None):
+                    self._clear_all_board_cues(self._last_active_chip)
+                    self._last_active_chip = None
+            except Exception:
+                pass
 
     def _on_end(self, event):
         if self.state != tk.NORMAL:
             return
         self.config(relief=tk.RAISED)
         DragGhost.stop()
+        if getattr(self, '_last_active_chip', None):
+            self._clear_all_board_cues(self._last_active_chip)
+            self._last_active_chip = None
+
         if self.on_drag_status_callback:
             self.on_drag_status_callback(False)
 
         if self._is_dragging:
             target = self.winfo_containing(event.x_root, event.y_root)
-            self.on_drop_callback(self.chunk, target, event.x_root, event.y_root)
+            mode = getattr(self, '_pool_drop_mode', 'insert_left')
+            self.on_drop_callback(self.chunk, target, event.x_root, event.y_root, mode=mode)
         else:
             self.on_click_callback(self.chunk)

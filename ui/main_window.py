@@ -806,7 +806,7 @@ class SentenceJigsawApp:
 
         self.render_answer_chips()
 
-    def handle_pool_drop(self, chunk, target_widget, x_root=0, y_root=0):
+    def handle_pool_drop(self, chunk, target_widget, x_root=0, y_root=0, mode='insert_left'):
         is_inside_board = False
         target_chip = None
         curr = target_widget
@@ -821,18 +821,36 @@ class SentenceJigsawApp:
         if not is_inside_board:
             return
 
-        insert_idx = None
         if target_chip and target_chip.text in self.user_selected_chunks:
             idx = self.user_selected_chunks.index(target_chip.text)
-            chip_x = target_chip.winfo_rootx()
-            chip_w = target_chip.winfo_width()
-            # If dropped on the right half, insert after; otherwise insert before
-            if x_root > (chip_x + chip_w // 2):
+            if mode == 'swap':
+                # Replace the target chip with the new pool chunk (restore old chunk to pool)
+                old_chunk = self.user_selected_chunks[idx]
+                self.user_selected_chunks[idx] = chunk
+                SoundPlayer.play_click()
+                self.render_answer_chips()
+                self.undo_btn.config(state=tk.NORMAL)
+                # Disable newly placed pool button
+                for item in self.chunk_buttons:
+                    if item['text'] == chunk and item['btn'].state == tk.NORMAL:
+                        item['btn'].set_state(tk.DISABLED, bg=self.theme['button_disabled'])
+                        break
+                # Restore replaced chunk button to available state
+                for item in self.chunk_buttons:
+                    if item['text'] == old_chunk and item['btn'].state == tk.DISABLED:
+                        item['btn'].set_state(tk.NORMAL, bg=item['color'])
+                        break
+                expected_len = len(self.hidden_chunk_indices) if self.game_mode == 'fill_blanks' else len(self.original_chunks)
+                if len(self.user_selected_chunks) == expected_len:
+                    self.check_answer()
+                return
+            elif mode == 'insert_right':
                 insert_idx = idx + 1
             else:
                 insert_idx = idx
-
-        self.select_chunk(chunk, insert_index=insert_idx)
+            self.select_chunk(chunk, insert_index=insert_idx)
+        else:
+            self.select_chunk(chunk)
 
     def get_badge_for_index(self, index: int) -> str:
         """Returns clean Apple-style pill shortcut badge (1-9, 0, A-Z) for block index."""
@@ -922,7 +940,7 @@ class SentenceJigsawApp:
                             text=filled_val, 
                             color=self.theme['chip_bg'], 
                             on_remove_callback=lambda chip, c=filled_val: self.remove_chunk(c),
-                            on_swap_callback=self.swap_answer_chips,
+                            on_swap_callback=lambda c1, c2, m='swap': self.swap_answer_chips(c1, c2, m),
                             on_drag_status_callback=self.set_board_drag_highlight,
                             on_pronounce_callback=self.speak_chunk,
                             is_blank=False,
@@ -935,7 +953,7 @@ class SentenceJigsawApp:
                             text='____', 
                             color=self.theme['blank_bg'], 
                             on_remove_callback=lambda c: None,
-                            on_swap_callback=lambda c1, c2: None,
+                            on_swap_callback=lambda c1, c2, m='swap': None,
                             on_drag_status_callback=None,
                             on_pronounce_callback=None,
                             is_blank=True,
@@ -962,7 +980,7 @@ class SentenceJigsawApp:
                         text=chunk, 
                         color=color, 
                         on_remove_callback=lambda chip, c=chunk: self.remove_chunk(c),
-                        on_swap_callback=self.swap_answer_chips,
+                        on_swap_callback=lambda c1, c2, m='swap': self.swap_answer_chips(c1, c2, m),
                         on_drag_status_callback=self.set_board_drag_highlight,
                         on_pronounce_callback=self.speak_chunk,
                         is_blank=False,
@@ -1007,17 +1025,30 @@ class SentenceJigsawApp:
             self.hint_btn.config(state=tk.NORMAL)
             self.update_board_visuals(self.theme['board_bg_default'])
 
-    def swap_answer_chips(self, chip1, chip2):
+    def swap_answer_chips(self, chip1, chip2, mode='swap'):
         try:
-            idx1 = self.user_selected_chunks.index(chip1.text)
-            idx2 = self.user_selected_chunks.index(chip2.text)
-            self.user_selected_chunks[idx1], self.user_selected_chunks[idx2] = self.user_selected_chunks[idx2], self.user_selected_chunks[idx1]
-            SoundPlayer.play_click()
-            self.render_answer_chips()
-            
-            expected_len = len(self.hidden_chunk_indices) if self.game_mode == 'fill_blanks' else len(self.original_chunks)
-            if len(self.user_selected_chunks) == expected_len:
-                self.check_answer()
+            if chip1.text in self.user_selected_chunks and chip2.text in self.user_selected_chunks:
+                orig_idx1 = self.user_selected_chunks.index(chip1.text)
+                orig_idx2 = self.user_selected_chunks.index(chip2.text)
+
+                if mode == 'swap' or mode is None:
+                    # Direct swap / replace positions of chip1 and chip2
+                    self.user_selected_chunks[orig_idx1], self.user_selected_chunks[orig_idx2] = (
+                        self.user_selected_chunks[orig_idx2], self.user_selected_chunks[orig_idx1]
+                    )
+                else:
+                    # Reorder / insert between
+                    self.user_selected_chunks.remove(chip1.text)
+                    target_idx = self.user_selected_chunks.index(chip2.text)
+                    insert_pos = (target_idx + 1) if mode == 'insert_right' else target_idx
+                    self.user_selected_chunks.insert(insert_pos, chip1.text)
+
+                SoundPlayer.play_click()
+                self.render_answer_chips()
+                
+                expected_len = len(self.hidden_chunk_indices) if self.game_mode == 'fill_blanks' else len(self.original_chunks)
+                if len(self.user_selected_chunks) == expected_len:
+                    self.check_answer()
         except ValueError:
             pass
 
