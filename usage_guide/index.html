@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧩 Sentence Jigsaw — Complete Guide, Tutorial & FAQ</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #e0e7ff;
+            --accent: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --dark: #0f172a;
+            --card-bg: #ffffff;
+            --bg: #f8fafc;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+            --radius: 16px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding-bottom: 80px;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+        }
+
+        /* Top Navbar */
+        nav {
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 18px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 24px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--text-muted);
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        /* Hero Header */
+        .hero {
+            text-align: center;
+            padding: 70px 20px 40px;
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        .hero-badge {
+            display: inline-block;
+            background: var(--primary-light);
+            color: var(--primary);
+            padding: 6px 16px;
+            border-radius: 99px;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            letter-spacing: 0.5px;
+        }
+
+        .hero h1 {
+            font-size: 48px;
+            line-height: 1.2;
+            color: var(--dark);
+            margin-bottom: 18px;
+        }
+
+        .hero p {
+            font-size: 19px;
+            color: var(--text-muted);
+            line-height: 1.6;
+        }
+
+        /* Container */
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        /* Section Layout */
+        section {
+            margin-top: 60px;
+        }
+
+        .section-header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .section-header h2 {
+            font-size: 32px;
+            color: var(--dark);
+        }
+
+        .section-header p {
+            color: var(--text-muted);
+            font-size: 16px;
+            margin-top: 6px;
+        }
+
+        /* Grid Cards */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 24px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 28px;
+            box-shadow: var(--shadow);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.08);
+        }
+
+        .card-icon {
+            font-size: 36px;
+            margin-bottom: 16px;
+            display: inline-block;
+        }
+
+        .card h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+            color: var(--dark);
+        }
+
+        .card p {
+            color: var(--text-muted);
+            font-size: 15px;
+            line-height: 1.6;
+        }
+
+        /* 5-Step Path Flow */
+        .path-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .path-step-card {
+            background: white;
+            border-left: 6px solid var(--primary);
+            border-radius: 12px;
+            padding: 22px 28px;
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            box-shadow: var(--shadow);
+            border-top: 1px solid var(--border);
+            border-right: 1px solid var(--border);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .path-num {
+            font-size: 32px;
+            font-weight: 800;
+            color: var(--primary);
+            min-width: 50px;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        .path-content h4 {
+            font-size: 18px;
+            color: var(--dark);
+            margin-bottom: 4px;
+        }
+
+        .path-content p {
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        /* Keyboard Hotkey Badge */
+        .kbd {
+            font-family: 'JetBrains Mono', monospace;
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 13px;
+            color: #334155;
+            font-weight: 600;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+        }
+
+        /* FAQ Accordion */
+        .faq-item {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            margin-bottom: 14px;
+            overflow: hidden;
+        }
+
+        .faq-question {
+            padding: 18px 24px;
+            font-weight: 700;
+            font-size: 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #fafafa;
+        }
+
+        .faq-question:hover {
+            background: #f4f4f5;
+        }
+
+        .faq-answer {
+            padding: 18px 24px;
+            color: var(--text-muted);
+            font-size: 15px;
+            line-height: 1.7;
+            border-top: 1px solid var(--border);
+        }
+
+        /* Table Style */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 16px;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        th, td {
+            padding: 14px 18px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
+        }
+
+        th {
+            background: #f8fafc;
+            font-weight: 700;
+            color: var(--dark);
+        }
+
+        /* Footer */
+        footer {
+            margin-top: 80px;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 14px;
+            border-top: 1px solid var(--border);
+            padding-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="logo">
+            <span>🧩</span> Sentence Jigsaw
+        </div>
+        <ul class="nav-links">
+            <li><a href="#quickstart">Quick Start</a></li>
+            <li><a href="#learning-path">5-Step Path</a></li>
+            <li><a href="#features">Key Features</a></li>
+            <li><a href="#hotkeys">Shortcuts</a></li>
+            <li><a href="#faq">FAQ</a></li>
+        </ul>
+    </nav>
+
+    <div class="hero">
+        <div class="hero-badge">🚀 COMPLETE USER MANUAL & TUTORIAL</div>
+        <h1>Interactive Sentence Jigsaw & Language Mastery</h1>
+        <p>A fun, multi-sensory educational puzzle app tailored for children to master Hindi, Japanese, and English sentence structures with spaced repetition memory and neural speech synthesis.</p>
+    </div>
+
+    <div class="container">
+
+        <!-- 🚀 Quick Start -->
+        <section id="quickstart">
+            <div class="section-header">
+                <h2>⚡ Quick Start in 3 Easy Steps</h2>
+                <p>Get up and running in under a minute</p>
+            </div>
+
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-icon">1️⃣</div>
+                    <h3>Launch the App</h3>
+                    <p>Open PowerShell or Terminal and run:<br><br><span class="kbd">py jigsaw.py</span><br><br>The app opens instantly with your student profile!</p>
+                </div>
+                <div class="card">
+                    <div class="card-icon">2️⃣</div>
+                    <h3>Load or Import Lessons</h3>
+                    <p>Click <b>📂 Load</b> to pick a lesson, or click <b>✏️ Edit ➔ 🪄 Import Story</b> to paste any paragraph and auto-split it in 1 click!</p>
+                </div>
+                <div class="card">
+                    <div class="card-icon">3️⃣</div>
+                    <h3>Assemble & Speak</h3>
+                    <p>Click or drag scrambled puzzle blocks in order. Press <span class="kbd">L</span> to hear the teacher voice and <span class="kbd">R</span> to record your own!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- 🗺️ 5-Step Learning Path -->
+        <section id="learning-path">
+            <div class="section-header">
+                <h2>🗺️ The 5-Step Sentence Mastery Path</h2>
+                <p>The research-backed progression to help kids retain sentence grammar and vocabulary</p>
+            </div>
+
+            <div class="path-steps">
+                <div class="path-step-card" style="border-left-color: #3b82f6;">
+                    <div class="path-num">01</div>
+                    <div class="path-content">
+                        <h4>🌱 Phase 1: Guided Assembly (🎯 Mastery Mode)</h4>
+                        <p>The student reads the sentence, hovers over unfamiliar words for instant English meanings, listens to the neural voice (<span class="kbd">L</span>), and clicks blocks in order.</p>
+                    </div>
+                </div>
+
+                <div class="path-step-card" style="border-left-color: #f59e0b;">
+                    <div class="path-num">02</div>
+                    <div class="path-content">
+                        <h4>🧩 Phase 2: Active Recall (🧩 Fill in Blanks Mode)</h4>
+                        <p>1–2 key grammar connectors or vocabulary words are hidden (<span class="kbd">____</span>). The child retrieves the missing words from memory to complete the puzzle.</p>
+                    </div>
+                </div>
+
+                <div class="path-step-card" style="border-left-color: #8b5cf6;">
+                    <div class="path-num">03</div>
+                    <div class="path-content">
+                        <h4>🎧 Phase 3: Auditory Training (🎧 Listening Mode)</h4>
+                        <p>The question text is masked! The child listens to the spoken sentence first and reconstructs it purely from what they heard.</p>
+                    </div>
+                </div>
+
+                <div class="path-step-card" style="border-left-color: #ef4444;">
+                    <div class="path-num">04</div>
+                    <div class="path-content">
+                        <h4>🎙️ Phase 4: Speaking Practice (🎙️ Record & ▶️ Play Me)</h4>
+                        <p>The student clicks <b>🎙️ Record (R)</b> to speak the sentence aloud. They can play back their own voice alongside the teacher's voice to refine their accent.</p>
+                    </div>
+                </div>
+
+                <div class="path-step-card" style="border-left-color: #10b981;">
+                    <div class="path-num">05</div>
+                    <div class="path-content">
+                        <h4>🎓 Phase 5: Long-Term Spaced Review (🧠 SM-2 Memory)</h4>
+                        <p>Mastered sentences are scheduled for future review at increasing intervals (<b>1 day ➔ 3 days ➔ 7 days ➔ 16 days ➔ 35 days</b>). If an error is made, it resets for immediate practice today!</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 🌟 Core Features Breakdown -->
+        <section id="features">
+            <div class="section-header">
+                <h2>✨ Feature Showcase</h2>
+                <p>Everything you need for an engaging classroom & home practice</p>
+            </div>
+
+            <div class="grid-2">
+                <div class="card">
+                    <div class="card-icon">🔍</div>
+                    <h3>Instant Hover Dictionary</h3>
+                    <p>Hover your mouse over any Hindi, Japanese, or foreign word block to instantly see its English definition. Pre-fetched in the background with zero internet lag!</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🎨</div>
+                    <h3>Modern Color Themes</h3>
+                    <p>Switch between <b>🌈 Pastel Classroom</b> (cheerful & light), <b>🌙 Cozy Dark Mode</b> (night study), and <b>🚀 Space Explorer</b> (glowing cosmic palette) in <b>⚙️ Settings</b>.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">📊</div>
+                    <h3>Learning Hub & Progress Dashboard</h3>
+                    <p>Click <b>📊 Progress</b> to view a sentence-by-sentence matrix showing completion across Assembly, Blanks, Listening, Voice, and Memory with 1-click recommendations!</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">👥</div>
+                    <h3>Multi-User Student Profiles</h3>
+                    <p>Multiple children or students can share the same computer. Each profile has completely isolated memory progress, custom avatars, and independent settings.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">⏱️</div>
+                    <h3>Speed Run & Streak Scoring</h3>
+                    <p>3-minute timed fluency challenge! Build consecutive answer streaks (<span class="kbd">🔥 Streak +20 pts</span>) to test fast retrieval and sentence building agility.</p>
+                </div>
+
+                <div class="card">
+                    <div class="card-icon">🖨️</div>
+                    <h3>Printable Offline Worksheets</h3>
+                    <p>Click <b>🖨️ Worksheet</b> to instantly generate a printable HTML activity sheet with numbered boxes for offline pencil-and-paper homework practice!</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ⌨️ Hotkeys Reference -->
+        <section id="hotkeys">
+            <div class="section-header">
+                <h2>⌨️ Keyboard Shortcuts Reference</h2>
+                <p>Control the entire app without touching the mouse!</p>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>Shortcut Key</th>
+                        <th>Action</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><span class="kbd">1</span> – <span class="kbd">9</span></td>
+                        <td>Select Puzzle Block</td>
+                        <td>Places the corresponding numbered available block onto the board.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="kbd">Enter</span></td>
+                        <td>Next Sentence</td>
+                        <td>Advances to the next question when the current puzzle is solved.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="kbd">BackSpace</span></td>
+                        <td>Undo</td>
+                        <td>Removes the last placed block from your answer.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="kbd">Esc</span></td>
+                        <td>Clear Board</td>
+                        <td>Clears all placed blocks and resets the puzzle pool.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="kbd">H</span></td>
+                        <td>Give Hint</td>
+                        <td>Automatically selects and places the correct next block.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="kbd">S</span></td>
+                        <td>Skip</td>
+                        <td>Skips the current question (requeues it for review later).</td>
+                    </tr>
+                    <tr>
+                        <td><span class="kbd">L</span></td>
+                        <td>Teacher Voice</td>
+                        <td>Plays the neural audio pronunciation for the question.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="kbd">A</span></td>
+                        <td>Hear Answer</td>
+                        <td>Pronounces the full assembled sentence in the answer board.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="kbd">R</span></td>
+                        <td>Record Voice</td>
+                        <td>Starts / stops recording the student's voice from the microphone.</td>
+                    </tr>
+                    <tr>
+                        <td><span class="kbd">P</span></td>
+                        <td>Play My Voice</td>
+                        <td>Plays back the student's recorded audio.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </section>
+
+        <!-- ❓ Frequently Asked Questions -->
+        <section id="faq">
+            <div class="section-header">
+                <h2>❓ Frequently Asked Questions (FAQ)</h2>
+                <p>Common questions and troubleshooting tips</p>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Q: How do I create a new lesson from a textbook or story?</span>
+                </div>
+                <div class="faq-answer">
+                    Click <b>✏️ Edit</b> in the top toolbar, then click <b>🪄 Import Story / Text</b>. Paste any story (in Hindi, Japanese, or English), choose how many words per block (e.g. 2 or 3 words), and click <b>🚀 Generate Lesson</b>. All punctuation (<code>।</code>, <code>.</code>, <code>?</code>, <code>!</code>) will automatically be split into separate puzzle sentences!
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Q: Does the app work offline without internet?</span>
+                </div>
+                <div class="faq-answer">
+                    <b>Yes!</b> All lesson files, user profiles, Spaced Repetition memory, audio effects, and dictionary definitions are cached locally on your computer. Offline sentence solving and voice recording work completely without an active internet connection.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Q: How does Spaced Repetition work for my child?</span>
+                </div>
+                <div class="faq-answer">
+                    The app uses the scientific SM-2 interval algorithm. When a child solves a sentence flawlessly, it moves to <b>⭐ Memorized</b> (due in 3 days) and then <b>🎓 Mastered</b> (due in 7 to 35 days). If a mistake is made or a hint is used, the sentence is flagged and reviewed again today until mastered.
+                </div>
+            </div>
+
+            <div class="faq-item">
+                <div class="faq-question">
+                    <span>Q: How do I run automated tests or test the demo bot?</span>
+                </div>
+                <div class="faq-answer">
+                    To run the 41 automated unit and UI tests, run:<br>
+                    <span class="kbd">py -m unittest discover tests -v</span><br><br>
+                    To watch the AI robot automatically solve sentences live on screen for demo purposes, run:<br>
+                    <span class="kbd">py bot.py</span>
+                </div>
+            </div>
+        </section>
+
+        <footer>
+            <p>🧩 Sentence Jigsaw • Open Source Educational Project • Built with ❤️ for Learners</p>
+        </footer>
+
+    </div>
+
+</body>
+</html>
