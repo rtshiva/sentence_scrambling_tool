@@ -188,7 +188,7 @@ class AnswerChip(tk.Frame):
         if not is_blank:
             self.close_btn = tk.Label(self, text='✕', font=('', 11, 'bold'), fg='#777777', bg=color, padx=4)
             self.close_btn.pack(side=tk.RIGHT, padx=(0, 4))
-            self.close_btn.bind('<Button-1>', lambda e: self.on_remove_callback(self))
+            self.close_btn.bind('<Button-1>', lambda e: (self.on_remove_callback(self), "break")[1])
             self.close_btn.bind('<Enter>', lambda e: self.close_btn.config(fg='#c0392b'))
             self.close_btn.bind('<Leave>', lambda e: self.close_btn.config(fg='#777777'))
 

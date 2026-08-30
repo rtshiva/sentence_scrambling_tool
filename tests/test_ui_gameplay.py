@@ -21,7 +21,11 @@ class TestUIGameplay(unittest.TestCase):
 
     def tearDown(self):
         self.app.stop_timer()
-        self.root.destroy()
+        try:
+            self.root.update()
+            self.root.destroy()
+        except Exception:
+            pass
 
     def test_single_click_selection_and_disable(self):
         self.assertEqual(len(self.app.user_selected_chunks), 0)
@@ -95,6 +99,31 @@ class TestUIGameplay(unittest.TestCase):
             self.app.speak_chunk("नमस्ते")
             # Should NOT call speak while question is playing
             mock_speak.assert_not_called()
+
+    def test_initial_click_selects_exact_chunk_and_undo_removes_it(self):
+        # Fresh round - initially empty answer board
+        self.assertEqual(len(self.app.user_selected_chunks), 0)
+        self.assertEqual(str(self.app.undo_btn['state']), 'disabled')
+
+        # Click the 2nd button specifically
+        second_btn_chunk = self.app.chunk_buttons[1]['text']
+        self.app.chunk_buttons[1]['btn']._on_end(type('Event', (), {'x_root': 0, 'y_root': 0})())
+
+        # Verify ONLY the clicked second button's chunk is added
+        self.assertEqual(self.app.user_selected_chunks, [second_btn_chunk])
+        self.assertEqual(str(self.app.undo_btn['state']), 'normal')
+
+        # Perform Undo
+        self.app.undo_last()
+
+        # Board must be completely empty and undo disabled, NOT adding new words
+        self.assertEqual(len(self.app.user_selected_chunks), 0)
+        self.assertEqual(str(self.app.undo_btn['state']), 'disabled')
+
+        # Click the 3rd button specifically
+        third_btn_chunk = self.app.chunk_buttons[2]['text']
+        self.app.chunk_buttons[2]['btn']._on_end(type('Event', (), {'x_root': 0, 'y_root': 0})())
+        self.assertEqual(self.app.user_selected_chunks, [third_btn_chunk])
 
 if __name__ == '__main__':
     unittest.main()
