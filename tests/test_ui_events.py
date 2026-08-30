@@ -25,6 +25,13 @@ class TestUIEvents(unittest.TestCase):
         self.app.trigger_chunk_by_index(0)
         self.assertEqual(len(self.app.user_selected_chunks), 1)
 
+    def test_expanded_shortcut_badges(self):
+        # Index 0 -> [1], Index 8 -> [9], Index 9 -> [0], Index 10 -> [B] (skipping 'a')
+        self.assertEqual(self.app.get_badge_for_index(0), "[1]")
+        self.assertEqual(self.app.get_badge_for_index(8), "[9]")
+        self.assertEqual(self.app.get_badge_for_index(9), "[0]")
+        self.assertEqual(self.app.get_badge_for_index(10), "[B]")
+
     def test_keyboard_backspace_undo(self):
         self.app.trigger_chunk_by_index(0)
         self.assertEqual(len(self.app.user_selected_chunks), 1)

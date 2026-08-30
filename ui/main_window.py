@@ -276,8 +276,21 @@ class SentenceJigsawApp:
         self.root.bind('<p>', lambda e: self.play_my_recording() if str(self.play_my_voice_btn['state']) == 'normal' else None)
         self.root.bind('<P>', lambda e: self.play_my_recording() if str(self.play_my_voice_btn['state']) == 'normal' else None)
 
-        for i in range(1, 10):
-            self.root.bind(str(i), lambda e, idx=i-1: self.trigger_chunk_by_index(idx))
+        # Bind 1-9, 0, and A-Z shortcuts (excluding reserved control keys: h, s, l, a, r, p)
+        reserved_keys = {'h', 's', 'l', 'a', 'r', 'p'}
+        shortcuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] + [chr(c) for c in range(ord('a'), ord('z')+1) if chr(c) not in reserved_keys]
+
+        for idx, key_char in enumerate(shortcuts):
+            self.root.bind(f'<{key_char.lower()}>', lambda e, i=idx: self.trigger_chunk_by_index(i))
+            self.root.bind(f'<{key_char.upper()}>', lambda e, i=idx: self.trigger_chunk_by_index(i))
+
+    @staticmethod
+    def get_badge_for_index(idx: int) -> str:
+        reserved_keys = {'h', 's', 'l', 'a', 'r', 'p'}
+        shortcuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] + [chr(c).upper() for c in range(ord('a'), ord('z')+1) if chr(c) not in reserved_keys]
+        if idx < len(shortcuts):
+            return f"[{shortcuts[idx]}]"
+        return ""
 
     def trigger_chunk_by_index(self, index):
         active_chunks = [item for item in self.chunk_buttons if item['btn'].state == tk.NORMAL]
@@ -564,7 +577,8 @@ class SentenceJigsawApp:
         self.pool_label.config(text='Click, drag, or Hover for meaning:')
         for idx, chunk in enumerate(scrambled):
             bg_color = tile_colors[idx % len(tile_colors)]
-            badge_text = f'[{idx+1}] {chunk}' if idx < 9 else chunk
+            badge_prefix = self.get_badge_for_index(idx)
+            badge_text = f'{badge_prefix} {chunk}' if badge_prefix else chunk
             btn = DraggablePoolButton(
                 self.buttons_frame, 
                 chunk=chunk,
@@ -595,7 +609,8 @@ class SentenceJigsawApp:
 
         for idx, chunk in enumerate(blank_chunks):
             bg_color = tile_colors[idx % len(tile_colors)]
-            badge_text = f'[{idx+1}] {chunk}' if idx < 9 else chunk
+            badge_prefix = self.get_badge_for_index(idx)
+            badge_text = f'{badge_prefix} {chunk}' if badge_prefix else chunk
             btn = DraggablePoolButton(
                 self.buttons_frame, 
                 chunk=chunk,
