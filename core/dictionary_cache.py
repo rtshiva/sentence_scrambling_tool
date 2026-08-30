@@ -7,6 +7,7 @@ import urllib.parse
 from typing import Optional, Dict
 
 DICT_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_dict.json')
+MAX_CACHE_ENTRIES = 5000
 
 class DictionaryManager:
     """Manages offline cached word definitions and asynchronous pre-fetching."""
@@ -53,6 +54,12 @@ class DictionaryManager:
         cleaned = cls.clean_text(text).lower()
         if cleaned and meaning:
             cls._cache[cleaned] = meaning
+            # Maintain cache size ceiling to prevent unbounded growth
+            if len(cls._cache) > MAX_CACHE_ENTRIES:
+                excess = len(cls._cache) - MAX_CACHE_ENTRIES
+                keys_to_remove = list(cls._cache.keys())[:excess]
+                for k in keys_to_remove:
+                    cls._cache.pop(k, None)
             cls._save()
 
     @classmethod

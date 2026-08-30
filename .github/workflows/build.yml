@@ -30,6 +30,10 @@ jobs:
         pip install -r requirements.txt
         pip install pyinstaller
 
+    - name: Run Test Suite
+      run: |
+        python -m unittest discover tests -v
+
     - name: Build Executable with PyInstaller
       # --onefile packages everything into a single executable
       # --windowed ensures no black terminal window pops up behind the GUI
