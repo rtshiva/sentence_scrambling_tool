@@ -65,5 +65,35 @@ class TestLessonDeck(unittest.TestCase):
         self.assertEqual(deck.get_level_for_index(0), "Basics")
         self.assertEqual(deck.get_level_for_index(2), "Advanced")
 
+    def test_progressive_chunk_breakdown_and_steps(self):
+        deck = LessonDeck()
+        # Sentence with 6 words: "A B C D E F"
+        deck.qa_data = [
+            QuestionItem("Sentence 1", ["A B C D E F"])
+        ]
+        deck.reset_deck()
+
+        # Initial Stage 1: up to 4 words per chunk
+        self.assertEqual(deck.get_current_stage(), 1)
+        self.assertEqual(deck.total_steps(), 2)
+        self.assertEqual(deck.completed_steps(), 0)
+
+        q1 = deck.get_current_question()
+        self.assertEqual(q1.chunks, ["A B C D", "E F"])
+
+        # Complete Stage 1 flawlessly -> should advance to Stage 2 (2 words per chunk)
+        deck.process_result(flawless=True, repeat_on_error=True)
+        self.assertFalse(deck.is_finished())
+        self.assertEqual(deck.get_current_stage(), 2)
+        self.assertEqual(deck.completed_steps(), 1)
+
+        q2 = deck.get_current_question()
+        self.assertEqual(q2.chunks, ["A B", "C D", "E F"])
+
+        # Complete Stage 2 flawlessly -> mastery finished
+        deck.process_result(flawless=True, repeat_on_error=True)
+        self.assertTrue(deck.is_finished())
+        self.assertEqual(deck.completed_steps(), 2)
+
 if __name__ == '__main__':
     unittest.main()

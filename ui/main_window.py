@@ -697,9 +697,13 @@ class SentenceJigsawApp:
         self.play_my_voice_btn.config(state=tk.NORMAL if VoiceRecorder.has_recording() else tk.DISABLED)
 
         if self.game_mode == 'mastery':
-            self.progress_label.config(text=f'Mastered: {self.model.mastered_questions()} / {self.model.total_questions()}')
-            self.progress_bar['maximum'] = self.model.total_questions()
-            self.progress_bar['value'] = self.model.mastered_questions()
+            stage = self.model.get_current_stage() if hasattr(self.model, 'get_current_stage') else 1
+            stage_info = " (Stage 2: 2 Words/Block 🔥)" if stage == 2 else " (Stage 1: 4 Words/Block 🧩)"
+            comp = self.model.completed_steps() if hasattr(self.model, 'completed_steps') else self.model.mastered_questions()
+            tot = self.model.total_steps() if hasattr(self.model, 'total_steps') else self.model.total_questions()
+            self.progress_label.config(text=f'Mastery: {comp}/{tot} steps{stage_info}')
+            self.progress_bar['maximum'] = tot
+            self.progress_bar['value'] = comp
         elif self.game_mode in ('fill_blanks', 'listening'):
             self.progress_label.config(text=f'Progress: {self.model.mastered_questions()} / {self.model.total_questions()}')
             self.progress_bar['maximum'] = self.model.total_questions()

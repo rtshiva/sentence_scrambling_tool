@@ -81,8 +81,9 @@ class TestUIEvents(unittest.TestCase):
         self.root.update()
 
     def test_ctrl_shortcuts_for_controls(self):
-        self.app.trigger_chunk_by_index(0)
+        self.app.select_chunk("राम")
         self.assertEqual(len(self.app.user_selected_chunks), 1)
+        self.assertEqual(str(self.app.undo_btn['state']), 'normal')
         self.app._handle_control_action(self.app.undo_last, self.app.undo_btn)
         self.assertEqual(len(self.app.user_selected_chunks), 0)
 

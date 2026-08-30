@@ -77,14 +77,15 @@ class LessonDeck:
         if not active_indices:
             self.deck = []
             self.current_question_idx = None
+            self.question_stages = {}
             return
 
         if memory_store is None:
             memory_store = ProfileManager.get_active_memory_store()
 
         if shuffle_deck:
-            self.deck = list(active_indices)
-            random.shuffle(self.deck)
+            ordered_indices = list(active_indices)
+            random.shuffle(ordered_indices)
         else:
             due_indices = []
             new_indices = []
@@ -100,14 +101,50 @@ class LessonDeck:
                 else:
                     future_indices.append(idx)
 
-            self.deck = due_indices + new_indices + future_indices
+            ordered_indices = due_indices + new_indices + future_indices
 
+        self.deck = list(ordered_indices)
+        # Tracks the mastery stage of each question index: 1 = 4 words/chunk, 2 = 2 words/chunk
+        self.question_stages = {idx: 1 for idx in active_indices}
         self.current_question_idx = self.deck[0] if self.deck else None
 
-    def get_current_question(self) -> Optional[QuestionItem]:
+    def get_current_stage(self) -> int:
+        if self.current_question_idx is None:
+            return 1
+        return self.question_stages.get(self.current_question_idx, 1)
+
+    def get_current_question(self, words_per_chunk: Optional[int] = None) -> Optional[QuestionItem]:
         if self.current_question_idx is None or self.current_question_idx >= len(self.qa_data):
             return None
-        return self.qa_data[self.current_question_idx]
+        base_item = self.qa_data[self.current_question_idx]
+
+        stage = self.get_current_stage()
+        # Stage 1: max 4 words per chunk
+        # Stage 2: max 2 words per chunk for granular recall
+        target_size = words_per_chunk if words_per_chunk is not None else (2 if stage == 2 else 4)
+        
+        dynamic_chunks = []
+        for chunk in base_item.chunks:
+            words = chunk.split()
+            if len(words) > target_size:
+                sub_chunks = TextParser.group_words_into_chunks(chunk, target_size)
+                dynamic_chunks.extend(sub_chunks)
+            else:
+                dynamic_chunks.append(chunk)
+
+        if not dynamic_chunks:
+            dynamic_chunks = list(base_item.chunks)
+
+        # Ensure punctuation consistency
+        if base_item.question.endswith('।') and not dynamic_chunks[-1].endswith(('।', '?', '!', '.')):
+            dynamic_chunks[-1] += '।'
+
+        return QuestionItem(
+            question=base_item.question,
+            chunks=dynamic_chunks,
+            meaning=base_item.meaning,
+            lesson_name=base_item.lesson_name
+        )
 
     def process_result(self, flawless: bool, repeat_on_error: bool = True, memory_store: dict = None, now_ts: float = None):
         if not self.deck:
@@ -120,16 +157,46 @@ class LessonDeck:
         MemoryManager.record_attempt(curr_q.question, curr_q.chunks, flawless, memory_store, now_ts=now_ts)
         ProfileManager._save()
 
-        if flawless or not repeat_on_error:
-            self.deck.pop(0)
+        curr_stage = self.question_stages.get(curr_idx, 1)
+
+        if flawless:
+            if curr_stage == 1:
+                # Advance question from Stage 1 (4-word blocks) to Stage 2 (2-word blocks)
+                self.question_stages[curr_idx] = 2
+                self.deck.pop(0)
+                # Re-queue at the end of the deck for Stage 2 granular recall test
+                self.deck.append(curr_idx)
+            else:
+                # Fully mastered both Stage 1 and Stage 2!
+                self.deck.pop(0)
         else:
-            idx = self.deck.pop(0)
-            self.deck.append(idx)
+            if repeat_on_error:
+                # Reset back to Stage 1 on failure
+                self.question_stages[curr_idx] = 1
+                idx = self.deck.pop(0)
+                self.deck.append(idx)
+            else:
+                self.deck.pop(0)
 
         self.current_question_idx = self.deck[0] if self.deck else None
 
     def is_finished(self) -> bool:
         return len(self.deck) == 0
+
+    def total_steps(self) -> int:
+        """Total stages across all active questions (2 stages per question: 4-word then 2-word)."""
+        return len(self.get_active_question_indices()) * 2
+
+    def completed_steps(self) -> int:
+        """Calculates completed mastery stages towards total steps."""
+        active = self.get_active_question_indices()
+        completed = 0
+        for idx in active:
+            if idx not in self.deck:
+                completed += 2  # Both stages completed
+            elif self.question_stages.get(idx, 1) == 2:
+                completed += 1  # Stage 1 completed, pending Stage 2
+        return completed
 
     def total_questions(self) -> int:
         return len(self.get_active_question_indices())
