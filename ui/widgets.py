@@ -229,6 +229,35 @@ class AnswerChip(tk.Frame):
             if hasattr(self, 'close_btn'):
                 self.close_btn.config(bg=self.original_color)
 
+    def set_validation_status(self, status: str):
+        """
+        Visually marks chip status after check_answer:
+        - 'correct': Soft green background with solid green border
+        - 'wrong': Soft red background with red border
+        - 'missing': Dashed/placeholder styling
+        - None/default: Resets to original chip color
+        """
+        if status == 'correct':
+            self.config(bg='#d4efdf', bd=2, relief=tk.SOLID, highlightbackground='#27ae60', highlightcolor='#27ae60', highlightthickness=2)
+            self.lbl.config(bg='#d4efdf', fg='#196f3d')
+            if hasattr(self, 'close_btn'):
+                self.close_btn.config(bg='#d4efdf')
+        elif status == 'wrong':
+            self.config(bg='#fadbd8', bd=2, relief=tk.SOLID, highlightbackground='#e74c3c', highlightcolor='#e74c3c', highlightthickness=2)
+            self.lbl.config(bg='#fadbd8', fg='#922b21')
+            if hasattr(self, 'close_btn'):
+                self.close_btn.config(bg='#fadbd8')
+        elif status == 'missing':
+            self.config(bg='#fcf3cf', bd=2, relief=tk.DASHED, highlightbackground='#f39c12', highlightcolor='#f39c12', highlightthickness=2)
+            self.lbl.config(bg='#fcf3cf', fg='#b7950b')
+            if hasattr(self, 'close_btn'):
+                self.close_btn.config(bg='#fcf3cf')
+        else:
+            self.config(bg=self.original_color, bd=2, relief=tk.RAISED, highlightthickness=0)
+            self.lbl.config(bg=self.original_color, fg='#000000')
+            if hasattr(self, 'close_btn'):
+                self.close_btn.config(bg=self.original_color)
+
     def _on_drag_start(self, event):
         HoverMeaningTooltip.hide()
         self._drag_start_x = event.x_root

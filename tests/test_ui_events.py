@@ -31,16 +31,19 @@ class TestUIEvents(unittest.TestCase):
         self.assertEqual(len(self.app.user_selected_chunks), 1)
 
     def test_expanded_shortcut_badges(self):
-        # Index 0 -> [1], Index 8 -> [9], Index 9 -> [0], Index 10 -> [B] (skipping 'a')
+        # Index 0 -> [1], Index 8 -> [9], Index 9 -> [0], Index 10 -> [A], Index 11 -> [B]
         self.assertEqual(self.app.get_badge_for_index(0), "[1]")
         self.assertEqual(self.app.get_badge_for_index(8), "[9]")
         self.assertEqual(self.app.get_badge_for_index(9), "[0]")
-        self.assertEqual(self.app.get_badge_for_index(10), "[B]")
-        # 'u' and 'c' should also be excluded from dynamic badges
-        reserved_chars = {'H', 'S', 'L', 'A', 'R', 'P', 'U', 'C'}
-        all_badges = [self.app.get_badge_for_index(i).strip('[]') for i in range(25)]
-        for r in reserved_chars:
-            self.assertNotIn(r, all_badges)
+        self.assertEqual(self.app.get_badge_for_index(10), "[A]")
+        self.assertEqual(self.app.get_badge_for_index(11), "[B]")
+
+        # Ensure letters A-Z are mapped for tiles since controls use Ctrl combinations
+        all_badges = [self.app.get_badge_for_index(i).strip('[]') for i in range(10, 36)]
+        self.assertIn('A', all_badges)
+        self.assertIn('L', all_badges)
+        self.assertIn('R', all_badges)
+        self.assertIn('H', all_badges)
 
     def test_keyboard_backspace_undo(self):
         self.app.trigger_chunk_by_index(0)
@@ -77,7 +80,7 @@ class TestUIEvents(unittest.TestCase):
         self.root.withdraw()
         self.root.update()
 
-    def test_u_key_triggers_undo(self):
+    def test_ctrl_shortcuts_for_controls(self):
         self.app.trigger_chunk_by_index(0)
         self.assertEqual(len(self.app.user_selected_chunks), 1)
         self.app._handle_control_action(self.app.undo_last, self.app.undo_btn)

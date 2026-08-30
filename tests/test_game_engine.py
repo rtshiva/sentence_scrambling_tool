@@ -35,5 +35,19 @@ class TestGameEngine(unittest.TestCase):
         self.assertEqual(GameEngine.calculate_speed_run_points(streak=1), 120)
         self.assertEqual(GameEngine.calculate_speed_run_points(streak=5), 200)
 
+    def test_diff_align_chunks(self):
+        # Case 1: All correct
+        res1 = GameEngine.diff_align_chunks(["A", "B", "C"], ["A", "B", "C"])
+        self.assertEqual(res1, [("A", "correct", "user"), ("B", "correct", "user"), ("C", "correct", "user")])
+
+        # Case 2: One missing word in the middle (A, C instead of A, B, C)
+        # SequenceMatcher detects B is missing ('insert'), leaving A and C marked correct!
+        res2 = GameEngine.diff_align_chunks(["A", "C"], ["A", "B", "C"])
+        self.assertEqual(res2, [("A", "correct", "user"), ("B", "missing", "missing_slot"), ("C", "correct", "user")])
+
+        # Case 3: One wrong substitution (A, X, C instead of A, B, C)
+        res3 = GameEngine.diff_align_chunks(["A", "X", "C"], ["A", "B", "C"])
+        self.assertEqual(res3, [("A", "correct", "user"), ("X", "wrong", "user"), ("C", "correct", "user")])
+
 if __name__ == '__main__':
     unittest.main()

@@ -150,13 +150,13 @@ class SentenceJigsawApp:
         self.memory_badge.pack(side=tk.LEFT, padx=(12, 0))
         
         # Audio & Voice Recording Controls
-        self.listen_btn = ttk.Button(q_header, text='🔊 Teacher (L)', command=self.speak_current_question)
+        self.listen_btn = ttk.Button(q_header, text='🔊 Teacher (Ctrl+L)', command=self.speak_current_question)
         self.listen_btn.pack(side=tk.RIGHT)
 
-        self.play_my_voice_btn = ttk.Button(q_header, text='▶️ Play Me (P)', command=self.play_my_recording, state=tk.DISABLED)
+        self.play_my_voice_btn = ttk.Button(q_header, text='▶️ Play Me (Ctrl+P)', command=self.play_my_recording, state=tk.DISABLED)
         self.play_my_voice_btn.pack(side=tk.RIGHT, padx=4)
 
-        self.record_btn = ttk.Button(q_header, text='🎙️ Record (R)', command=self.toggle_recording)
+        self.record_btn = ttk.Button(q_header, text='🎙️ Record (Ctrl+R)', command=self.toggle_recording)
         self.record_btn.pack(side=tk.RIGHT, padx=4)
 
         self.question_label = ttk.Label(content_frame, text='', font=self.question_font, wraplength=900, justify=tk.LEFT, anchor=tk.W, padding=(0, 10))
@@ -172,7 +172,7 @@ class SentenceJigsawApp:
         answer_header.pack(fill=tk.X, pady=(5, 5))
         ttk.Label(answer_header, text='Your Answer (Click or Drag blocks here):', font=('', 14), foreground='gray').pack(side=tk.LEFT)
         
-        self.listen_answer_btn = ttk.Button(answer_header, text='🔊 Hear Answer (A)', command=self.speak_current_answer, state=tk.DISABLED)
+        self.listen_answer_btn = ttk.Button(answer_header, text='🔊 Hear Answer (Ctrl+A)', command=self.speak_current_answer, state=tk.DISABLED)
         self.listen_answer_btn.pack(side=tk.RIGHT, padx=(10, 0))
 
         self.tip_label = ttk.Label(answer_header, text='💡 Hover for Meaning | Right-Click to pronounce', font=('', 11, 'italic'), foreground='#2980b9')
@@ -184,8 +184,13 @@ class SentenceJigsawApp:
         self.answer_flow = FlowFrame(self.answer_board, bg=self.theme['board_bg_default'], h_spacing=10, v_spacing=10)
         self.answer_flow.pack(fill=tk.X, expand=True)
 
+        self.answer_meaning_display = tk.Text(content_frame, font=('', 14, 'italic'), fg='#2c3e50',
+                                              bg='#f4f6f7', height=2, wrap=tk.WORD, bd=1, relief=tk.SUNKEN)
+        self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X)
+        self.answer_meaning_display.config(state=tk.DISABLED)
+
         self.pool_label = ttk.Label(content_frame, text='Available Blocks (Click, drag, or Hover for meaning):', font=('', 14), foreground='gray')
-        self.pool_label.pack(anchor=tk.W, pady=(20, 5))
+        self.pool_label.pack(anchor=tk.W, pady=(15, 5))
         
         self.buttons_frame = FlowFrame(content_frame, h_spacing=12, v_spacing=12)
         self.buttons_frame.pack(fill=tk.X, pady=5, expand=True)
@@ -193,7 +198,7 @@ class SentenceJigsawApp:
         self.controls_frame = ttk.Frame(content_frame)
         self.controls_frame.pack(side=tk.BOTTOM, pady=25)
 
-        self.hint_btn = ttk.Button(self.controls_frame, text='💡 Hint (H)', command=self.give_hint, state=tk.DISABLED, width=13)
+        self.hint_btn = ttk.Button(self.controls_frame, text='💡 Hint (Ctrl+H)', command=self.give_hint, state=tk.DISABLED, width=15)
         self.hint_btn.pack(side=tk.LEFT, padx=5)
 
         self.undo_btn = ttk.Button(self.controls_frame, text='⟲ Undo (Bksp)', command=self.undo_last, state=tk.DISABLED, width=13)
@@ -202,7 +207,7 @@ class SentenceJigsawApp:
         self.clear_btn = ttk.Button(self.controls_frame, text='🗑 Clear (Esc)', command=self.clear_selection, state=tk.DISABLED, width=13)
         self.clear_btn.pack(side=tk.LEFT, padx=5)
 
-        self.skip_btn = ttk.Button(self.controls_frame, text='Skip ⏭ (S)', command=self.skip_sentence, width=13)
+        self.skip_btn = ttk.Button(self.controls_frame, text='Skip ⏭ (Ctrl+S)', command=self.skip_sentence, width=14)
         self.skip_btn.pack(side=tk.LEFT, padx=5)
 
         self.next_btn = ttk.Button(self.controls_frame, text='Next ➔ (Enter)', command=self.next_sentence, state=tk.DISABLED, width=14)
@@ -328,36 +333,32 @@ class SentenceJigsawApp:
             self.load_current_question()
 
     def setup_bindings(self):
-        # Reserved keys for core gameplay controls (excluded from tile shortcuts):
-        # h/H: Hint, s/S: Skip, l/L: Question Audio, a/A: Answer Audio, r/R: Record Voice, p/P: Play Voice,
-        # u/U, Backspace, Ctrl+Z: Undo, c/C, Escape: Clear
+        # Reserved keys for core gameplay controls:
+        # Backspace / Ctrl+Z: Undo, Escape: Clear, Return: Next
+        # Ctrl+H: Hint, Ctrl+S: Skip, Ctrl+L: Question Audio, Ctrl+A: Answer Audio, Ctrl+R: Record Voice, Ctrl+P: Play Voice
         self.root.bind('<BackSpace>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
         self.root.bind('<Control-z>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
         self.root.bind('<Control-Z>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
-        self.root.bind('<Key-u>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
-        self.root.bind('<Key-U>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
 
         self.root.bind('<Escape>', lambda e: self._handle_control_action(self.clear_selection, self.clear_btn))
-        self.root.bind('<Key-c>', lambda e: self._handle_control_action(self.clear_selection, self.clear_btn))
-        self.root.bind('<Key-C>', lambda e: self._handle_control_action(self.clear_selection, self.clear_btn))
-
         self.root.bind('<Return>', lambda e: self._handle_control_action(self.next_sentence, self.next_btn))
-        self.root.bind('<Key-h>', lambda e: self._handle_control_action(self.give_hint, self.hint_btn))
-        self.root.bind('<Key-H>', lambda e: self._handle_control_action(self.give_hint, self.hint_btn))
-        self.root.bind('<Key-s>', lambda e: self._handle_control_action(self.skip_sentence, self.skip_btn))
-        self.root.bind('<Key-S>', lambda e: self._handle_control_action(self.skip_sentence, self.skip_btn))
-        self.root.bind('<Key-l>', lambda e: self._handle_control_action(self.speak_current_question))
-        self.root.bind('<Key-L>', lambda e: self._handle_control_action(self.speak_current_question))
-        self.root.bind('<Key-a>', lambda e: self._handle_control_action(self.speak_current_answer, self.listen_answer_btn))
-        self.root.bind('<Key-A>', lambda e: self._handle_control_action(self.speak_current_answer, self.listen_answer_btn))
-        self.root.bind('<Key-r>', lambda e: self._handle_control_action(self.toggle_recording))
-        self.root.bind('<Key-R>', lambda e: self._handle_control_action(self.toggle_recording))
-        self.root.bind('<Key-p>', lambda e: self._handle_control_action(self.play_my_recording, self.play_my_voice_btn))
-        self.root.bind('<Key-P>', lambda e: self._handle_control_action(self.play_my_recording, self.play_my_voice_btn))
 
-        # Tile shortcuts: 1-9, 0, and remaining alphabet characters
-        reserved_keys = {'h', 's', 'l', 'a', 'r', 'p', 'u', 'c'}
-        shortcuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] + [chr(c) for c in range(ord('a'), ord('z')+1) if chr(c) not in reserved_keys]
+        # Control modifiers for audio, recording, hint, skip
+        self.root.bind('<Control-h>', lambda e: self._handle_control_action(self.give_hint, self.hint_btn))
+        self.root.bind('<Control-H>', lambda e: self._handle_control_action(self.give_hint, self.hint_btn))
+        self.root.bind('<Control-s>', lambda e: self._handle_control_action(self.skip_sentence, self.skip_btn))
+        self.root.bind('<Control-S>', lambda e: self._handle_control_action(self.skip_sentence, self.skip_btn))
+        self.root.bind('<Control-l>', lambda e: self._handle_control_action(self.speak_current_question, self.listen_btn))
+        self.root.bind('<Control-L>', lambda e: self._handle_control_action(self.speak_current_question, self.listen_btn))
+        self.root.bind('<Control-a>', lambda e: self._handle_control_action(self.speak_current_answer, self.listen_answer_btn))
+        self.root.bind('<Control-A>', lambda e: self._handle_control_action(self.speak_current_answer, self.listen_answer_btn))
+        self.root.bind('<Control-r>', lambda e: self._handle_control_action(self.toggle_recording))
+        self.root.bind('<Control-R>', lambda e: self._handle_control_action(self.toggle_recording))
+        self.root.bind('<Control-p>', lambda e: self._handle_control_action(self.play_my_recording, self.play_my_voice_btn))
+        self.root.bind('<Control-P>', lambda e: self._handle_control_action(self.play_my_recording, self.play_my_voice_btn))
+
+        # Tile shortcuts: 1-9, 0, then letters A-Z (all available since controls use Ctrl/Bksp/Esc/Enter)
+        shortcuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] + [chr(c) for c in range(ord('a'), ord('z')+1)]
 
         for idx, key_char in enumerate(shortcuts):
             self.root.bind(f'<Key-{key_char.lower()}>', lambda e, i=idx: self._handle_gameplay_shortcut(i))
@@ -397,17 +398,16 @@ class SentenceJigsawApp:
 
     @staticmethod
     def get_badge_for_index(idx: int) -> str:
-        reserved_keys = {'h', 's', 'l', 'a', 'r', 'p', 'u', 'c'}
-        shortcuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] + [chr(c).upper() for c in range(ord('a'), ord('z')+1) if chr(c) not in reserved_keys]
+        shortcuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] + [chr(c).upper() for c in range(ord('a'), ord('z')+1)]
         if idx < len(shortcuts):
             return f"[{shortcuts[idx]}]"
         return ""
 
     def trigger_chunk_by_index(self, index):
-        active_chunks = [item for item in self.chunk_buttons if item['btn'].state == tk.NORMAL]
-        if index < len(active_chunks):
-            chunk = active_chunks[index]['text']
-            self.select_chunk(chunk)
+        if index < len(self.chunk_buttons):
+            item = self.chunk_buttons[index]
+            if item['btn'].state == tk.NORMAL:
+                self.select_chunk(item['text'])
 
     def speak_chunk(self, chunk_text):
         if TTSManager.is_speaking():
@@ -624,14 +624,16 @@ class SentenceJigsawApp:
                 ProfileManager.set_active_last_file(filename)
             
             words = []
-            questions = []
+            sentences_to_prefetch = []
             for item in self.model.qa_data:
                 words.extend(item.chunks)
                 words.extend(item.question.split())
                 if item.question:
-                    questions.append(item.question)
+                    sentences_to_prefetch.append(item.question)
+                if item.chunks:
+                    sentences_to_prefetch.append(' '.join(item.chunks))
             DictionaryManager.prefetch_words_async(words)
-            DictionaryManager.prefetch_questions_async(questions)
+            DictionaryManager.prefetch_questions_async(sentences_to_prefetch)
 
             if self.game_mode == 'speed_run':
                 self.start_speed_run()
@@ -674,10 +676,17 @@ class SentenceJigsawApp:
                 # Fetch translation asynchronously so app remains responsive
                 curr_q = data.question
                 def on_translation_done(translated_text):
-                    current_now = self.model.get_current_question()
-                    if current_now and current_now.question == curr_q:
-                        self.root.after(0, lambda: self.set_meaning_text(f"Meaning: {translated_text}"))
+                    try:
+                        if self.root.winfo_exists():
+                            current_now = self.model.get_current_question()
+                            if current_now and current_now.question == curr_q:
+                                self.root.after(0, lambda: self.set_meaning_text(f"Meaning: {translated_text}"))
+                    except Exception:
+                        pass
                 DictionaryManager.translate_sentence_async(curr_q, on_translation_done)
+
+        # Update answer translation window
+        self.update_answer_translation()
         
         self.next_btn.config(state=tk.DISABLED)
         self.undo_btn.config(state=tk.DISABLED)
@@ -813,6 +822,36 @@ class SentenceJigsawApp:
         if text:
             self.meaning_display.insert(tk.END, text)
         self.meaning_display.config(state=tk.DISABLED)
+
+    def set_answer_meaning_text(self, text):
+        self.answer_meaning_display.config(state=tk.NORMAL)
+        self.answer_meaning_display.delete('1.0', tk.END)
+        if text:
+            self.answer_meaning_display.insert(tk.END, text)
+        self.answer_meaning_display.config(state=tk.DISABLED)
+
+    def update_answer_translation(self):
+        """Fetches or updates the English translation of the current answer sentence."""
+        data = self.model.get_current_question()
+        if not data or not data.chunks:
+            self.set_answer_meaning_text('')
+            return
+
+        answer_sentence = ' '.join(data.chunks).strip()
+        cached = DictionaryManager.get_meaning(answer_sentence)
+        if cached:
+            self.set_answer_meaning_text(f"Answer Meaning: {cached}")
+        else:
+            self.set_answer_meaning_text('')
+            def on_ans_trans_done(trans_text):
+                try:
+                    if self.root.winfo_exists():
+                        current_now = self.model.get_current_question()
+                        if current_now and ' '.join(current_now.chunks).strip() == answer_sentence:
+                            self.root.after(0, lambda: self.set_answer_meaning_text(f"Answer Meaning: {trans_text}"))
+                except Exception:
+                    pass
+            DictionaryManager.translate_sentence_async(answer_sentence, on_ans_trans_done)
 
     def render_answer_chips(self):
         self.answer_flow.clear_widgets()
@@ -980,6 +1019,11 @@ class SentenceJigsawApp:
             SoundPlayer.play_success()
             self.update_board_visuals(self.theme['board_bg_correct'])
             
+            # Set all answer chips to green validation status
+            for child in self.answer_flow.winfo_children():
+                if isinstance(child, AnswerChip):
+                    child.set_validation_status('correct')
+
             if self.game_mode == 'listening':
                 data = self.model.get_current_question()
                 self.question_label.config(text=data.question, foreground='#1e8449')
@@ -1020,9 +1064,28 @@ class SentenceJigsawApp:
                 self.speed_run_streak = 0
             self.update_board_visuals(self.theme['board_bg_incorrect'])
             
+            # Calculate granular phrase-level alignment feedback
+            if self.game_mode == 'fill_blanks':
+                expected = [self.original_chunks[i] for i in self.hidden_chunk_indices]
+            else:
+                expected = self.original_chunks
+
+            alignments = GameEngine.diff_align_chunks(self.user_selected_chunks, expected)
+            
+            # Apply color cues directly to the interactive user answer chips
+            user_chip_widgets = [c for c in self.answer_flow.winfo_children() if isinstance(c, AnswerChip) and not c.is_blank]
+            user_chip_idx = 0
+            for text, status, role in alignments:
+                if role == 'user' and user_chip_idx < len(user_chip_widgets):
+                    user_chip_widgets[user_chip_idx].set_validation_status(status)
+                    user_chip_idx += 1
+
             def reset_flash():
                 self.update_board_visuals(self.theme['board_bg_default'])
-            self.root.after(800, reset_flash) 
+                for c in self.answer_flow.winfo_children():
+                    if isinstance(c, AnswerChip):
+                        c.set_validation_status(None)
+            self.root.after(1400, reset_flash) 
 
     def restart_lesson(self):
         if not self.model.qa_data:

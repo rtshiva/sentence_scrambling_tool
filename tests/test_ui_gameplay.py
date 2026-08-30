@@ -3,6 +3,7 @@ import tkinter as tk
 from core.lesson_deck import LessonDeck
 from core.models import QuestionItem
 from ui.main_window import SentenceJigsawApp
+from ui.widgets import AnswerChip
 from ui.theme import THEMES
 
 class TestUIGameplay(unittest.TestCase):
@@ -133,6 +134,28 @@ class TestUIGameplay(unittest.TestCase):
 
         meaning_content = self.app.meaning_display.get('1.0', 'end').strip()
         self.assertIn("This is a garden", meaning_content)
+
+    def test_answer_translation_display(self):
+        from core.dictionary_cache import DictionaryManager
+        ans_sentence = "यह एक बगीचा है"
+        DictionaryManager.set_meaning(ans_sentence, "This is a garden")
+        self.app.load_current_question()
+        self.root.update()
+
+        ans_meaning_content = self.app.answer_meaning_display.get('1.0', 'end').strip()
+        self.assertIn("Answer Meaning: This is a garden", ans_meaning_content)
+
+    def test_wrong_answer_chips_highlighting(self):
+        # Select wrong chunk order: ["बगीचा", "यह एक", "है"]
+        self.app.select_chunk("बगीचा")
+        self.app.select_chunk("यह एक")
+        self.app.select_chunk("है")
+        self.app.check_answer()
+        self.root.update()
+
+        # Check that user answer chip widgets received validation statuses
+        chips = [c for c in self.app.answer_flow.winfo_children() if isinstance(c, AnswerChip) and not c.is_blank]
+        self.assertEqual(len(chips), 3)
 
 if __name__ == '__main__':
     unittest.main()
