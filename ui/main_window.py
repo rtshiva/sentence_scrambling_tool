@@ -624,10 +624,14 @@ class SentenceJigsawApp:
                 ProfileManager.set_active_last_file(filename)
             
             words = []
+            questions = []
             for item in self.model.qa_data:
                 words.extend(item.chunks)
                 words.extend(item.question.split())
+                if item.question:
+                    questions.append(item.question)
             DictionaryManager.prefetch_words_async(words)
+            DictionaryManager.prefetch_questions_async(questions)
 
             if self.game_mode == 'speed_run':
                 self.start_speed_run()
@@ -657,7 +661,23 @@ class SentenceJigsawApp:
         
         self.update_board_visuals(self.theme['board_bg_default'])
         self.score_label.config(text='')
-        self.set_meaning_text('')
+        
+        # Auto-translate / display question meaning in the meaning box below question
+        if data.meaning:
+            self.set_meaning_text(f"Meaning: {data.meaning}")
+        else:
+            cached_translation = DictionaryManager.get_meaning(data.question)
+            if cached_translation:
+                self.set_meaning_text(f"Meaning: {cached_translation}")
+            else:
+                self.set_meaning_text('')
+                # Fetch translation asynchronously so app remains responsive
+                curr_q = data.question
+                def on_translation_done(translated_text):
+                    current_now = self.model.get_current_question()
+                    if current_now and current_now.question == curr_q:
+                        self.root.after(0, lambda: self.set_meaning_text(f"Meaning: {translated_text}"))
+                DictionaryManager.translate_sentence_async(curr_q, on_translation_done)
         
         self.next_btn.config(state=tk.DISABLED)
         self.undo_btn.config(state=tk.DISABLED)
@@ -898,7 +918,6 @@ class SentenceJigsawApp:
             self.next_btn.config(state=tk.DISABLED)
             self.hint_btn.config(state=tk.NORMAL)
             self.update_board_visuals(self.theme['board_bg_default'])
-            self.set_meaning_text('')
 
     def swap_answer_chips(self, chip1, chip2):
         try:
@@ -945,7 +964,6 @@ class SentenceJigsawApp:
         self.next_btn.config(state=tk.DISABLED)
         self.hint_btn.config(state=tk.NORMAL)
         self.listen_answer_btn.config(state=tk.DISABLED)
-        self.set_meaning_text('') 
         
         for item in self.chunk_buttons:
             item['btn'].set_state(tk.NORMAL, bg=item['color'])
@@ -966,9 +984,11 @@ class SentenceJigsawApp:
                 data = self.model.get_current_question()
                 self.question_label.config(text=data.question, foreground='#1e8449')
                 
-            meaning = self.model.get_current_question().meaning
-            if meaning:
-                self.set_meaning_text(f'Meaning: {meaning}')
+            data = self.model.get_current_question()
+            if data:
+                meaning = data.meaning or DictionaryManager.get_meaning(data.question)
+                if meaning:
+                    self.set_meaning_text(f'Meaning: {meaning}')
             
             stars = 3
             if self.hints_used == 1:

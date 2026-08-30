@@ -406,7 +406,12 @@ class LessonEditor(tk.Toplevel):
         self.q_entry.pack(fill=tk.X, pady=5)
         self.q_entry.bind('<KeyRelease>', self.on_field_change)
         
-        ttk.Label(self.right_frame, text='Meaning / Translation (Optional):').pack(anchor=tk.W, pady=(10, 0))
+        meaning_hdr = ttk.Frame(self.right_frame)
+        meaning_hdr.pack(fill=tk.X, pady=(10, 0))
+        ttk.Label(meaning_hdr, text='Meaning / Translation (Auto-translates if empty):').pack(side=tk.LEFT)
+        self.trans_btn = ttk.Button(meaning_hdr, text='🌐 Auto-Translate', command=self.auto_translate_current_meaning)
+        self.trans_btn.pack(side=tk.RIGHT)
+
         self.m_entry = ttk.Entry(self.right_frame, font=('', 12))
         self.m_entry.pack(fill=tk.X, pady=5)
         self.m_entry.bind('<KeyRelease>', self.on_field_change)
@@ -533,6 +538,32 @@ class LessonEditor(tk.Toplevel):
             self.listbox.insert(self.current_selected_index, q if q else '[Empty Question]')
             self.listbox.selection_set(self.current_selected_index)
 
+    def auto_translate_current_meaning(self):
+        q_text = self.q_entry.get().strip()
+        if not q_text:
+            return
+        cached = DictionaryManager.get_meaning(q_text)
+        if cached:
+            self.m_entry.delete(0, tk.END)
+            self.m_entry.insert(0, cached)
+            self.on_field_change()
+            return
+        
+        self.trans_btn.config(text='⏳ Translating...', state=tk.DISABLED)
+        idx = self.current_selected_index
+        def on_done(trans_text):
+            def update_ui():
+                try:
+                    self.trans_btn.config(text='🌐 Auto-Translate', state=tk.NORMAL)
+                    if self.current_selected_index == idx and not self.m_entry.get().strip():
+                        self.m_entry.delete(0, tk.END)
+                        self.m_entry.insert(0, trans_text)
+                        self.on_field_change()
+                except Exception:
+                    pass
+            self.after(0, update_ui)
+        DictionaryManager.translate_sentence_async(q_text, on_done)
+
     def load_form(self):
         if self.current_selected_index is None:
             return
@@ -546,7 +577,17 @@ class LessonEditor(tk.Toplevel):
         self.q_entry.insert(0, data.get('question', ''))
         
         self.m_entry.delete(0, tk.END)
-        self.m_entry.insert(0, data.get('meaning', ''))
+        m_val = data.get('meaning', '').strip()
+        if not m_val and data.get('question', '').strip():
+            # Check cache or auto-translate
+            cached_trans = DictionaryManager.get_meaning(data['question'])
+            if cached_trans:
+                m_val = cached_trans
+                data['meaning'] = m_val
+            else:
+                self.auto_translate_current_meaning()
+
+        self.m_entry.insert(0, m_val)
         
         self.split_source_entry.delete('1.0', tk.END)
         

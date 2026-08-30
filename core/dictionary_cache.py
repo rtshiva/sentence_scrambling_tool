@@ -56,11 +56,22 @@ class DictionaryManager:
             cls._save()
 
     @classmethod
-    def fetch_online_meaning(cls, text: str, lang: str = 'hi') -> Optional[str]:
+    def detect_language(cls, text: str) -> str:
+        if re.search(r'[\u0900-\u097F]', text):
+            return 'hi'
+        if re.search(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]', text):
+            return 'ja'
+        return 'en'
+
+    @classmethod
+    def fetch_online_meaning(cls, text: str, lang: str = None) -> Optional[str]:
         cleaned = cls.clean_text(text)
         if not cleaned:
             return None
             
+        if lang is None:
+            lang = cls.detect_language(cleaned)
+
         try:
             url = f"https://api.mymemory.translated.net/get?q={urllib.parse.quote(cleaned)}&langpair={lang}|en"
             req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
@@ -75,6 +86,25 @@ class DictionaryManager:
         return None
 
     @classmethod
+    def get_or_translate_sentence(cls, text: str, lang: str = None) -> Optional[str]:
+        """Gets cached translation for a question/sentence or fetches online."""
+        if not text:
+            return None
+        cached = cls.get_meaning(text)
+        if cached:
+            return cached
+        return cls.fetch_online_meaning(text, lang)
+
+    @classmethod
+    def translate_sentence_async(cls, text: str, on_complete_callback, lang: str = None):
+        """Asynchronously translates a sentence and invokes callback(translated_text) on completion."""
+        def run():
+            res = cls.get_or_translate_sentence(text, lang)
+            if res and on_complete_callback:
+                on_complete_callback(res)
+        threading.Thread(target=run, daemon=True).start()
+
+    @classmethod
     def prefetch_words_async(cls, words_list: list, lang: str = 'hi'):
         """Fetches missing word meanings in the background to ensure instant hover lookups."""
         def run():
@@ -83,4 +113,15 @@ class DictionaryManager:
                 cleaned = cls.clean_text(word).lower()
                 if cleaned and cleaned not in cls._cache:
                     cls.fetch_online_meaning(cleaned, lang)
+        threading.Thread(target=run, daemon=True).start()
+
+    @classmethod
+    def prefetch_questions_async(cls, questions_list: list):
+        """Pre-fetches translations for full question sentences and individual words in background."""
+        def run():
+            cls._load()
+            for q in questions_list:
+                cleaned = cls.clean_text(q).lower()
+                if cleaned and cleaned not in cls._cache:
+                    cls.fetch_online_meaning(cleaned)
         threading.Thread(target=run, daemon=True).start()

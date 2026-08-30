@@ -125,5 +125,14 @@ class TestUIGameplay(unittest.TestCase):
         self.app.chunk_buttons[2]['btn']._on_end(type('Event', (), {'x_root': 0, 'y_root': 0})())
         self.assertEqual(self.app.user_selected_chunks, [third_btn_chunk])
 
+    def test_automatic_question_meaning_display(self):
+        from core.dictionary_cache import DictionaryManager
+        DictionaryManager.set_meaning("यह एक बगीचा है।", "This is a garden")
+        self.app.load_current_question()
+        self.root.update()
+
+        meaning_content = self.app.meaning_display.get('1.0', 'end').strip()
+        self.assertIn("This is a garden", meaning_content)
+
 if __name__ == '__main__':
     unittest.main()
