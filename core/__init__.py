@@ -6,6 +6,8 @@ from core.profile_manager import ProfileManager
 from core.text_parser import TextParser
 from core.tts_engine import TTSManager
 from core.sound_player import SoundPlayer
+from core.dictionary_cache import DictionaryManager
+from core.voice_recorder import VoiceRecorder
 
 __all__ = [
     'QuestionItem',
@@ -15,5 +17,7 @@ __all__ = [
     'ProfileManager',
     'TextParser',
     'TTSManager',
-    'SoundPlayer'
+    'SoundPlayer',
+    'DictionaryManager',
+    'VoiceRecorder'
 ]

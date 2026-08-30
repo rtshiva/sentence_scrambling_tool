@@ -3,7 +3,8 @@ from tkinter import ttk, messagebox, filedialog, simpledialog
 import random
 from core.profile_manager import ProfileManager
 from core.text_parser import TextParser
-from ui.theme import AVATAR_OPTIONS
+from core.dictionary_cache import DictionaryManager
+from ui.theme import AVATAR_OPTIONS, THEMES
 from ui.widgets import ScrollableFrame, FlowFrame
 
 class ProfileManagementDialog(tk.Toplevel):
@@ -139,18 +140,25 @@ class BulkStoryImporter(tk.Toplevel):
             messagebox.showerror('Error', 'Could not extract valid sentences from the text.')
             return
             
+        # Trigger background dictionary pre-fetching for instant hover lookups
+        words_to_fetch = []
+        for item in imported_items:
+            words_to_fetch.extend(item.chunks)
+            words_to_fetch.extend(item.question.split())
+        DictionaryManager.prefetch_words_async(words_to_fetch)
+
         self.on_import_callback([item.to_dict() for item in imported_items])
         self.destroy()
 
 class SettingsDialog(tk.Toplevel):
-    """Modal settings dialog for configuring game parameters, TTS speech rate & memory reset."""
+    """Modal settings dialog for configuring themes, hover meanings, speeds & reset."""
     def __init__(self, parent, current_settings, on_save_callback):
         super().__init__(parent)
         self.current_settings = current_settings
         self.on_save_callback = on_save_callback
         
-        self.title('⚙️ Game & Account Settings')
-        self.geometry('500x570')
+        self.title('⚙️ Game, Visuals & Audio Settings')
+        self.geometry('530x640')
         self.resizable(False, False)
         self.grab_set()
         
@@ -160,11 +168,38 @@ class SettingsDialog(tk.Toplevel):
         main_frame = ttk.Frame(self, padding=20)
         main_frame.pack(fill=tk.BOTH, expand=True)
         
+        # --- Theme & Visual Appearance Section ---
+        theme_group = ttk.LabelFrame(main_frame, text='🎨 Appearance & Theme', padding=10)
+        theme_group.pack(fill=tk.X, pady=(0, 10))
+        
+        ttk.Label(theme_group, text='Theme Style:').pack(anchor=tk.W, pady=(0, 2))
+        self.theme_var = tk.StringVar()
+        curr_theme = self.current_settings.get('theme', 'pastel')
+        theme_map_rev = {'pastel': '🌈 Pastel Classroom (Default)', 'dark': '🌙 Cozy Dark Mode', 'space': '🚀 Space Explorer'}
+        self.theme_var.set(theme_map_rev.get(curr_theme, '🌈 Pastel Classroom (Default)'))
+        
+        self.theme_cb = ttk.Combobox(
+            theme_group,
+            textvariable=self.theme_var,
+            values=['🌈 Pastel Classroom (Default)', '🌙 Cozy Dark Mode', '🚀 Space Explorer'],
+            state='readonly',
+            font=('', 10)
+        )
+        self.theme_cb.pack(fill=tk.X, pady=2)
+        
+        self.hover_var = tk.BooleanVar(value=self.current_settings.get('show_hover_meanings', True))
+        self.hover_check = ttk.Checkbutton(
+            theme_group,
+            text='🔍 Show Word Meaning on Mouse Hover (Disappears on mouse leave)',
+            variable=self.hover_var
+        )
+        self.hover_check.pack(anchor=tk.W, pady=(6, 2))
+
         # --- Speed Run Section ---
-        speed_group = ttk.LabelFrame(main_frame, text='⏱️ Speed Run Settings', padding=12)
+        speed_group = ttk.LabelFrame(main_frame, text='⏱️ Speed Run Settings', padding=10)
         speed_group.pack(fill=tk.X, pady=(0, 10))
         
-        ttk.Label(speed_group, text='Duration / Time Limit:').pack(anchor=tk.W, pady=(0, 4))
+        ttk.Label(speed_group, text='Duration / Time Limit:').pack(anchor=tk.W, pady=(0, 2))
         self.duration_var = tk.StringVar()
         curr_dur = self.current_settings.get('speed_run_duration_seconds', 180)
         dur_map_rev = {60: '1 Minute (60s)', 120: '2 Minutes (120s)', 180: '3 Minutes (180s - Default)', 300: '5 Minutes (300s)'}
@@ -180,10 +215,10 @@ class SettingsDialog(tk.Toplevel):
         self.duration_cb.pack(fill=tk.X, pady=2)
         
         # --- Fill in the Blanks Section ---
-        blanks_group = ttk.LabelFrame(main_frame, text='🧩 Fill-in-the-Blanks Settings', padding=12)
+        blanks_group = ttk.LabelFrame(main_frame, text='🧩 Fill-in-the-Blanks Settings', padding=10)
         blanks_group.pack(fill=tk.X, pady=(0, 10))
         
-        ttk.Label(blanks_group, text='Hidden Blanks per Sentence:').pack(anchor=tk.W, pady=(0, 4))
+        ttk.Label(blanks_group, text='Hidden Blanks per Sentence:').pack(anchor=tk.W, pady=(0, 2))
         self.blanks_var = tk.StringVar()
         curr_blanks = self.current_settings.get('fill_blanks_count_mode', 'auto')
         blanks_map_rev = {'auto': 'Adaptive Auto (1-2 depending on length)', '1': '1 Blank per sentence', '2': '2 Blanks per sentence', '3': '3 Blanks per sentence'}
@@ -204,10 +239,10 @@ class SettingsDialog(tk.Toplevel):
         self.blanks_cb.pack(fill=tk.X, pady=2)
         
         # --- Neural Speech & Pronunciation Section ---
-        tts_group = ttk.LabelFrame(main_frame, text='🔊 Neural Text-to-Speech (Hindi, Japanese, English)', padding=12)
+        tts_group = ttk.LabelFrame(main_frame, text='🔊 Neural Text-to-Speech & Audio', padding=10)
         tts_group.pack(fill=tk.X, pady=(0, 10))
         
-        ttk.Label(tts_group, text='Speech Playback Speed:').pack(anchor=tk.W, pady=(0, 4))
+        ttk.Label(tts_group, text='Speech Playback Speed:').pack(anchor=tk.W, pady=(0, 2))
         self.tts_speed_var = tk.StringVar()
         curr_rate = self.current_settings.get('tts_speed_rate', '+0%')
         rate_map_rev = {'-25%': 'Slow (0.75x - Ideal for kids)', '+0%': 'Normal (1.0x - Default)', '+20%': 'Fast (1.2x)'}
@@ -222,20 +257,19 @@ class SettingsDialog(tk.Toplevel):
         )
         self.tts_speed_cb.pack(fill=tk.X, pady=2)
         
-        # --- Long-Term Memory Section ---
-        active_name = ProfileManager.get_active_profile_name()
-        mem_group = ttk.LabelFrame(main_frame, text=f'🧠 Long-Term Memory for "{active_name}"', padding=12)
-        mem_group.pack(fill=tk.X, pady=(0, 10))
-        ttk.Button(mem_group, text=f'🗑 Reset Progress for {active_name}', command=self.reset_memory).pack(anchor=tk.W)
-        
-        # --- Audio Sound Effects Toggle ---
         self.sound_var = tk.BooleanVar(value=self.current_settings.get('sound_enabled', True))
         self.sound_check = ttk.Checkbutton(
-            main_frame,
+            tts_group,
             text='Enable Sound Effects (Click, Success Chime, Error Tone)',
             variable=self.sound_var
         )
-        self.sound_check.pack(anchor=tk.W, pady=(0, 10))
+        self.sound_check.pack(anchor=tk.W, pady=(4, 0))
+
+        # --- Long-Term Memory Section ---
+        active_name = ProfileManager.get_active_profile_name()
+        mem_group = ttk.LabelFrame(main_frame, text=f'🧠 Memory for "{active_name}"', padding=10)
+        mem_group.pack(fill=tk.X, pady=(0, 10))
+        ttk.Button(mem_group, text=f'🗑 Reset Progress for {active_name}', command=self.reset_memory).pack(anchor=tk.W)
         
         # --- Bottom Buttons ---
         btn_frame = ttk.Frame(main_frame)
@@ -279,12 +313,22 @@ class SettingsDialog(tk.Toplevel):
         else:
             rate_val = '+0%'
             
+        th_str = self.theme_var.get()
+        if 'Dark' in th_str:
+            th_val = 'dark'
+        elif 'Space' in th_str:
+            th_val = 'space'
+        else:
+            th_val = 'pastel'
+
         new_settings = {
             'speed_run_duration_seconds': dur_sec,
             'fill_blanks_count_mode': b_mode,
             'sound_enabled': self.sound_var.get(),
             'tts_speed_rate': rate_val,
-            'tts_voice_override': 'auto'
+            'tts_voice_override': 'auto',
+            'theme': th_val,
+            'show_hover_meanings': self.hover_var.get()
         }
         
         ProfileManager.save_settings(new_settings)

@@ -1,7 +1,40 @@
 import tkinter as tk
 from tkinter import ttk
 import platform
-from ui.theme import THEME
+from core.dictionary_cache import DictionaryManager
+
+class HoverMeaningTooltip:
+    """Displays a clean floating tooltip with word/chunk meanings when hovered."""
+    _window = None
+
+    @classmethod
+    def show(cls, text, x, y, font=('', 10, 'bold')):
+        cls.hide()
+        meaning = DictionaryManager.get_meaning(text)
+        if not meaning:
+            return
+
+        cls._window = tk.Toplevel()
+        cls._window.overrideredirect(True)
+        cls._window.attributes('-topmost', True)
+        try:
+            cls._window.attributes('-alpha', 0.95)
+        except Exception:
+            pass
+
+        frame = tk.Frame(cls._window, bd=1, relief=tk.SOLID, bg='#2c3e50')
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        lbl = tk.Label(frame, text=f"📖 {meaning}", font=font, bg='#2c3e50', fg='#ffffff', padx=8, pady=4)
+        lbl.pack()
+
+        cls._window.geometry(f"+{x + 10}+{y + 24}")
+
+    @classmethod
+    def hide(cls):
+        if cls._window:
+            cls._window.destroy()
+            cls._window = None
 
 class ScrollableFrame(ttk.Frame):
     """A generic scrollable frame widget with mousewheel support."""
@@ -135,7 +168,7 @@ class DragGhost:
 
 class AnswerChip(tk.Frame):
     """An interactive chip widget representing an answer chunk."""
-    def __init__(self, parent, text, color, on_remove_callback, on_swap_callback, on_drag_status_callback=None, is_blank=False, font=('', 18, 'bold'), on_pronounce_callback=None):
+    def __init__(self, parent, text, color, on_remove_callback, on_swap_callback, on_drag_status_callback=None, is_blank=False, font=('', 18, 'bold'), on_pronounce_callback=None, show_hover_meanings=True):
         super().__init__(parent, bd=2, relief=tk.RAISED, bg=color, cursor='hand2')
         self.text = text
         self.original_color = color
@@ -146,6 +179,7 @@ class AnswerChip(tk.Frame):
         self.on_pronounce_callback = on_pronounce_callback
         self.is_blank = is_blank
         self.font = font
+        self.show_hover_meanings = show_hover_meanings
 
         label_text = ' ____ ' if is_blank else text
         self.lbl = tk.Label(self, text=label_text, font=self.font, bg=color, padx=12, pady=6)
@@ -163,22 +197,32 @@ class AnswerChip(tk.Frame):
                 w.bind('<B1-Motion>', self._on_drag_motion)
                 w.bind('<ButtonRelease-1>', self._on_drag_end)
                 w.bind('<Button-3>', lambda e: self._on_pronounce())
+                w.bind('<Enter>', self._on_enter)
+                w.bind('<Leave>', self._on_leave)
 
         self._drag_start_x = 0
         self._drag_start_y = 0
         self._is_dragging = False
         self._highlighted_target = None
 
+    def _on_enter(self, event):
+        if self.show_hover_meanings and not self.is_blank and not self._is_dragging:
+            HoverMeaningTooltip.show(self.text, event.x_root, event.y_root)
+
+    def _on_leave(self, event):
+        HoverMeaningTooltip.hide()
+
     def _on_pronounce(self):
+        HoverMeaningTooltip.hide()
         if self.on_pronounce_callback and not self.is_blank:
             self.on_pronounce_callback(self.text)
 
-    def set_highlight(self, active=True):
+    def set_highlight(self, active=True, highlight_color='#f9e79f'):
         if active:
-            self.config(bg=THEME['drop_highlight'], bd=3, relief=tk.SOLID)
-            self.lbl.config(bg=THEME['drop_highlight'])
+            self.config(bg=highlight_color, bd=3, relief=tk.SOLID)
+            self.lbl.config(bg=highlight_color)
             if hasattr(self, 'close_btn'):
-                self.close_btn.config(bg=THEME['drop_highlight'])
+                self.close_btn.config(bg=highlight_color)
         else:
             self.config(bg=self.original_color, bd=2, relief=tk.RAISED)
             self.lbl.config(bg=self.original_color)
@@ -186,6 +230,7 @@ class AnswerChip(tk.Frame):
                 self.close_btn.config(bg=self.original_color)
 
     def _on_drag_start(self, event):
+        HoverMeaningTooltip.hide()
         self._drag_start_x = event.x_root
         self._drag_start_y = event.y_root
         self._is_dragging = False
@@ -232,8 +277,8 @@ class AnswerChip(tk.Frame):
             self.on_remove_callback(self)
 
 class DraggablePoolButton(tk.Frame):
-    """A responsive block widget supporting single-click, drag-and-drop, and pronunciation."""
-    def __init__(self, master, chunk, badge_text, bg_color, font, on_click_callback, on_drop_callback, on_drag_status_callback=None, on_pronounce_callback=None, **kwargs):
+    """A responsive block widget supporting single-click, drag-and-drop, hover meaning & pronunciation."""
+    def __init__(self, master, chunk, badge_text, bg_color, font, on_click_callback, on_drop_callback, on_drag_status_callback=None, on_pronounce_callback=None, show_hover_meanings=True, **kwargs):
         super().__init__(master, bd=2, relief=tk.RAISED, bg=bg_color, cursor='hand2', padx=10, pady=6)
         self.chunk = chunk
         self.bg_color = bg_color
@@ -242,6 +287,7 @@ class DraggablePoolButton(tk.Frame):
         self.on_drop_callback = on_drop_callback
         self.on_drag_status_callback = on_drag_status_callback
         self.on_pronounce_callback = on_pronounce_callback
+        self.show_hover_meanings = show_hover_meanings
         self.state = tk.NORMAL
         
         self.lbl = tk.Label(self, text=badge_text, font=font, bg=bg_color, cursor='hand2')
@@ -272,18 +318,23 @@ class DraggablePoolButton(tk.Frame):
             self.lbl.config(cursor='hand2', fg='#000000')
 
     def _on_pronounce(self):
+        HoverMeaningTooltip.hide()
         if self.on_pronounce_callback and self.state == tk.NORMAL:
             self.on_pronounce_callback(self.chunk)
 
     def _on_enter(self, event):
         if self.state == tk.NORMAL:
             self.config(relief=tk.GROOVE)
+            if self.show_hover_meanings and not self._is_dragging:
+                HoverMeaningTooltip.show(self.chunk, event.x_root, event.y_root)
 
     def _on_leave(self, event):
+        HoverMeaningTooltip.hide()
         if self.state == tk.NORMAL:
             self.config(relief=tk.RAISED)
 
     def _on_start(self, event):
+        HoverMeaningTooltip.hide()
         if self.state != tk.NORMAL:
             return
         self._drag_start_x = event.x_root

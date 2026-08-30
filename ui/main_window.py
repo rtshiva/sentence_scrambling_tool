@@ -17,27 +17,25 @@ from core.lesson_deck import LessonDeck
 from core.memory import MemoryManager
 from core.tts_engine import TTSManager
 from core.sound_player import SoundPlayer
+from core.dictionary_cache import DictionaryManager
+from core.voice_recorder import VoiceRecorder
 
-from ui.theme import THEME, PASTEL_COLORS, ENCOURAGEMENTS
-from ui.widgets import ScrollableFrame, FlowFrame, AnswerChip, DraggablePoolButton
+from ui.theme import get_theme, ENCOURAGEMENTS
+from ui.widgets import ScrollableFrame, FlowFrame, AnswerChip, DraggablePoolButton, HoverMeaningTooltip
 from ui.dialogs import ProfileManagementDialog, SettingsDialog, LessonEditor
 
 class SentenceJigsawApp:
     def __init__(self, root):
         self.root = root
         self.root.title('🧩 Sentence Jigsaw')
-        self.root.geometry('1060x860')
+        self.root.geometry('1060x870')
         
         self.settings = ProfileManager.get_settings()
+        self.theme = get_theme(self.settings.get('theme', 'pastel'))
         SoundPlayer.sound_enabled = self.settings.get('sound_enabled', True)
         self.model = LessonDeck()
         
-        if HAS_SV_TTK:
-            sv_ttk.set_theme('light')
-        else:
-            self.style = ttk.Style()
-            if 'clam' in self.style.theme_names():
-                self.style.theme_use('clam')
+        self.apply_ttk_theme()
         
         self.question_font = ('', 22, 'bold')
         self.answer_font = ('', 20, 'bold')
@@ -67,29 +65,38 @@ class SentenceJigsawApp:
         self.setup_bindings()
         self.check_initial_file()
 
+    def apply_ttk_theme(self):
+        th_name = self.settings.get('theme', 'pastel')
+        if HAS_SV_TTK:
+            sv_ttk.set_theme('dark' if th_name in ('dark', 'space') else 'light')
+        else:
+            style = ttk.Style()
+            if 'clam' in style.theme_names():
+                style.theme_use('clam')
+
     def get_speed_run_mode_label(self):
         secs = self.settings.get('speed_run_duration_seconds', 180)
         mins = secs // 60
         return f'⏱️ Speed Run ({mins}m)'
 
     def setup_ui(self):
-        top_frame = ttk.Frame(self.root, padding=10)
-        top_frame.pack(fill=tk.X)
+        self.top_frame = ttk.Frame(self.root, padding=10)
+        self.top_frame.pack(fill=tk.X)
         
         # User Profile Switcher
-        ttk.Label(top_frame, text='👤 Account:', font=('', 11, 'bold')).pack(side=tk.LEFT, padx=(0, 3))
+        ttk.Label(self.top_frame, text='👤 Account:', font=('', 11, 'bold')).pack(side=tk.LEFT, padx=(0, 3))
         self.profile_var = tk.StringVar()
-        self.profile_cb = ttk.Combobox(top_frame, textvariable=self.profile_var, width=14, state='readonly', font=('', 10))
+        self.profile_cb = ttk.Combobox(self.top_frame, textvariable=self.profile_var, width=14, state='readonly', font=('', 10))
         self.profile_cb.pack(side=tk.LEFT, padx=(0, 6))
         self.profile_cb.bind('<<ComboboxSelected>>', self.on_profile_dropdown_select)
         self.update_profile_dropdown()
         
-        ttk.Button(top_frame, text='⚙️ Profiles', width=10, command=self.open_profile_manager).pack(side=tk.LEFT, padx=(0, 15))
+        ttk.Button(self.top_frame, text='⚙️ Profiles', width=10, command=self.open_profile_manager).pack(side=tk.LEFT, padx=(0, 15))
 
-        ttk.Label(top_frame, text='Mode:', font=('', 11, 'bold')).pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Label(self.top_frame, text='Mode:', font=('', 11, 'bold')).pack(side=tk.LEFT, padx=(0, 4))
         self.mode_var = tk.StringVar(value='🎯 Mastery')
         self.mode_cb = ttk.Combobox(
-            top_frame, 
+            self.top_frame, 
             textvariable=self.mode_var, 
             values=['🎯 Mastery', self.get_speed_run_mode_label(), '🧩 Fill in Blanks', '🎧 Listening Mode'], 
             width=16, 
@@ -99,26 +106,26 @@ class SentenceJigsawApp:
         self.mode_cb.pack(side=tk.LEFT, padx=(0, 10))
         self.mode_cb.bind('<<ComboboxSelected>>', self.on_mode_change)
 
-        self.progress_label = ttk.Label(top_frame, text='No file loaded', font=('', 12, 'bold'))
+        self.progress_label = ttk.Label(self.top_frame, text='No file loaded', font=('', 12, 'bold'))
         self.progress_label.pack(side=tk.LEFT)
         
-        self.progress_bar = ttk.Progressbar(top_frame, orient=tk.HORIZONTAL, length=120, mode='determinate')
+        self.progress_bar = ttk.Progressbar(self.top_frame, orient=tk.HORIZONTAL, length=120, mode='determinate')
         self.progress_bar.pack(side=tk.LEFT, padx=8)
         
-        self.score_label = ttk.Label(top_frame, text='', font=('', 13, 'bold'), foreground='#f39c12')
+        self.score_label = ttk.Label(self.top_frame, text='', font=('', 13, 'bold'), foreground='#f39c12')
         self.score_label.pack(side=tk.LEFT, padx=6)
         
-        ttk.Button(top_frame, text='⚙️ Settings', command=self.open_settings).pack(side=tk.RIGHT)
-        ttk.Button(top_frame, text='📂 Load', command=self.open_file_dialog).pack(side=tk.RIGHT, padx=3)
-        ttk.Button(top_frame, text='✏️ Edit', command=self.open_editor).pack(side=tk.RIGHT, padx=3)
-        ttk.Button(top_frame, text='🖨️ Worksheet', command=self.generate_worksheet).pack(side=tk.RIGHT, padx=3)
-        ttk.Button(top_frame, text='🔄 Restart', command=self.restart_lesson).pack(side=tk.RIGHT, padx=3)
+        ttk.Button(self.top_frame, text='⚙️ Settings', command=self.open_settings).pack(side=tk.RIGHT)
+        ttk.Button(self.top_frame, text='📂 Load', command=self.open_file_dialog).pack(side=tk.RIGHT, padx=3)
+        ttk.Button(self.top_frame, text='✏️ Edit', command=self.open_editor).pack(side=tk.RIGHT, padx=3)
+        ttk.Button(self.top_frame, text='🖨️ Worksheet', command=self.generate_worksheet).pack(side=tk.RIGHT, padx=3)
+        ttk.Button(self.top_frame, text='🔄 Restart', command=self.restart_lesson).pack(side=tk.RIGHT, padx=3)
 
         self.main_scroll = ScrollableFrame(self.root, padding=20)
         self.main_scroll.pack(fill=tk.BOTH, expand=True)
         content_frame = self.main_scroll.scrollable_frame
 
-        # --- Question Header with Memory Status & Listen Button ---
+        # --- Question Header with Memory Badge, Listen & Voice Recording Buttons ---
         q_header = ttk.Frame(content_frame)
         q_header.pack(fill=tk.X, pady=(0, 5))
         ttk.Label(q_header, text='Question:', font=('', 14), foreground='gray').pack(side=tk.LEFT)
@@ -126,8 +133,15 @@ class SentenceJigsawApp:
         self.memory_badge = tk.Label(q_header, text='', font=('', 10, 'bold'), bg='#e8ecef', fg='#333333', padx=8, pady=2, bd=1, relief=tk.SOLID)
         self.memory_badge.pack(side=tk.LEFT, padx=(12, 0))
         
-        self.listen_btn = ttk.Button(q_header, text='🔊 Listen (L)', command=self.speak_current_question)
+        # Audio & Voice Recording Controls
+        self.listen_btn = ttk.Button(q_header, text='🔊 Teacher (L)', command=self.speak_current_question)
         self.listen_btn.pack(side=tk.RIGHT)
+
+        self.play_my_voice_btn = ttk.Button(q_header, text='▶️ Play Me (P)', command=self.play_my_recording, state=tk.DISABLED)
+        self.play_my_voice_btn.pack(side=tk.RIGHT, padx=4)
+
+        self.record_btn = ttk.Button(q_header, text='🎙️ Record (R)', command=self.toggle_recording)
+        self.record_btn.pack(side=tk.RIGHT, padx=4)
 
         self.question_label = ttk.Label(content_frame, text='', font=self.question_font, wraplength=900, justify=tk.LEFT, anchor=tk.W, padding=(0, 10))
         self.question_label.pack(fill=tk.X, pady=(0, 15))
@@ -145,16 +159,16 @@ class SentenceJigsawApp:
         self.listen_answer_btn = ttk.Button(answer_header, text='🔊 Hear Answer (A)', command=self.speak_current_answer, state=tk.DISABLED)
         self.listen_answer_btn.pack(side=tk.RIGHT, padx=(10, 0))
 
-        self.tip_label = ttk.Label(answer_header, text='💡 Right-Click block to hear pronunciation', font=('', 11, 'italic'), foreground='#2980b9')
+        self.tip_label = ttk.Label(answer_header, text='💡 Hover for Meaning | Right-Click to pronounce', font=('', 11, 'italic'), foreground='#2980b9')
         self.tip_label.pack(side=tk.RIGHT)
         
-        self.answer_board = tk.Frame(content_frame, bg=THEME['board_bg_default'], bd=3, relief=tk.GROOVE, padx=15, pady=15)
+        self.answer_board = tk.Frame(content_frame, bg=self.theme['board_bg_default'], bd=3, relief=tk.GROOVE, padx=15, pady=15)
         self.answer_board.pack(pady=5, fill=tk.X)
         
-        self.answer_flow = FlowFrame(self.answer_board, bg=THEME['board_bg_default'], h_spacing=10, v_spacing=10)
+        self.answer_flow = FlowFrame(self.answer_board, bg=self.theme['board_bg_default'], h_spacing=10, v_spacing=10)
         self.answer_flow.pack(fill=tk.X, expand=True)
 
-        self.pool_label = ttk.Label(content_frame, text='Available Blocks (Click, drag, or Right-Click to pronounce):', font=('', 14), foreground='gray')
+        self.pool_label = ttk.Label(content_frame, text='Available Blocks (Click, drag, or Hover for meaning):', font=('', 14), foreground='gray')
         self.pool_label.pack(anchor=tk.W, pady=(20, 5))
         
         self.buttons_frame = FlowFrame(content_frame, h_spacing=12, v_spacing=12)
@@ -177,6 +191,32 @@ class SentenceJigsawApp:
 
         self.next_btn = ttk.Button(self.controls_frame, text='Next ➔ (Enter)', command=self.next_sentence, state=tk.DISABLED, width=14)
         self.next_btn.pack(side=tk.LEFT, padx=5)
+
+    def toggle_recording(self):
+        if VoiceRecorder.is_recording():
+            success = VoiceRecorder.stop_recording()
+            self.record_btn.config(text='🎙️ Record (R)')
+            if success:
+                self.play_my_voice_btn.config(state=tk.NORMAL)
+                SoundPlayer.play_click()
+        else:
+            started = VoiceRecorder.start_recording()
+            if started:
+                self.record_btn.config(text='🔴 Recording... (Click to Stop)')
+                self.play_my_voice_btn.config(state=tk.DISABLED)
+                SoundPlayer.play_click()
+            else:
+                messagebox.showwarning('Mic Unavailable', 'Microphone capture is only supported on Windows multimedia devices.')
+
+    def play_my_recording(self):
+        self.play_my_voice_btn.config(text='▶️ Playing...', state=tk.DISABLED)
+        def on_done():
+            try:
+                if self.root.winfo_exists():
+                    self.play_my_voice_btn.config(text='▶️ Play Me (P)', state=tk.NORMAL)
+            except Exception:
+                pass
+        VoiceRecorder.play_recording(on_finish_callback=on_done)
 
     def update_profile_dropdown(self):
         profiles = []
@@ -203,6 +243,8 @@ class SentenceJigsawApp:
     def switch_to_profile(self, profile_name):
         ProfileManager.switch_profile(profile_name)
         self.settings = ProfileManager.get_settings()
+        self.theme = get_theme(self.settings.get('theme', 'pastel'))
+        self.apply_ttk_theme()
         SoundPlayer.sound_enabled = self.settings.get('sound_enabled', True)
         self.update_profile_dropdown()
         self.model.reset_deck()
@@ -220,6 +262,10 @@ class SentenceJigsawApp:
         self.root.bind('<L>', lambda e: self.speak_current_question())
         self.root.bind('<a>', lambda e: self.speak_current_answer() if str(self.listen_answer_btn['state']) == 'normal' else None)
         self.root.bind('<A>', lambda e: self.speak_current_answer() if str(self.listen_answer_btn['state']) == 'normal' else None)
+        self.root.bind('<r>', lambda e: self.toggle_recording())
+        self.root.bind('<R>', lambda e: self.toggle_recording())
+        self.root.bind('<p>', lambda e: self.play_my_recording() if str(self.play_my_voice_btn['state']) == 'normal' else None)
+        self.root.bind('<P>', lambda e: self.play_my_recording() if str(self.play_my_voice_btn['state']) == 'normal' else None)
 
         for i in range(1, 10):
             self.root.bind(str(i), lambda e, idx=i-1: self.trigger_chunk_by_index(idx))
@@ -250,7 +296,7 @@ class SentenceJigsawApp:
         def on_done():
             try:
                 if self.root.winfo_exists():
-                    self.listen_btn.config(text='🔊 Listen (L)', state=tk.NORMAL)
+                    self.listen_btn.config(text='🔊 Teacher (L)', state=tk.NORMAL)
             except Exception:
                 pass
                 
@@ -291,15 +337,17 @@ class SentenceJigsawApp:
 
     def set_board_drag_highlight(self, is_dragging):
         if is_dragging:
-            self.answer_board.config(bd=3, relief=tk.DASHED if hasattr(tk, 'DASHED') else tk.RIDGE, bg='#eaf2f8')
+            self.answer_board.config(bd=3, relief=tk.DASHED if hasattr(tk, 'DASHED') else tk.RIDGE, bg=self.theme['drop_highlight'])
         else:
-            self.update_board_visuals(THEME['board_bg_default'])
+            self.update_board_visuals(self.theme['board_bg_default'])
 
     def open_settings(self):
         SettingsDialog(self.root, self.settings, on_save_callback=self.on_settings_saved)
 
     def on_settings_saved(self, new_settings):
         self.settings = new_settings
+        self.theme = get_theme(new_settings.get('theme', 'pastel'))
+        self.apply_ttk_theme()
         SoundPlayer.sound_enabled = new_settings.get('sound_enabled', True)
         
         curr_val = self.mode_var.get()
@@ -409,6 +457,14 @@ class SentenceJigsawApp:
         try:
             self.model.load_file(filename)
             self.progress_bar['maximum'] = self.model.total_questions()
+            
+            # Pre-fetch dictionary meanings in the background for instant hover lookups
+            words = []
+            for item in self.model.qa_data:
+                words.extend(item.chunks)
+                words.extend(item.question.split())
+            DictionaryManager.prefetch_words_async(words)
+
             if self.game_mode == 'speed_run':
                 self.start_speed_run()
             else:
@@ -422,9 +478,9 @@ class SentenceJigsawApp:
             return
             
         if self.game_mode == 'listening':
-            self.question_label.config(text='🎧 [ Click "Listen (L)" to hear the sentence ]', foreground='#2980b9')
+            self.question_label.config(text='🎧 [ Click "Teacher (L)" to hear the sentence ]', foreground='#2980b9')
         else:
-            self.question_label.config(text=data.question, foreground='#000000')
+            self.question_label.config(text=data.question, foreground=self.theme.get('text_primary', '#000000'))
             
         self.original_chunks = list(data.chunks)
         self.user_selected_chunks = []
@@ -435,7 +491,7 @@ class SentenceJigsawApp:
         badge_text, badge_color = MemoryManager.get_status_badge(data.question, data.chunks, ProfileManager.get_active_memory_store())
         self.memory_badge.config(text=badge_text, fg=badge_color)
         
-        self.update_board_visuals(THEME['board_bg_default'])
+        self.update_board_visuals(self.theme['board_bg_default'])
         self.score_label.config(text='')
         self.set_meaning_text('')
         
@@ -445,6 +501,7 @@ class SentenceJigsawApp:
         self.hint_btn.config(state=tk.NORMAL)
         self.skip_btn.config(state=tk.NORMAL)
         self.listen_answer_btn.config(state=tk.DISABLED)
+        self.play_my_voice_btn.config(state=tk.NORMAL if VoiceRecorder.has_recording() else tk.DISABLED)
 
         if self.game_mode == 'mastery':
             self.progress_label.config(text=f'Mastered: {self.model.mastered_questions()} / {self.model.total_questions()}')
@@ -475,12 +532,13 @@ class SentenceJigsawApp:
         while len(scrambled) > 1 and scrambled == self.original_chunks:
             random.shuffle(scrambled)
 
-        shuffled_colors = PASTEL_COLORS.copy()
-        random.shuffle(shuffled_colors)
+        tile_colors = self.theme.get('tile_colors', ['#bae1ff']).copy()
+        random.shuffle(tile_colors)
+        show_hover = self.settings.get('show_hover_meanings', True)
         
-        self.pool_label.config(text='Click, drag, or Right-Click to pronounce blocks:')
+        self.pool_label.config(text='Click, drag, or Hover for meaning:')
         for idx, chunk in enumerate(scrambled):
-            bg_color = shuffled_colors[idx % len(shuffled_colors)]
+            bg_color = tile_colors[idx % len(tile_colors)]
             badge_text = f'[{idx+1}] {chunk}' if idx < 9 else chunk
             btn = DraggablePoolButton(
                 self.buttons_frame, 
@@ -491,7 +549,8 @@ class SentenceJigsawApp:
                 on_click_callback=self.select_chunk,
                 on_drop_callback=self.handle_pool_drop,
                 on_drag_status_callback=self.set_board_drag_highlight,
-                on_pronounce_callback=self.speak_chunk
+                on_pronounce_callback=self.speak_chunk,
+                show_hover_meanings=show_hover
             )
             self.buttons_frame.add_widget(btn)
             self.chunk_buttons.append({'text': chunk, 'btn': btn, 'color': bg_color, 'badge': badge_text})
@@ -517,12 +576,13 @@ class SentenceJigsawApp:
         blank_chunks = [self.original_chunks[i] for i in self.hidden_chunk_indices]
         random.shuffle(blank_chunks)
 
-        self.pool_label.config(text=f'Pick, drag, or Right-Click to pronounce missing block(s):')
-        shuffled_colors = PASTEL_COLORS.copy()
-        random.shuffle(shuffled_colors)
+        self.pool_label.config(text=f'Pick, drag, or Hover for meaning:')
+        tile_colors = self.theme.get('tile_colors', ['#bae1ff']).copy()
+        random.shuffle(tile_colors)
+        show_hover = self.settings.get('show_hover_meanings', True)
 
         for idx, chunk in enumerate(blank_chunks):
-            bg_color = shuffled_colors[idx % len(shuffled_colors)]
+            bg_color = tile_colors[idx % len(tile_colors)]
             badge_text = f'[{idx+1}] {chunk}' if idx < 9 else chunk
             btn = DraggablePoolButton(
                 self.buttons_frame, 
@@ -533,7 +593,8 @@ class SentenceJigsawApp:
                 on_click_callback=self.select_chunk,
                 on_drop_callback=self.handle_pool_drop,
                 on_drag_status_callback=self.set_board_drag_highlight,
-                on_pronounce_callback=self.speak_chunk
+                on_pronounce_callback=self.speak_chunk,
+                show_hover_meanings=show_hover
             )
             self.buttons_frame.add_widget(btn)
             self.chunk_buttons.append({'text': chunk, 'btn': btn, 'color': bg_color, 'badge': badge_text})
@@ -565,6 +626,7 @@ class SentenceJigsawApp:
 
     def render_answer_chips(self):
         self.answer_flow.clear_widgets()
+        show_hover = self.settings.get('show_hover_meanings', True)
 
         if self.user_selected_chunks:
             self.listen_answer_btn.config(state=tk.NORMAL)
@@ -580,25 +642,27 @@ class SentenceJigsawApp:
                         chip = AnswerChip(
                             self.answer_flow, 
                             text=filled_val, 
-                            color=THEME['chip_bg'], 
+                            color=self.theme['chip_bg'], 
                             on_remove_callback=lambda chip, c=filled_val: self.remove_chunk(c),
                             on_swap_callback=self.swap_answer_chips,
                             on_drag_status_callback=self.set_board_drag_highlight,
                             on_pronounce_callback=self.speak_chunk,
                             is_blank=False,
-                            font=self.answer_font
+                            font=self.answer_font,
+                            show_hover_meanings=show_hover
                         )
                     else:
                         chip = AnswerChip(
                             self.answer_flow, 
                             text='____', 
-                            color=THEME['blank_bg'], 
+                            color=self.theme['blank_bg'], 
                             on_remove_callback=lambda c: None,
                             on_swap_callback=lambda c1, c2: None,
                             on_drag_status_callback=None,
                             on_pronounce_callback=None,
                             is_blank=True,
-                            font=self.answer_font
+                            font=self.answer_font,
+                            show_hover_meanings=False
                         )
                     self.answer_flow.add_widget(chip)
                 else:
@@ -606,11 +670,11 @@ class SentenceJigsawApp:
                     self.answer_flow.add_widget(lbl)
         else:
             if not self.user_selected_chunks:
-                placeholder = tk.Label(self.answer_flow, text='Click or drag blocks here / Press keys 1-9 to answer...', font=('', 14, 'italic'), fg='#888888', bg=THEME['board_bg_default'])
+                placeholder = tk.Label(self.answer_flow, text='Click or drag blocks here / Press keys 1-9 to answer...', font=('', 14, 'italic'), fg='#888888', bg=self.theme['board_bg_default'])
                 self.answer_flow.add_widget(placeholder)
             else:
                 for chunk in self.user_selected_chunks:
-                    color = THEME['chip_bg']
+                    color = self.theme['chip_bg']
                     for item in self.chunk_buttons:
                         if item['text'] == chunk:
                             color = item['color']
@@ -624,7 +688,8 @@ class SentenceJigsawApp:
                         on_drag_status_callback=self.set_board_drag_highlight,
                         on_pronounce_callback=self.speak_chunk,
                         is_blank=False,
-                        font=self.answer_font
+                        font=self.answer_font,
+                        show_hover_meanings=show_hover
                     )
                     self.answer_flow.add_widget(chip)
 
@@ -636,7 +701,7 @@ class SentenceJigsawApp:
 
         for item in self.chunk_buttons:
             if item['text'] == chunk and item['btn'].state == tk.NORMAL:
-                item['btn'].set_state(tk.DISABLED, bg=THEME['button_disabled'])
+                item['btn'].set_state(tk.DISABLED, bg=self.theme['button_disabled'])
                 break
         
         expected_len = len(self.hidden_chunk_indices) if self.game_mode == 'fill_blanks' else len(self.original_chunks)
@@ -659,7 +724,7 @@ class SentenceJigsawApp:
                 
             self.next_btn.config(state=tk.DISABLED)
             self.hint_btn.config(state=tk.NORMAL)
-            self.update_board_visuals(THEME['board_bg_default'])
+            self.update_board_visuals(self.theme['board_bg_default'])
             self.set_meaning_text('')
 
     def swap_answer_chips(self, chip1, chip2):
@@ -701,7 +766,7 @@ class SentenceJigsawApp:
     def clear_selection(self):
         self.user_selected_chunks.clear()
         self.render_answer_chips()
-        self.update_board_visuals(THEME['board_bg_default'])
+        self.update_board_visuals(self.theme['board_bg_default'])
         
         self.undo_btn.config(state=tk.DISABLED)
         self.next_btn.config(state=tk.DISABLED)
@@ -722,7 +787,7 @@ class SentenceJigsawApp:
 
         if is_correct:
             SoundPlayer.play_success()
-            self.update_board_visuals(THEME['board_bg_correct'])
+            self.update_board_visuals(self.theme['board_bg_correct'])
             
             if self.game_mode == 'listening':
                 data = self.model.get_current_question()
@@ -760,10 +825,10 @@ class SentenceJigsawApp:
             self.flawless_attempt = False
             if self.game_mode == 'speed_run':
                 self.speed_run_streak = 0
-            self.update_board_visuals(THEME['board_bg_incorrect'])
+            self.update_board_visuals(self.theme['board_bg_incorrect'])
             
             def reset_flash():
-                self.update_board_visuals(THEME['board_bg_default'])
+                self.update_board_visuals(self.theme['board_bg_default'])
             self.root.after(800, reset_flash) 
 
     def restart_lesson(self):
