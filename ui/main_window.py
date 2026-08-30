@@ -240,11 +240,16 @@ class SentenceJigsawApp:
         self.profile_cb['values'] = profiles
 
     def on_profile_dropdown_select(self, event=None):
-        val = self.profile_var.get()
-        for name in ProfileManager.get_profile_names():
-            if name in val:
-                self.switch_to_profile(name)
-                break
+        val = self.profile_var.get().strip()
+        # Parse '👤 Name' -> 'Name'
+        target_name = val.split(' ', 1)[1] if ' ' in val else val
+        if target_name in ProfileManager.get_profile_names():
+            self.switch_to_profile(target_name)
+        else:
+            for name in ProfileManager.get_profile_names():
+                if name == val or name in val:
+                    self.switch_to_profile(name)
+                    break
 
     def open_profile_manager(self):
         ProfileManagementDialog(self.root, on_profile_changed_callback=self.switch_to_profile)

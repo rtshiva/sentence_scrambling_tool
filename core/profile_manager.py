@@ -11,7 +11,7 @@ OLD_MEMORY_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_memory
 class ProfileManager:
     """Manages multiple user accounts, active profile switching, and isolated settings/memory/tracker."""
     _data = None
-    _lock = threading.Lock()
+    _lock = threading.RLock()
     profiles_filepath = DEFAULT_PROFILES_FILE
 
     @classmethod
@@ -22,56 +22,106 @@ class ProfileManager:
             cls._data = None
 
     @classmethod
-    def _load(cls):
-        if cls._data is not None:
-            return
+    def _get_backup_filepath(cls) -> str:
+        return cls.profiles_filepath + '.bak'
 
-        cls._data = {
-            'active_profile': 'Default',
-            'profiles': {
-                'Default': {
-                    'avatar': '👤',
-                    'settings': DEFAULT_SETTINGS.copy(),
-                    'memory': {},
-                    'tracker': {}
+    @classmethod
+    def _load(cls):
+        with cls._lock:
+            if cls._data is not None:
+                return
+
+            candidates = [cls.profiles_filepath, cls._get_backup_filepath()]
+            loaded_data = None
+            recovered_from_backup = False
+
+            for path in candidates:
+                if os.path.exists(path):
+                    try:
+                        with open(path, 'r', encoding='utf-8') as f:
+                            saved = json.load(f)
+                            if isinstance(saved, dict) and 'profiles' in saved and saved['profiles']:
+                                loaded_data = saved
+                                if path != cls.profiles_filepath:
+                                    recovered_from_backup = True
+                                break
+                    except Exception:
+                        continue
+
+            if loaded_data is not None:
+                cls._data = loaded_data
+                if recovered_from_backup:
+                    try:
+                        import shutil
+                        shutil.copy2(cls._get_backup_filepath(), cls.profiles_filepath)
+                    except Exception:
+                        pass
+                return
+
+            cls._data = {
+                'active_profile': 'Default',
+                'profiles': {
+                    'Default': {
+                        'avatar': '👤',
+                        'settings': DEFAULT_SETTINGS.copy(),
+                        'memory': {},
+                        'tracker': {}
+                    }
                 }
             }
-        }
 
-        if os.path.exists(cls.profiles_filepath):
-            try:
-                with open(cls.profiles_filepath, 'r', encoding='utf-8') as f:
-                    saved = json.load(f)
-                    if 'profiles' in saved and saved['profiles']:
-                        cls._data = saved
-            except Exception:
-                pass
-        else:
             # Migration from legacy files if present
-            if os.path.exists(OLD_SETTINGS_FILE):
-                try:
-                    with open(OLD_SETTINGS_FILE, 'r', encoding='utf-8') as f:
-                        old_s = json.load(f)
-                        cls._data['profiles']['Default']['settings'].update(old_s)
-                except Exception:
-                    pass
-            if os.path.exists(OLD_MEMORY_FILE):
-                try:
-                    with open(OLD_MEMORY_FILE, 'r', encoding='utf-8') as f:
-                        old_m = json.load(f)
-                        cls._data['profiles']['Default']['memory'].update(old_m)
-                except Exception:
-                    pass
-            cls._save()
+            migrated = False
+            if not os.path.exists(cls.profiles_filepath) and not os.path.exists(cls._get_backup_filepath()):
+                if os.path.exists(OLD_SETTINGS_FILE):
+                    try:
+                        with open(OLD_SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                            old_s = json.load(f)
+                            cls._data['profiles']['Default']['settings'].update(old_s)
+                            migrated = True
+                    except Exception:
+                        pass
+                if os.path.exists(OLD_MEMORY_FILE):
+                    try:
+                        with open(OLD_MEMORY_FILE, 'r', encoding='utf-8') as f:
+                            old_m = json.load(f)
+                            cls._data['profiles']['Default']['memory'].update(old_m)
+                            migrated = True
+                    except Exception:
+                        pass
+                if migrated:
+                    cls._save()
 
     @classmethod
     def _save(cls):
         with cls._lock:
+            if cls._data is None:
+                return
             try:
-                with open(cls.profiles_filepath, 'w', encoding='utf-8') as f:
+                # 1. Write atomically to .tmp file
+                tmp_path = cls.profiles_filepath + '.tmp'
+                with open(tmp_path, 'w', encoding='utf-8') as f:
                     json.dump(cls._data, f, indent=2, ensure_ascii=False)
+                    f.flush()
+                    os.fsync(f.fileno())
+
+                # 2. Update backup file with latest valid JSON state
+                bak_path = cls._get_backup_filepath()
+                try:
+                    import shutil
+                    shutil.copy2(tmp_path, bak_path)
+                except Exception:
+                    pass
+
+                # 3. Atomically replace target
+                os.replace(tmp_path, cls.profiles_filepath)
             except Exception:
-                pass
+                # Fallback to direct write if os.replace fails
+                try:
+                    with open(cls.profiles_filepath, 'w', encoding='utf-8') as f:
+                        json.dump(cls._data, f, indent=2, ensure_ascii=False)
+                except Exception:
+                    pass
 
     @classmethod
     def get_profile_names(cls) -> List[str]:

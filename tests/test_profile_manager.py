@@ -6,13 +6,19 @@ from core.profile_manager import ProfileManager
 class TestProfileManager(unittest.TestCase):
     def setUp(self):
         self.temp_file = os.path.join(tempfile.gettempdir(), f"test_profiles_{os.getpid()}.json")
-        if os.path.exists(self.temp_file):
-            os.remove(self.temp_file)
+        for suffix in ("", ".bak", ".tmp"):
+            p = self.temp_file + suffix
+            if os.path.exists(p):
+                try: os.remove(p)
+                except Exception: pass
         ProfileManager.set_filepath(self.temp_file)
 
     def tearDown(self):
-        if os.path.exists(self.temp_file):
-            os.remove(self.temp_file)
+        for suffix in ("", ".bak", ".tmp"):
+            p = self.temp_file + suffix
+            if os.path.exists(p):
+                try: os.remove(p)
+                except Exception: pass
 
     def test_create_and_switch_profile(self):
         self.assertIn("Default", ProfileManager.get_profile_names())
@@ -55,6 +61,23 @@ class TestProfileManager(unittest.TestCase):
         ProfileManager.create_profile("TempUser", "🐼")
         self.assertTrue(ProfileManager.delete_profile("TempUser"))
         self.assertNotIn("TempUser", ProfileManager.get_profile_names())
+
+    def test_atomic_persistence_and_backup_recovery(self):
+        # Create a new user profile
+        ProfileManager.create_profile("PermanentKid", "🚀")
+        self.assertIn("PermanentKid", ProfileManager.get_profile_names())
+
+        # Reset memory cache to force reload from disk
+        ProfileManager._data = None
+        self.assertIn("PermanentKid", ProfileManager.get_profile_names())
+
+        # Simulate corrupted primary file (e.g. truncated / bad JSON)
+        with open(self.temp_file, "w", encoding="utf-8") as f:
+            f.write("{corrupt_json")
+
+        # Reset in-memory cache to trigger auto-recovery from .bak
+        ProfileManager._data = None
+        self.assertIn("PermanentKid", ProfileManager.get_profile_names())
 
 if __name__ == '__main__':
     unittest.main()
