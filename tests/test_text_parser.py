@@ -40,5 +40,21 @@ class TestTextParser(unittest.TestCase):
         self.assertEqual(items_no_stop[0].question, "आज मौसम बहुत अच्छा है।")
         self.assertEqual(items_no_stop[0].chunks, ["आज मौसम", "बहुत अच्छा", "है।"])
 
+    def test_qa_pairs_importer(self):
+        sample = """
+        क) अस्पताल में बच्चे को कौन-कौन सी चीजें अच्छी लगीं और क्यों?
+        अस्पताल के साफ-सुथरे बिस्तर, लाल कंबल, सफेद चादरें, हरे पर्दे और चमकता फर्श बच्चे को अच्छे लगे।
+
+        ख) कहानी के अंत में बच्चे को महसूस हुआ कि उसे स्कूल जाना चाहिए था। क्या आपको लगता है उसका निर्णय सही था? क्यों?
+        हाँ, उसका निर्णय सही था क्योंकि स्कूल जाने से वह अकेलापन और परेशानी से बच जाता।
+        """
+        items = TextParser.parse_story_to_questions(sample, words_per_chunk=3)
+        self.assertEqual(len(items), 2)
+        self.assertEqual(items[0].question, "क) अस्पताल में बच्चे को कौन-कौन सी चीजें अच्छी लगीं और क्यों?")
+        # Check that answer is split into chunks
+        self.assertIn("अस्पताल के साफ-सुथरे", items[0].chunks[0])
+        self.assertEqual(items[1].question, "ख) कहानी के अंत में बच्चे को महसूस हुआ कि उसे स्कूल जाना चाहिए था। क्या आपको लगता है उसका निर्णय सही था? क्यों?")
+        self.assertIn("हाँ, उसका निर्णय", items[1].chunks[0])
+
 if __name__ == '__main__':
     unittest.main()

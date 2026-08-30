@@ -72,11 +72,52 @@ class TextParser:
         return chunks
 
     @classmethod
+    def parse_qa_blocks_to_questions(cls, raw_text: str, words_per_chunk: int = 3) -> List[QuestionItem]:
+        """Parses Q&A pairs where Line 1 is Question, Line 2 is Answer, separated by blank lines."""
+        raw = raw_text.strip()
+        if not raw:
+            return []
+
+        blocks = re.split(r'\n\s*\n+', raw)
+        results = []
+
+        for block in blocks:
+            lines = [l.strip() for l in block.splitlines() if l.strip()]
+            if len(lines) >= 2:
+                q_text = lines[0]
+                ans_text = " ".join(lines[1:])
+                ans_text = cls.ensure_hindi_punctuation(ans_text)
+                chunks = cls.group_words_into_chunks(ans_text, words_per_chunk)
+                if chunks:
+                    if ans_text.endswith('।') and not chunks[-1].endswith(('।', '?', '!', '.')):
+                        chunks[-1] += '।'
+                    results.append(QuestionItem(question=q_text, chunks=chunks, meaning=''))
+            elif len(lines) == 1:
+                # Single line fallback
+                s = cls.ensure_hindi_punctuation(lines[0])
+                chunks = cls.group_words_into_chunks(s, words_per_chunk)
+                if chunks:
+                    if s.endswith('।') and not chunks[-1].endswith(('।', '?', '!', '.')):
+                        chunks[-1] += '।'
+                    results.append(QuestionItem(question=s, chunks=chunks, meaning=''))
+
+        return results
+
+    @classmethod
     def parse_story_to_questions(cls, story_text: str, words_per_chunk: int = 3) -> List[QuestionItem]:
-        """Auto-segments full paragraphs into questions by punctuation (। . ? ! or newline)."""
+        """Auto-detects either multi-line Q&A blocks or continuous story paragraphs."""
         raw = story_text.strip()
         if not raw:
             return []
+
+        # Check if text contains double-newline separated Q&A blocks
+        blocks = re.split(r'\n\s*\n+', raw)
+        has_qa_structure = any(len([l for l in b.splitlines() if l.strip()]) >= 2 for b in blocks)
+
+        if has_qa_structure:
+            return cls.parse_qa_blocks_to_questions(raw, words_per_chunk)
+
+        # Fallback to single paragraph sentence segmentation
         sentences = re.split(r'[।\.\?\!\n]+', raw)
         results = []
         for s in sentences:
@@ -86,5 +127,7 @@ class TextParser:
             clean_s = cls.ensure_hindi_punctuation(clean_s)
             chunks = cls.group_words_into_chunks(clean_s, words_per_chunk)
             if len(chunks) >= 1 and len(clean_s.split()) >= 2:
+                if clean_s.endswith('।') and not chunks[-1].endswith(('।', '?', '!', '.')):
+                    chunks[-1] += '।'
                 results.append(QuestionItem(question=clean_s, chunks=chunks, meaning=''))
         return results
