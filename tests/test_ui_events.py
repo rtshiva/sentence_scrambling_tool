@@ -112,5 +112,22 @@ class TestUIEvents(unittest.TestCase):
         # Phrase [1] must NOT be added to user_selected_chunks
         self.assertEqual(len(self.app.user_selected_chunks), 0)
 
+    def test_clear_selection_reshuffles_pool_blocks_and_badges(self):
+        # Select first chunk
+        self.app.select_chunk(self.app.chunk_buttons[0]['text'])
+        self.assertEqual(len(self.app.user_selected_chunks), 1)
+
+        # Trigger Clear
+        self.app.clear_selection()
+        self.root.update()
+
+        # Selection cleared and pool recreated with fresh bindings and badges
+        self.assertEqual(len(self.app.user_selected_chunks), 0)
+        self.assertEqual(len(self.app.chunk_buttons), 3)
+        for i, item in enumerate(self.app.chunk_buttons):
+            expected_badge = self.app.get_badge_for_index(i)
+            self.assertTrue(item['badge'].startswith(expected_badge))
+            self.assertEqual(item['btn'].state, tk.NORMAL)
+
 if __name__ == '__main__':
     unittest.main()

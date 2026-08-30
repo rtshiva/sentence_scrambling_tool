@@ -1008,8 +1008,14 @@ class SentenceJigsawApp:
         self.hint_btn.config(state=tk.NORMAL)
         self.listen_answer_btn.config(state=tk.DISABLED)
         
-        for item in self.chunk_buttons:
-            item['btn'].set_state(tk.NORMAL, bg=item['color'])
+        # Re-shuffle pool blocks and re-assign shortcut badges on Clear
+        self.buttons_frame.clear_widgets()
+        self.chunk_buttons.clear()
+
+        if self.game_mode == 'fill_blanks':
+            self.setup_fill_in_blanks_round()
+        else:
+            self.setup_standard_round()
 
     def check_answer(self):
         is_correct = False
