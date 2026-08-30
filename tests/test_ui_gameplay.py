@@ -75,5 +75,26 @@ class TestUIGameplay(unittest.TestCase):
         self.app.swap_answer_chips(MockChip("यह एक"), MockChip("बगीचा"))
         self.assertEqual(self.app.user_selected_chunks, ["बगीचा", "यह एक"])
 
+    def test_insert_missed_chunk_at_specific_index(self):
+        # Student placed: ["यह एक", "है"] (missed "बगीचा" in middle)
+        self.app.select_chunk("यह एक")
+        self.app.select_chunk("है")
+        self.assertEqual(self.app.user_selected_chunks, ["यह एक", "है"])
+
+        # Insert missed phrase "बगीचा" at index 1
+        self.app.select_chunk("बगीचा", insert_index=1)
+        self.assertEqual(self.app.user_selected_chunks, ["यह एक", "बगीचा", "है"])
+        self.assertEqual(str(self.app.next_btn['state']), 'normal')
+
+    def test_audio_overlap_prevention_while_speaking(self):
+        from unittest.mock import patch
+        from core.tts_engine import TTSManager
+
+        with patch.object(TTSManager, 'is_speaking', return_value=True), \
+             patch.object(TTSManager, 'speak') as mock_speak:
+            self.app.speak_chunk("नमस्ते")
+            # Should NOT call speak while question is playing
+            mock_speak.assert_not_called()
+
 if __name__ == '__main__':
     unittest.main()

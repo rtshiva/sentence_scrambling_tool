@@ -286,6 +286,8 @@ class SentenceJigsawApp:
             self.select_chunk(chunk)
 
     def speak_chunk(self, chunk_text):
+        if TTSManager.is_speaking():
+            return
         rate = self.settings.get('tts_speed_rate', '+0%')
         voice_override = self.settings.get('tts_voice_override', 'auto')
         TTSManager.speak(chunk_text, rate_str=rate, override_voice=voice_override)
@@ -611,17 +613,33 @@ class SentenceJigsawApp:
 
         self.render_answer_chips()
 
-    def handle_pool_drop(self, chunk, target_widget):
+    def handle_pool_drop(self, chunk, target_widget, x_root=0, y_root=0):
         is_inside_board = False
+        target_chip = None
         curr = target_widget
         while curr:
+            if isinstance(curr, AnswerChip) and not curr.is_blank:
+                target_chip = curr
             if curr in (self.answer_board, self.answer_flow):
                 is_inside_board = True
                 break
             curr = getattr(curr, 'master', None)
 
-        if is_inside_board:
-            self.select_chunk(chunk)
+        if not is_inside_board:
+            return
+
+        insert_idx = None
+        if target_chip and target_chip.text in self.user_selected_chunks:
+            idx = self.user_selected_chunks.index(target_chip.text)
+            chip_x = target_chip.winfo_rootx()
+            chip_w = target_chip.winfo_width()
+            # If dropped on the right half, insert after; otherwise insert before
+            if x_root > (chip_x + chip_w // 2):
+                insert_idx = idx + 1
+            else:
+                insert_idx = idx
+
+        self.select_chunk(chunk, insert_index=insert_idx)
 
     def update_board_visuals(self, bg_color):
         self.answer_board.config(bg=bg_color, relief=tk.GROOVE)
@@ -703,9 +721,12 @@ class SentenceJigsawApp:
                     )
                     self.answer_flow.add_widget(chip)
 
-    def select_chunk(self, chunk):
+    def select_chunk(self, chunk, insert_index=None):
         SoundPlayer.play_click()
-        self.user_selected_chunks.append(chunk)
+        if insert_index is not None and 0 <= insert_index <= len(self.user_selected_chunks):
+            self.user_selected_chunks.insert(insert_index, chunk)
+        else:
+            self.user_selected_chunks.append(chunk)
         self.render_answer_chips()
         self.undo_btn.config(state=tk.NORMAL)
 

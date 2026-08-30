@@ -364,6 +364,6 @@ class DraggablePoolButton(tk.Frame):
 
         if self._is_dragging:
             target = self.winfo_containing(event.x_root, event.y_root)
-            self.on_drop_callback(self.chunk, target)
+            self.on_drop_callback(self.chunk, target, event.x_root, event.y_root)
         else:
             self.on_click_callback(self.chunk)

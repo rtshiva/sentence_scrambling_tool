@@ -38,6 +38,10 @@ class TTSManager:
         return 'en'
 
     @classmethod
+    def is_speaking(cls) -> bool:
+        return cls._is_playing
+
+    @classmethod
     def get_voice_for_text(cls, text: str, override_voice: str = None) -> str:
         if override_voice and override_voice != 'auto':
             return override_voice
