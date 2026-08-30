@@ -16,7 +16,11 @@ class TestUIModes(unittest.TestCase):
 
     def tearDown(self):
         self.app.stop_timer()
-        self.root.destroy()
+        try:
+            self.root.update()
+            self.root.destroy()
+        except Exception:
+            pass
 
     def test_mastery_mode_requeues_mistakes(self):
         self.app.mode_var.set('🎯 Mastery')

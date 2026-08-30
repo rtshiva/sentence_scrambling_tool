@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 import random
 import os
+import platform
 import webbrowser
 import tempfile
 
@@ -30,7 +31,8 @@ class SentenceJigsawApp:
     def __init__(self, root):
         self.root = root
         self.root.title('🧩 Sentence Jigsaw')
-        self.root.geometry('1060x870')
+        self.root.geometry('1080x880')
+        self.root.minsize(960, 680)
         
         self.settings = ProfileManager.get_settings()
         self.theme = get_theme(self.settings.get('theme', 'pastel'))
@@ -39,9 +41,12 @@ class SentenceJigsawApp:
         
         self.apply_ttk_theme()
         
-        self.question_font = ('', 22, 'bold')
-        self.answer_font = ('', 20, 'bold')
-        self.button_font = ('', 17, 'bold')
+        # Apple HIG Standard Typography tokens (Segoe UI / SF Pro / Helvetica)
+        self.system_font_family = 'Segoe UI' if platform.system() == 'Windows' else ('SF Pro Display' if platform.system() == 'Darwin' else 'Helvetica')
+        self.question_font = (self.system_font_family, 22, 'bold')
+        self.answer_font = (self.system_font_family, 19, 'bold')
+        self.button_font = (self.system_font_family, 16, 'bold')
+        self.status_font = (self.system_font_family, 11, 'bold')
 
         # Game State
         self.game_mode = 'mastery'
@@ -82,18 +87,19 @@ class SentenceJigsawApp:
         return f'⏱️ Speed Run ({mins}m)'
 
     def setup_ui(self):
-        self.top_frame = ttk.Frame(self.root, padding=10)
+        # Apple HIG Tier 1: Header / Navigation & Profile Bar
+        self.top_frame = ttk.Frame(self.root, padding=(16, 10, 16, 6))
         self.top_frame.pack(fill=tk.X)
         
         # User Profile Switcher
-        ttk.Label(self.top_frame, text='👤 Account:', font=('', 11, 'bold')).pack(side=tk.LEFT, padx=(0, 3))
+        ttk.Label(self.top_frame, text='👤 Student:', font=('', 11, 'bold')).pack(side=tk.LEFT, padx=(0, 4))
         self.profile_var = tk.StringVar()
         self.profile_cb = ttk.Combobox(self.top_frame, textvariable=self.profile_var, width=14, state='readonly', font=('', 10))
         self.profile_cb.pack(side=tk.LEFT, padx=(0, 6))
         self.profile_cb.bind('<<ComboboxSelected>>', self.on_profile_dropdown_select)
         self.update_profile_dropdown()
         
-        ttk.Button(self.top_frame, text='⚙️ Profiles', width=10, command=self.open_profile_manager).pack(side=tk.LEFT, padx=(0, 15))
+        ttk.Button(self.top_frame, text='⚙️ Profiles', width=10, command=self.open_profile_manager).pack(side=tk.LEFT, padx=(0, 14))
 
         ttk.Label(self.top_frame, text='Mode:', font=('', 11, 'bold')).pack(side=tk.LEFT, padx=(0, 4))
         self.mode_var = tk.StringVar(value='🎯 Mastery')
@@ -121,22 +127,50 @@ class SentenceJigsawApp:
         self.level_cb.pack(side=tk.LEFT, padx=(0, 10))
         self.level_cb.bind('<<ComboboxSelected>>', self.on_level_change)
 
-        self.progress_label = ttk.Label(self.top_frame, text='No file loaded', font=('', 12, 'bold'))
+        self.score_label = ttk.Label(self.top_frame, text='', font=('', 13, 'bold'), foreground='#f39c12')
+        self.score_label.pack(side=tk.RIGHT, padx=6)
+
+        # Apple HIG Tier 2: Unified Utilities Toolbar & Progress Status Bar
+        self.tool_frame = ttk.Frame(self.root, padding=(16, 0, 16, 8))
+        self.tool_frame.pack(fill=tk.X)
+
+        self.progress_label = ttk.Label(self.tool_frame, text='No file loaded', font=('', 11, 'bold'), foreground='#64748b')
         self.progress_label.pack(side=tk.LEFT)
         
-        self.progress_bar = ttk.Progressbar(self.top_frame, orient=tk.HORIZONTAL, length=120, mode='determinate')
-        self.progress_bar.pack(side=tk.LEFT, padx=8)
-        
-        self.score_label = ttk.Label(self.top_frame, text='', font=('', 13, 'bold'), foreground='#f39c12')
-        self.score_label.pack(side=tk.LEFT, padx=6)
-        
-        ttk.Button(self.top_frame, text='📊 Progress', command=self.open_dashboard).pack(side=tk.RIGHT, padx=3)
-        ttk.Button(self.top_frame, text='⚙️ Settings', command=self.open_settings).pack(side=tk.RIGHT)
-        ttk.Button(self.top_frame, text='📂 Load', command=self.open_file_dialog).pack(side=tk.RIGHT, padx=3)
-        ttk.Button(self.top_frame, text='✏️ Edit', command=self.open_editor).pack(side=tk.RIGHT, padx=3)
-        ttk.Button(self.top_frame, text='🖨️ Worksheet', command=self.generate_worksheet).pack(side=tk.RIGHT, padx=3)
-        ttk.Button(self.top_frame, text='🔄 Restart', command=self.restart_lesson).pack(side=tk.RIGHT, padx=3)
+        self.progress_bar = ttk.Progressbar(self.tool_frame, orient=tk.HORIZONTAL, length=160, mode='determinate')
+        self.progress_bar.pack(side=tk.LEFT, padx=10)
 
+        # Utility Buttons (Segmented on the right side)
+        ttk.Button(self.tool_frame, text='📊 Progress', command=self.open_dashboard).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(self.tool_frame, text='⚙️ Settings', command=self.open_settings).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(self.tool_frame, text='🖨️ Worksheet', command=self.generate_worksheet).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(self.tool_frame, text='✏️ Edit', command=self.open_editor).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(self.tool_frame, text='📂 Load', command=self.open_file_dialog).pack(side=tk.RIGHT, padx=2)
+        ttk.Button(self.tool_frame, text='🔄 Restart', command=self.restart_lesson).pack(side=tk.RIGHT, padx=2)
+
+        # Apple HIG Docked Bottom Action Bar (Fixed, never scrolls out of view)
+        self.controls_frame = tk.Frame(self.root, bg=self.theme.get('card_bg', '#ffffff'), bd=1, relief=tk.SOLID, padx=20, pady=12)
+        self.controls_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        controls_inner = ttk.Frame(self.controls_frame)
+        controls_inner.pack(anchor=tk.CENTER)
+
+        self.hint_btn = ttk.Button(controls_inner, text='💡 Hint (Ctrl+H)', command=self.give_hint, state=tk.DISABLED, width=15)
+        self.hint_btn.pack(side=tk.LEFT, padx=6)
+
+        self.undo_btn = ttk.Button(controls_inner, text='⟲ Undo (Bksp)', command=self.undo_last, state=tk.DISABLED, width=13)
+        self.undo_btn.pack(side=tk.LEFT, padx=6)
+
+        self.clear_btn = ttk.Button(controls_inner, text='🗑 Clear (Esc)', command=self.clear_selection, state=tk.DISABLED, width=13)
+        self.clear_btn.pack(side=tk.LEFT, padx=6)
+
+        self.skip_btn = ttk.Button(controls_inner, text='Skip ⏭ (Ctrl+S)', command=self.skip_sentence, width=14)
+        self.skip_btn.pack(side=tk.LEFT, padx=6)
+
+        self.next_btn = ttk.Button(controls_inner, text='Next ➔ (Enter)', command=self.next_sentence, state=tk.DISABLED, width=15)
+        self.next_btn.pack(side=tk.LEFT, padx=6)
+
+        # Main Scrollable Interactive Canvas
         self.main_scroll = ScrollableFrame(self.root, padding=20)
         self.main_scroll.pack(fill=tk.BOTH, expand=True)
         content_frame = self.main_scroll.scrollable_frame
@@ -144,9 +178,9 @@ class SentenceJigsawApp:
         # --- Question Header with Memory Badge, Listen & Voice Recording Buttons ---
         q_header = ttk.Frame(content_frame)
         q_header.pack(fill=tk.X, pady=(0, 5))
-        ttk.Label(q_header, text='Question:', font=('', 14), foreground='gray').pack(side=tk.LEFT)
+        ttk.Label(q_header, text='Question:', font=('', 14, 'bold'), foreground='#64748b').pack(side=tk.LEFT)
         
-        self.memory_badge = tk.Label(q_header, text='', font=('', 10, 'bold'), bg='#e8ecef', fg='#333333', padx=8, pady=2, bd=1, relief=tk.SOLID)
+        self.memory_badge = tk.Label(q_header, text='', font=('', 10, 'bold'), bg='#f1f5f9', fg='#334155', padx=8, pady=2, bd=1, relief=tk.SOLID)
         self.memory_badge.pack(side=tk.LEFT, padx=(12, 0))
         
         # Audio & Voice Recording Controls
@@ -159,59 +193,43 @@ class SentenceJigsawApp:
         self.record_btn = ttk.Button(q_header, text='🎙️ Record (Ctrl+R)', command=self.toggle_recording)
         self.record_btn.pack(side=tk.RIGHT, padx=4)
 
-        self.question_label = ttk.Label(content_frame, text='', font=self.question_font, wraplength=900, justify=tk.LEFT, anchor=tk.W, padding=(0, 10))
-        self.question_label.pack(fill=tk.X, pady=(0, 15))
+        self.question_label = ttk.Label(content_frame, text='', font=self.question_font, wraplength=900, justify=tk.LEFT, anchor=tk.W, padding=(0, 8))
+        self.question_label.pack(fill=tk.X, pady=(0, 8))
 
-        self.meaning_display = tk.Text(content_frame, font=('', 15, 'italic'), fg='#555555', 
-                                       bg='#fcfcfc', height=2, wrap=tk.WORD, bd=1, relief=tk.SUNKEN)
-        self.meaning_display.pack(pady=(0, 15), fill=tk.X)
+        self.meaning_display = tk.Text(content_frame, font=('', 14, 'italic'), fg='#475569', 
+                                       bg='#f8fafc', height=2, wrap=tk.WORD, bd=1, relief=tk.SOLID, padx=10, pady=6)
+        # Managed dynamically via pack/pack_forget
+        self.meaning_display.pack(pady=(0, 12), fill=tk.X)
         self.meaning_display.config(state=tk.DISABLED)
 
         # --- Answer Board Header with Answer Listen Button ---
         answer_header = ttk.Frame(content_frame)
         answer_header.pack(fill=tk.X, pady=(5, 5))
-        ttk.Label(answer_header, text='Your Answer (Click or Drag blocks here):', font=('', 14), foreground='gray').pack(side=tk.LEFT)
+        ttk.Label(answer_header, text='Your Answer (Click block to remove • Drag to reorder):', font=('', 13, 'bold'), foreground='#64748b').pack(side=tk.LEFT)
         
         self.listen_answer_btn = ttk.Button(answer_header, text='🔊 Hear Answer (Ctrl+A)', command=self.speak_current_answer, state=tk.DISABLED)
         self.listen_answer_btn.pack(side=tk.RIGHT, padx=(10, 0))
 
-        self.tip_label = ttk.Label(answer_header, text='💡 Hover for Meaning | Right-Click to pronounce', font=('', 11, 'italic'), foreground='#2980b9')
+        self.tip_label = ttk.Label(answer_header, text='💡 Hover for Meaning | Right-Click to pronounce', font=('', 11), foreground='#0284c7')
         self.tip_label.pack(side=tk.RIGHT)
         
-        self.answer_board = tk.Frame(content_frame, bg=self.theme['board_bg_default'], bd=3, relief=tk.GROOVE, padx=15, pady=15)
+        # Apple HIG: Clean flat card container with subtle 1px border
+        self.answer_board = tk.Frame(content_frame, bg=self.theme['board_bg_default'], bd=1, relief=tk.SOLID, padx=16, pady=16)
         self.answer_board.pack(pady=5, fill=tk.X)
         
         self.answer_flow = FlowFrame(self.answer_board, bg=self.theme['board_bg_default'], h_spacing=10, v_spacing=10)
         self.answer_flow.pack(fill=tk.X, expand=True)
 
-        self.answer_meaning_display = tk.Text(content_frame, font=('', 14, 'italic'), fg='#2c3e50',
-                                              bg='#f4f6f7', height=2, wrap=tk.WORD, bd=1, relief=tk.SUNKEN)
+        self.answer_meaning_display = tk.Text(content_frame, font=('', 13, 'italic'), fg='#334155',
+                                              bg='#f8fafc', height=2, wrap=tk.WORD, bd=1, relief=tk.SOLID, padx=10, pady=6)
         self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X)
         self.answer_meaning_display.config(state=tk.DISABLED)
 
-        self.pool_label = ttk.Label(content_frame, text='Available Blocks (Click, drag, or Hover for meaning):', font=('', 14), foreground='gray')
-        self.pool_label.pack(anchor=tk.W, pady=(15, 5))
+        self.pool_label = ttk.Label(content_frame, text='Available Blocks (Click or drag to answer):', font=('', 13, 'bold'), foreground='#64748b')
+        self.pool_label.pack(anchor=tk.W, pady=(12, 5))
         
         self.buttons_frame = FlowFrame(content_frame, h_spacing=12, v_spacing=12)
         self.buttons_frame.pack(fill=tk.X, pady=5, expand=True)
-
-        self.controls_frame = ttk.Frame(content_frame)
-        self.controls_frame.pack(side=tk.BOTTOM, pady=25)
-
-        self.hint_btn = ttk.Button(self.controls_frame, text='💡 Hint (Ctrl+H)', command=self.give_hint, state=tk.DISABLED, width=15)
-        self.hint_btn.pack(side=tk.LEFT, padx=5)
-
-        self.undo_btn = ttk.Button(self.controls_frame, text='⟲ Undo (Bksp)', command=self.undo_last, state=tk.DISABLED, width=13)
-        self.undo_btn.pack(side=tk.LEFT, padx=5)
-
-        self.clear_btn = ttk.Button(self.controls_frame, text='🗑 Clear (Esc)', command=self.clear_selection, state=tk.DISABLED, width=13)
-        self.clear_btn.pack(side=tk.LEFT, padx=5)
-
-        self.skip_btn = ttk.Button(self.controls_frame, text='Skip ⏭ (Ctrl+S)', command=self.skip_sentence, width=14)
-        self.skip_btn.pack(side=tk.LEFT, padx=5)
-
-        self.next_btn = ttk.Button(self.controls_frame, text='Next ➔ (Enter)', command=self.next_sentence, state=tk.DISABLED, width=14)
-        self.next_btn.pack(side=tk.LEFT, padx=5)
 
     def toggle_recording(self):
         if VoiceRecorder.is_recording():
@@ -816,23 +834,50 @@ class SentenceJigsawApp:
 
         self.select_chunk(chunk, insert_index=insert_idx)
 
+    def get_badge_for_index(self, index: int) -> str:
+        """Returns clean Apple-style pill shortcut badge (1-9, 0, A-Z) for block index."""
+        if index < 9:
+            return f"[{index + 1}]"
+        elif index == 9:
+            return "[0]"
+        elif index < 36:
+            letter = chr(ord('A') + (index - 10))
+            return f"[{letter}]"
+        return ""
+
     def update_board_visuals(self, bg_color):
-        self.answer_board.config(bg=bg_color, relief=tk.GROOVE)
+        self.answer_board.config(bg=bg_color, relief=tk.SOLID)
         self.answer_flow.config(bg=bg_color)
 
     def set_meaning_text(self, text):
-        self.meaning_display.config(state=tk.NORMAL)
-        self.meaning_display.delete('1.0', tk.END)
-        if text:
-            self.meaning_display.insert(tk.END, text)
-        self.meaning_display.config(state=tk.DISABLED)
+        if text and text.strip():
+            self.meaning_display.config(state=tk.NORMAL)
+            self.meaning_display.delete('1.0', tk.END)
+            self.meaning_display.insert(tk.END, text.strip())
+            self.meaning_display.config(state=tk.DISABLED)
+            if not self.meaning_display.winfo_ismapped():
+                self.meaning_display.pack(pady=(0, 12), fill=tk.X, before=self.answer_board.master.winfo_children()[2] if len(self.answer_board.master.winfo_children()) > 2 else None)
+        else:
+            self.meaning_display.config(state=tk.NORMAL)
+            self.meaning_display.delete('1.0', tk.END)
+            self.meaning_display.config(state=tk.DISABLED)
+            if self.meaning_display.winfo_ismapped():
+                self.meaning_display.pack_forget()
 
     def set_answer_meaning_text(self, text):
-        self.answer_meaning_display.config(state=tk.NORMAL)
-        self.answer_meaning_display.delete('1.0', tk.END)
-        if text:
-            self.answer_meaning_display.insert(tk.END, text)
-        self.answer_meaning_display.config(state=tk.DISABLED)
+        if text and text.strip():
+            self.answer_meaning_display.config(state=tk.NORMAL)
+            self.answer_meaning_display.delete('1.0', tk.END)
+            self.answer_meaning_display.insert(tk.END, text.strip())
+            self.answer_meaning_display.config(state=tk.DISABLED)
+            if not self.answer_meaning_display.winfo_ismapped():
+                self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X, before=self.pool_label)
+        else:
+            self.answer_meaning_display.config(state=tk.NORMAL)
+            self.answer_meaning_display.delete('1.0', tk.END)
+            self.answer_meaning_display.config(state=tk.DISABLED)
+            if self.answer_meaning_display.winfo_ismapped():
+                self.answer_meaning_display.pack_forget()
 
     def update_answer_translation(self):
         """Fetches or updates the English translation of the current answer sentence."""

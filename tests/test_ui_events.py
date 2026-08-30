@@ -97,9 +97,12 @@ class TestUIEvents(unittest.TestCase):
         self.assertEqual(len(self.app.user_selected_chunks), 0)
         # Find Edit button
         edit_btn = None
-        for child in self.app.top_frame.winfo_children():
-            if isinstance(child, (tk.Button, ttk.Button)) and 'Edit' in getattr(child, 'cget', lambda k: '')('text'):
-                edit_btn = child
+        for frame in (self.app.top_frame, self.app.tool_frame):
+            for child in frame.winfo_children():
+                if isinstance(child, (tk.Button, ttk.Button)) and 'Edit' in getattr(child, 'cget', lambda k: '')('text'):
+                    edit_btn = child
+                    break
+            if edit_btn:
                 break
         self.assertIsNotNone(edit_btn)
         

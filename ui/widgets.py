@@ -4,11 +4,11 @@ import platform
 from core.dictionary_cache import DictionaryManager
 
 class HoverMeaningTooltip:
-    """Displays a clean floating tooltip with word/chunk meanings when hovered."""
+    """Displays a clean Apple-style floating callout with word/chunk meanings when hovered."""
     _window = None
 
     @classmethod
-    def show(cls, text, x, y, font=('', 10, 'bold')):
+    def show(cls, text, x, y, font=None):
         cls.hide()
         meaning = DictionaryManager.get_meaning(text)
         if not meaning:
@@ -18,17 +18,18 @@ class HoverMeaningTooltip:
         cls._window.overrideredirect(True)
         cls._window.attributes('-topmost', True)
         try:
-            cls._window.attributes('-alpha', 0.95)
+            cls._window.attributes('-alpha', 0.94)
         except Exception:
             pass
 
-        frame = tk.Frame(cls._window, bd=1, relief=tk.SOLID, bg='#2c3e50')
+        sys_font = font if font else ('Segoe UI' if platform.system() == 'Windows' else 'SF Pro Text', 10, 'bold')
+        frame = tk.Frame(cls._window, bd=1, relief=tk.SOLID, bg='#0f172a', padx=8, pady=4)
         frame.pack(fill=tk.BOTH, expand=True)
 
-        lbl = tk.Label(frame, text=f"📖 {meaning}", font=font, bg='#2c3e50', fg='#ffffff', padx=8, pady=4)
+        lbl = tk.Label(frame, text=f"📖 {meaning}", font=sys_font, bg='#0f172a', fg='#f8fafc', padx=4, pady=2)
         lbl.pack()
 
-        cls._window.geometry(f"+{x + 10}+{y + 24}")
+        cls._window.geometry(f"+{x + 10}+{y + 22}")
 
     @classmethod
     def hide(cls):
@@ -138,26 +139,26 @@ class DragGhost:
     _label = None
 
     @classmethod
-    def start(cls, text, color, x, y, font=('', 18, 'bold')):
+    def start(cls, text, color, x, y, font=('', 17, 'bold')):
         if cls._window:
             cls.stop()
         cls._window = tk.Toplevel()
         cls._window.overrideredirect(True)
         cls._window.attributes('-topmost', True)
         try:
-            cls._window.attributes('-alpha', 0.85)
+            cls._window.attributes('-alpha', 0.88)
         except Exception:
             pass
-        frame = tk.Frame(cls._window, bd=3, relief=tk.SOLID, bg=color)
+        frame = tk.Frame(cls._window, bd=1, relief=tk.SOLID, bg=color, padx=12, pady=5)
         frame.pack(fill=tk.BOTH, expand=True)
-        cls._label = tk.Label(frame, text=f'✊ {text}', font=font, bg=color, padx=14, pady=8)
+        cls._label = tk.Label(frame, text=f'✨ {text}', font=font, bg=color, fg='#0f172a', padx=4, pady=2)
         cls._label.pack()
         cls.move(x, y)
 
     @classmethod
     def move(cls, x, y):
         if cls._window:
-            cls._window.geometry(f'+{x + 12}+{y + 12}')
+            cls._window.geometry(f'+{x + 10}+{y + 10}')
 
     @classmethod
     def stop(cls):
@@ -167,9 +168,10 @@ class DragGhost:
             cls._label = None
 
 class AnswerChip(tk.Frame):
-    """An interactive chip widget representing an answer chunk."""
-    def __init__(self, parent, text, color, on_remove_callback, on_swap_callback, on_drag_status_callback=None, is_blank=False, font=('', 18, 'bold'), on_pronounce_callback=None, show_hover_meanings=True):
-        super().__init__(parent, bd=2, relief=tk.RAISED, bg=color, cursor='hand2')
+    """An interactive Apple-style pill chip widget representing an answer chunk."""
+    def __init__(self, parent, text, color, on_remove_callback, on_swap_callback, on_drag_status_callback=None, is_blank=False, font=('', 17, 'bold'), on_pronounce_callback=None, show_hover_meanings=True):
+        # Apple HIG: Flat pill container, subtle 1px border, smooth padding
+        super().__init__(parent, bd=1, relief=tk.SOLID, bg=color, cursor='hand2', padx=12, pady=5)
         self.text = text
         self.original_color = color
         self.color = color
@@ -181,17 +183,11 @@ class AnswerChip(tk.Frame):
         self.font = font
         self.show_hover_meanings = show_hover_meanings
 
-        label_text = ' ____ ' if is_blank else text
-        self.lbl = tk.Label(self, text=label_text, font=self.font, bg=color, padx=12, pady=6)
-        self.lbl.pack(side=tk.LEFT)
+        label_text = ' • • • ' if is_blank else text
+        self.lbl = tk.Label(self, text=label_text, font=self.font, bg=color, fg='#1c1c1e', cursor='hand2', padx=4, pady=2)
+        self.lbl.pack(fill=tk.BOTH, expand=True)
 
         if not is_blank:
-            self.close_btn = tk.Label(self, text='✕', font=('', 11, 'bold'), fg='#777777', bg=color, padx=4)
-            self.close_btn.pack(side=tk.RIGHT, padx=(0, 4))
-            self.close_btn.bind('<Button-1>', lambda e: (self.on_remove_callback(self), "break")[1])
-            self.close_btn.bind('<Enter>', lambda e: self.close_btn.config(fg='#c0392b'))
-            self.close_btn.bind('<Leave>', lambda e: self.close_btn.config(fg='#777777'))
-
             for w in (self, self.lbl):
                 w.bind('<Button-1>', self._on_drag_start)
                 w.bind('<B1-Motion>', self._on_drag_motion)
@@ -206,57 +202,49 @@ class AnswerChip(tk.Frame):
         self._highlighted_target = None
 
     def _on_enter(self, event):
-        if self.show_hover_meanings and not self.is_blank and not self._is_dragging:
-            HoverMeaningTooltip.show(self.text, event.x_root, event.y_root)
+        if not self.is_blank:
+            self.config(relief=tk.SOLID)
+            if self.show_hover_meanings and not self._is_dragging:
+                HoverMeaningTooltip.show(self.text, event.x_root, event.y_root)
 
     def _on_leave(self, event):
         HoverMeaningTooltip.hide()
+        if not self.is_blank:
+            self.config(relief=tk.SOLID)
 
     def _on_pronounce(self):
         HoverMeaningTooltip.hide()
         if self.on_pronounce_callback and not self.is_blank:
             self.on_pronounce_callback(self.text)
 
-    def set_highlight(self, active=True, highlight_color='#f9e79f'):
+    def set_highlight(self, active=True, highlight_color='#fef08a'):
         if active:
-            self.config(bg=highlight_color, bd=3, relief=tk.SOLID)
+            self.config(bg=highlight_color, bd=2, relief=tk.SOLID)
             self.lbl.config(bg=highlight_color)
-            if hasattr(self, 'close_btn'):
-                self.close_btn.config(bg=highlight_color)
         else:
-            self.config(bg=self.original_color, bd=2, relief=tk.RAISED)
+            self.config(bg=self.original_color, bd=1, relief=tk.SOLID)
             self.lbl.config(bg=self.original_color)
-            if hasattr(self, 'close_btn'):
-                self.close_btn.config(bg=self.original_color)
 
     def set_validation_status(self, status: str):
         """
-        Visually marks chip status after check_answer:
-        - 'correct': Soft green background with solid green border
-        - 'wrong': Soft red background with red border
-        - 'missing': Dashed/placeholder styling
+        Visually marks chip status after check_answer (Apple iOS style subtle status badges):
+        - 'correct': Crisp emerald pill (#d1fae5 / #059669)
+        - 'wrong': Crisp rose pill (#ffe4e6 / #e11d48)
+        - 'missing': Amber dashed placeholder (#fef3c7 / #d97706)
         - None/default: Resets to original chip color
         """
         if status == 'correct':
-            self.config(bg='#d4efdf', bd=2, relief=tk.SOLID, highlightbackground='#27ae60', highlightcolor='#27ae60', highlightthickness=2)
-            self.lbl.config(bg='#d4efdf', fg='#196f3d')
-            if hasattr(self, 'close_btn'):
-                self.close_btn.config(bg='#d4efdf')
+            self.config(bg='#d1fae5', bd=2, relief=tk.SOLID)
+            self.lbl.config(bg='#d1fae5', fg='#065f46')
         elif status == 'wrong':
-            self.config(bg='#fadbd8', bd=2, relief=tk.SOLID, highlightbackground='#e74c3c', highlightcolor='#e74c3c', highlightthickness=2)
-            self.lbl.config(bg='#fadbd8', fg='#922b21')
-            if hasattr(self, 'close_btn'):
-                self.close_btn.config(bg='#fadbd8')
+            self.config(bg='#ffe4e6', bd=2, relief=tk.SOLID)
+            self.lbl.config(bg='#ffe4e6', fg='#9f1239')
         elif status == 'missing':
-            self.config(bg='#fcf3cf', bd=2, relief=tk.DASHED, highlightbackground='#f39c12', highlightcolor='#f39c12', highlightthickness=2)
-            self.lbl.config(bg='#fcf3cf', fg='#b7950b')
-            if hasattr(self, 'close_btn'):
-                self.close_btn.config(bg='#fcf3cf')
+            self.config(bg='#fef3c7', bd=2, relief=tk.SOLID)
+            self.lbl.config(bg='#fef3c7', fg='#92400e')
         else:
-            self.config(bg=self.original_color, bd=2, relief=tk.RAISED, highlightthickness=0)
-            self.lbl.config(bg=self.original_color, fg='#000000')
-            if hasattr(self, 'close_btn'):
-                self.close_btn.config(bg=self.original_color)
+            self.config(bg=self.original_color, bd=1, relief=tk.SOLID)
+            self.lbl.config(bg=self.original_color, fg='#1c1c1e')
 
     def _on_drag_start(self, event):
         HoverMeaningTooltip.hide()
@@ -267,7 +255,7 @@ class AnswerChip(tk.Frame):
     def _on_drag_motion(self, event):
         if not self._is_dragging and (abs(event.x_root - self._drag_start_x) > 6 or abs(event.y_root - self._drag_start_y) > 6):
             self._is_dragging = True
-            self.config(relief=tk.SUNKEN)
+            self.config(relief=tk.SOLID)
             DragGhost.start(self.text, self.original_color, event.x_root, event.y_root, font=self.font)
             if self.on_drag_status_callback:
                 self.on_drag_status_callback(True)
@@ -283,12 +271,12 @@ class AnswerChip(tk.Frame):
                 self._highlighted_target = None
 
             if isinstance(target, AnswerChip) and target != self and not target.is_blank:
-                target.set_highlight(True)
                 self._highlighted_target = target
+                target.set_highlight(True)
 
     def _on_drag_end(self, event):
         DragGhost.stop()
-        self.config(relief=tk.RAISED)
+        self.config(relief=tk.SOLID)
         if self._highlighted_target:
             self._highlighted_target.set_highlight(False)
             self._highlighted_target = None
@@ -303,12 +291,14 @@ class AnswerChip(tk.Frame):
             if isinstance(target, AnswerChip) and target != self and not target.is_blank:
                 self.on_swap_callback(self, target)
         else:
+            # Clean direct click-to-remove
             self.on_remove_callback(self)
 
 class DraggablePoolButton(tk.Frame):
-    """A responsive block widget supporting single-click, drag-and-drop, hover meaning & pronunciation."""
+    """A clean Apple-style pool block widget supporting single-click, drag-and-drop, hover meaning & pronunciation."""
     def __init__(self, master, chunk, badge_text, bg_color, font, on_click_callback, on_drop_callback, on_drag_status_callback=None, on_pronounce_callback=None, show_hover_meanings=True, **kwargs):
-        super().__init__(master, bd=2, relief=tk.RAISED, bg=bg_color, cursor='hand2', padx=10, pady=6)
+        # Apple HIG: Slim card pill, 1px border, clean typography
+        super().__init__(master, bd=1, relief=tk.SOLID, bg=bg_color, cursor='hand2', padx=12, pady=5)
         self.chunk = chunk
         self.bg_color = bg_color
         self.font = font
@@ -319,7 +309,7 @@ class DraggablePoolButton(tk.Frame):
         self.show_hover_meanings = show_hover_meanings
         self.state = tk.NORMAL
         
-        self.lbl = tk.Label(self, text=badge_text, font=font, bg=bg_color, cursor='hand2')
+        self.lbl = tk.Label(self, text=badge_text, font=font, bg=bg_color, fg='#1c1c1e', cursor='hand2', padx=2, pady=1)
         self.lbl.pack(fill=tk.BOTH, expand=True)
         
         for w in (self, self.lbl):
@@ -340,11 +330,11 @@ class DraggablePoolButton(tk.Frame):
         self.config(bg=target_bg)
         self.lbl.config(bg=target_bg)
         if state == tk.DISABLED:
-            self.config(relief=tk.FLAT, cursor='arrow')
-            self.lbl.config(cursor='arrow', fg='#888888')
+            self.config(relief=tk.FLAT, cursor='arrow', bg='#f3f4f6')
+            self.lbl.config(cursor='arrow', fg='#9ca3af', bg='#f3f4f6')
         else:
-            self.config(relief=tk.RAISED, cursor='hand2')
-            self.lbl.config(cursor='hand2', fg='#000000')
+            self.config(relief=tk.SOLID, cursor='hand2')
+            self.lbl.config(cursor='hand2', fg='#1c1c1e')
 
     def _on_pronounce(self):
         HoverMeaningTooltip.hide()
