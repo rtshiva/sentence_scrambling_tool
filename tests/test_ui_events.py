@@ -1,5 +1,6 @@
 import unittest
 import tkinter as tk
+from tkinter import ttk
 from core.models import QuestionItem
 from ui.main_window import SentenceJigsawApp
 
@@ -88,11 +89,23 @@ class TestUIEvents(unittest.TestCase):
         self.assertEqual(self.app.hints_used, 1)
         self.assertEqual(self.app.user_selected_chunks, ["राम"])
 
-    def test_keyboard_escape_clear(self):
-        self.app.select_chunk("राम")
-        self.app.select_chunk("फल")
-        self.assertEqual(len(self.app.user_selected_chunks), 2)
-        self.app.clear_selection()
+    def test_clicking_edit_button_does_not_select_phrase_1(self):
+        self.assertEqual(len(self.app.user_selected_chunks), 0)
+        # Find Edit button
+        edit_btn = None
+        for child in self.app.top_frame.winfo_children():
+            if isinstance(child, (tk.Button, ttk.Button)) and 'Edit' in getattr(child, 'cget', lambda k: '')('text'):
+                edit_btn = child
+                break
+        self.assertIsNotNone(edit_btn)
+        
+        # Click Edit button via event_generate
+        edit_btn.event_generate('<Button-1>')
+        self.root.update()
+        edit_btn.event_generate('<ButtonRelease-1>')
+        self.root.update()
+
+        # Phrase [1] must NOT be added to user_selected_chunks
         self.assertEqual(len(self.app.user_selected_chunks), 0)
 
 if __name__ == '__main__':

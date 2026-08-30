@@ -334,34 +334,34 @@ class SentenceJigsawApp:
         self.root.bind('<BackSpace>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
         self.root.bind('<Control-z>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
         self.root.bind('<Control-Z>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
-        self.root.bind('<u>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
-        self.root.bind('<U>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
+        self.root.bind('<Key-u>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
+        self.root.bind('<Key-U>', lambda e: self._handle_control_action(self.undo_last, self.undo_btn))
 
         self.root.bind('<Escape>', lambda e: self._handle_control_action(self.clear_selection, self.clear_btn))
-        self.root.bind('<c>', lambda e: self._handle_control_action(self.clear_selection, self.clear_btn))
-        self.root.bind('<C>', lambda e: self._handle_control_action(self.clear_selection, self.clear_btn))
+        self.root.bind('<Key-c>', lambda e: self._handle_control_action(self.clear_selection, self.clear_btn))
+        self.root.bind('<Key-C>', lambda e: self._handle_control_action(self.clear_selection, self.clear_btn))
 
         self.root.bind('<Return>', lambda e: self._handle_control_action(self.next_sentence, self.next_btn))
-        self.root.bind('<h>', lambda e: self._handle_control_action(self.give_hint, self.hint_btn))
-        self.root.bind('<H>', lambda e: self._handle_control_action(self.give_hint, self.hint_btn))
-        self.root.bind('<s>', lambda e: self._handle_control_action(self.skip_sentence, self.skip_btn))
-        self.root.bind('<S>', lambda e: self._handle_control_action(self.skip_sentence, self.skip_btn))
-        self.root.bind('<l>', lambda e: self._handle_control_action(self.speak_current_question))
-        self.root.bind('<L>', lambda e: self._handle_control_action(self.speak_current_question))
-        self.root.bind('<a>', lambda e: self._handle_control_action(self.speak_current_answer, self.listen_answer_btn))
-        self.root.bind('<A>', lambda e: self._handle_control_action(self.speak_current_answer, self.listen_answer_btn))
-        self.root.bind('<r>', lambda e: self._handle_control_action(self.toggle_recording))
-        self.root.bind('<R>', lambda e: self._handle_control_action(self.toggle_recording))
-        self.root.bind('<p>', lambda e: self._handle_control_action(self.play_my_recording, self.play_my_voice_btn))
-        self.root.bind('<P>', lambda e: self._handle_control_action(self.play_my_recording, self.play_my_voice_btn))
+        self.root.bind('<Key-h>', lambda e: self._handle_control_action(self.give_hint, self.hint_btn))
+        self.root.bind('<Key-H>', lambda e: self._handle_control_action(self.give_hint, self.hint_btn))
+        self.root.bind('<Key-s>', lambda e: self._handle_control_action(self.skip_sentence, self.skip_btn))
+        self.root.bind('<Key-S>', lambda e: self._handle_control_action(self.skip_sentence, self.skip_btn))
+        self.root.bind('<Key-l>', lambda e: self._handle_control_action(self.speak_current_question))
+        self.root.bind('<Key-L>', lambda e: self._handle_control_action(self.speak_current_question))
+        self.root.bind('<Key-a>', lambda e: self._handle_control_action(self.speak_current_answer, self.listen_answer_btn))
+        self.root.bind('<Key-A>', lambda e: self._handle_control_action(self.speak_current_answer, self.listen_answer_btn))
+        self.root.bind('<Key-r>', lambda e: self._handle_control_action(self.toggle_recording))
+        self.root.bind('<Key-R>', lambda e: self._handle_control_action(self.toggle_recording))
+        self.root.bind('<Key-p>', lambda e: self._handle_control_action(self.play_my_recording, self.play_my_voice_btn))
+        self.root.bind('<Key-P>', lambda e: self._handle_control_action(self.play_my_recording, self.play_my_voice_btn))
 
         # Tile shortcuts: 1-9, 0, and remaining alphabet characters
         reserved_keys = {'h', 's', 'l', 'a', 'r', 'p', 'u', 'c'}
         shortcuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] + [chr(c) for c in range(ord('a'), ord('z')+1) if chr(c) not in reserved_keys]
 
         for idx, key_char in enumerate(shortcuts):
-            self.root.bind(f'<{key_char.lower()}>', lambda e, i=idx: self._handle_gameplay_shortcut(i))
-            self.root.bind(f'<{key_char.upper()}>', lambda e, i=idx: self._handle_gameplay_shortcut(i))
+            self.root.bind(f'<Key-{key_char.lower()}>', lambda e, i=idx: self._handle_gameplay_shortcut(i))
+            self.root.bind(f'<Key-{key_char.upper()}>', lambda e, i=idx: self._handle_gameplay_shortcut(i))
 
     def _is_focus_in_text_or_modal(self) -> bool:
         """Returns True if the current focus is within an entry/text field or a modal dialog is active."""
