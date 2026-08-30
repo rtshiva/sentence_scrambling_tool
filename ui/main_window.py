@@ -19,9 +19,10 @@ from core.tts_engine import TTSManager
 from core.sound_player import SoundPlayer
 from core.dictionary_cache import DictionaryManager
 from core.voice_recorder import VoiceRecorder
+from core.game_engine import GameEngine
 
 from ui.theme import get_theme, ENCOURAGEMENTS
-from ui.widgets import ScrollableFrame, FlowFrame, AnswerChip, DraggablePoolButton, HoverMeaningTooltip
+from ui.widgets import ScrollableFrame, FlowFrame, AnswerChip, DraggablePoolButton
 from ui.dialogs import ProfileManagementDialog, SettingsDialog, LessonEditor
 
 class SentenceJigsawApp:
@@ -458,7 +459,6 @@ class SentenceJigsawApp:
             self.model.load_file(filename)
             self.progress_bar['maximum'] = self.model.total_questions()
             
-            # Pre-fetch dictionary meanings in the background for instant hover lookups
             words = []
             for item in self.model.qa_data:
                 words.extend(item.chunks)
@@ -528,10 +528,7 @@ class SentenceJigsawApp:
         self.main_scroll.canvas.yview_moveto(0)
 
     def setup_standard_round(self):
-        scrambled = self.original_chunks.copy()
-        while len(scrambled) > 1 and scrambled == self.original_chunks:
-            random.shuffle(scrambled)
-
+        scrambled = GameEngine.scramble_chunks(self.original_chunks)
         tile_colors = self.theme.get('tile_colors', ['#bae1ff']).copy()
         random.shuffle(tile_colors)
         show_hover = self.settings.get('show_hover_meanings', True)
@@ -558,21 +555,8 @@ class SentenceJigsawApp:
         self.render_answer_chips()
 
     def setup_fill_in_blanks_round(self):
-        total_chunks = len(self.original_chunks)
         mode = self.settings.get('fill_blanks_count_mode', 'auto')
-        
-        if mode == '1':
-            num_blanks = 1
-        elif mode == '2':
-            num_blanks = min(2, total_chunks)
-        elif mode == '3':
-            num_blanks = min(3, total_chunks)
-        else:
-            num_blanks = 1 if total_chunks <= 3 else min(2, total_chunks - 1)
-            
-        num_blanks = max(1, min(num_blanks, total_chunks))
-        self.hidden_chunk_indices = sorted(random.sample(range(total_chunks), num_blanks))
-        
+        self.hidden_chunk_indices = GameEngine.calculate_blank_indices(self.original_chunks, mode)
         blank_chunks = [self.original_chunks[i] for i in self.hidden_chunk_indices]
         random.shuffle(blank_chunks)
 
@@ -808,7 +792,7 @@ class SentenceJigsawApp:
             if self.game_mode == 'speed_run':
                 self.speed_run_streak += 1
                 self.speed_run_total_solved += 1
-                points = 100 + (self.speed_run_streak * 20)
+                points = GameEngine.calculate_speed_run_points(self.speed_run_streak)
                 self.speed_run_score += points
                 self.score_label.config(text=f'+{points} pts! 🔥 Streak {self.speed_run_streak}')
             elif not self.flawless_attempt and self.game_mode in ('mastery', 'listening'):

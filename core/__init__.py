@@ -8,6 +8,7 @@ from core.tts_engine import TTSManager
 from core.sound_player import SoundPlayer
 from core.dictionary_cache import DictionaryManager
 from core.voice_recorder import VoiceRecorder
+from core.game_engine import GameEngine
 
 __all__ = [
     'QuestionItem',
@@ -19,5 +20,6 @@ __all__ = [
     'TTSManager',
     'SoundPlayer',
     'DictionaryManager',
-    'VoiceRecorder'
+    'VoiceRecorder',
+    'GameEngine'
 ]
