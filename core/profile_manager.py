@@ -9,7 +9,7 @@ OLD_SETTINGS_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_sett
 OLD_MEMORY_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_memory.json')
 
 class ProfileManager:
-    """Manages multiple user accounts, active profile switching, and isolated settings/memory."""
+    """Manages multiple user accounts, active profile switching, and isolated settings/memory/tracker."""
     _data = None
     _lock = threading.Lock()
     profiles_filepath = DEFAULT_PROFILES_FILE
@@ -32,7 +32,8 @@ class ProfileManager:
                 'Default': {
                     'avatar': '👤',
                     'settings': DEFAULT_SETTINGS.copy(),
-                    'memory': {}
+                    'memory': {},
+                    'tracker': {}
                 }
             }
         }
@@ -109,7 +110,8 @@ class ProfileManager:
         cls._data['profiles'][clean_name] = {
             'avatar': avatar,
             'settings': DEFAULT_SETTINGS.copy(),
-            'memory': {}
+            'memory': {},
+            'tracker': {}
         }
         cls._data['active_profile'] = clean_name
         cls._save()
@@ -138,18 +140,42 @@ class ProfileManager:
     def save_settings(cls, new_settings: dict):
         cls._load()
         profile = cls.get_active_profile()
-        profile['settings'] = new_settings
+        profile.setdefault('settings', {})
+        profile['settings'].update(new_settings)
         cls._save()
 
     @classmethod
     def get_active_memory_store(cls) -> Dict[str, Any]:
         cls._load()
         profile = cls.get_active_profile()
-        return profile.setdefault('memory', {})
+        profile.setdefault('memory', {})
+        return profile['memory']
+
+    @classmethod
+    def save_active_memory_store(cls, memory_store: dict):
+        cls._load()
+        profile = cls.get_active_profile()
+        profile['memory'] = memory_store
+        cls._save()
+
+    @classmethod
+    def get_active_tracker_store(cls) -> Dict[str, Any]:
+        cls._load()
+        profile = cls.get_active_profile()
+        profile.setdefault('tracker', {})
+        return profile['tracker']
+
+    @classmethod
+    def save_active_tracker_store(cls, tracker_store: dict):
+        cls._load()
+        profile = cls.get_active_profile()
+        profile['tracker'] = tracker_store
+        cls._save()
 
     @classmethod
     def reset_active_memory(cls):
         cls._load()
         profile = cls.get_active_profile()
         profile['memory'] = {}
+        profile['tracker'] = {}
         cls._save()

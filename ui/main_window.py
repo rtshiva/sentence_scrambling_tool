@@ -20,10 +20,11 @@ from core.sound_player import SoundPlayer
 from core.dictionary_cache import DictionaryManager
 from core.voice_recorder import VoiceRecorder
 from core.game_engine import GameEngine
+from core.progress_tracker import ProgressTracker
 
 from ui.theme import get_theme, ENCOURAGEMENTS
 from ui.widgets import ScrollableFrame, FlowFrame, AnswerChip, DraggablePoolButton
-from ui.dialogs import ProfileManagementDialog, SettingsDialog, LessonEditor
+from ui.dialogs import ProfileManagementDialog, SettingsDialog, LessonEditor, ProgressDashboardDialog
 
 class SentenceJigsawApp:
     def __init__(self, root):
@@ -116,6 +117,7 @@ class SentenceJigsawApp:
         self.score_label = ttk.Label(self.top_frame, text='', font=('', 13, 'bold'), foreground='#f39c12')
         self.score_label.pack(side=tk.LEFT, padx=6)
         
+        ttk.Button(self.top_frame, text='📊 Progress', command=self.open_dashboard).pack(side=tk.RIGHT, padx=3)
         ttk.Button(self.top_frame, text='⚙️ Settings', command=self.open_settings).pack(side=tk.RIGHT)
         ttk.Button(self.top_frame, text='📂 Load', command=self.open_file_dialog).pack(side=tk.RIGHT, padx=3)
         ttk.Button(self.top_frame, text='✏️ Edit', command=self.open_editor).pack(side=tk.RIGHT, padx=3)
@@ -200,6 +202,12 @@ class SentenceJigsawApp:
             if success:
                 self.play_my_voice_btn.config(state=tk.NORMAL)
                 SoundPlayer.play_click()
+                data = self.model.get_current_question()
+                if data:
+                    key = MemoryManager.get_sentence_key(data.question, data.chunks)
+                    t_store = ProfileManager.get_active_tracker_store()
+                    ProgressTracker.record_mode_activity(t_store, key, 'voice')
+                    ProfileManager.save_active_tracker_store(t_store)
         else:
             started = VoiceRecorder.start_recording()
             if started:
@@ -341,6 +349,24 @@ class SentenceJigsawApp:
             self.answer_board.config(bd=3, relief=tk.DASHED if hasattr(tk, 'DASHED') else tk.RIDGE, bg=self.theme['drop_highlight'])
         else:
             self.update_board_visuals(self.theme['board_bg_default'])
+
+
+    def open_dashboard(self):
+        if not self.model.qa_data:
+            messagebox.showinfo('Empty Lesson', 'Please load a lesson file first to view learning progress.')
+            return
+        ProgressDashboardDialog(self.root, self.model, on_mode_select_callback=self.set_mode_from_dashboard)
+
+    def set_mode_from_dashboard(self, mode_name):
+        if mode_name == 'fill_blanks':
+            self.mode_var.set('🧩 Fill in Blanks')
+        elif mode_name == 'listening':
+            self.mode_var.set('🎧 Listening Mode')
+        elif mode_name == 'speed_run':
+            self.mode_var.set(self.get_speed_run_mode_label())
+        else:
+            self.mode_var.set('🎯 Mastery')
+        self.on_mode_change()
 
     def open_settings(self):
         SettingsDialog(self.root, self.settings, on_save_callback=self.on_settings_saved)
@@ -834,6 +860,13 @@ class SentenceJigsawApp:
         self.load_current_question()
 
     def next_sentence(self):
+        data = self.model.get_current_question()
+        if data:
+            key = MemoryManager.get_sentence_key(data.question, data.chunks)
+            t_store = ProfileManager.get_active_tracker_store()
+            ProgressTracker.record_mode_activity(t_store, key, self.game_mode)
+            ProfileManager.save_active_tracker_store(t_store)
+
         repeat = (self.game_mode in ('mastery', 'listening'))
         self.model.process_result(flawless=self.flawless_attempt, repeat_on_error=repeat)
         

@@ -633,3 +633,117 @@ class LessonEditor(tk.Toplevel):
             self.destroy()
         except Exception as e:
             messagebox.showerror('Error', f'Failed to save:\n{str(e)}')
+
+
+class ProgressDashboardDialog(tk.Toplevel):
+    """Visual Dashboard showing multi-mode learning path, milestones, and daily review status."""
+    def __init__(self, parent, lesson_deck, on_mode_select_callback):
+        super().__init__(parent)
+        self.lesson_deck = lesson_deck
+        self.on_mode_select_callback = on_mode_select_callback
+
+        active_profile = ProfileManager.get_active_profile_name()
+        avatar = ProfileManager.get_active_profile().get('avatar', '👤')
+        self.title(f'📊 Learning Hub & Milestone Dashboard - {avatar} {active_profile}')
+        self.geometry('860x650')
+        self.grab_set()
+
+        self.setup_ui()
+
+    def setup_ui(self):
+        from core.progress_tracker import ProgressTracker
+        from core.memory import MemoryManager
+
+        tracker_store = ProfileManager.get_active_tracker_store()
+        memory_store = ProfileManager.get_active_memory_store()
+        stats = ProgressTracker.calculate_stats(self.lesson_deck.qa_data, tracker_store, memory_store)
+
+        main_frame = ttk.Frame(self, padding=20)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Header Summary Card
+        top_card = ttk.LabelFrame(main_frame, text='🌟 Student Learning Hub', padding=15)
+        top_card.pack(fill=tk.X, pady=(0, 15))
+
+        active_name = ProfileManager.get_active_profile_name()
+        avatar = ProfileManager.get_active_profile().get('avatar', '👤')
+
+        lbl_summary = ttk.Label(
+            top_card, 
+            text=f"{avatar} {active_name}'s Overall Progress: {stats['overall_pct']}% Mastery ({stats['mastered_count']}/{stats['total']} Sentences)",
+            font=('', 13, 'bold')
+        )
+        lbl_summary.pack(anchor=tk.W, pady=(0, 6))
+
+        p_bar = ttk.Progressbar(top_card, maximum=100, value=stats['overall_pct'], mode='determinate')
+        p_bar.pack(fill=tk.X, pady=(0, 10))
+
+        # Recommended Action Banner
+        rec_frame = tk.Frame(top_card, bg='#e8f8f5', bd=1, relief=tk.SOLID, padx=10, pady=8)
+        rec_frame.pack(fill=tk.X)
+
+        tk.Label(rec_frame, text=f"🚀 Recommended Next Step: {stats['recommended_label']}", font=('', 11, 'bold'), bg='#e8f8f5', fg='#117a65').pack(side=tk.LEFT)
+        btn_start_rec = ttk.Button(rec_frame, text='Start Now ➔', command=lambda: self.launch_recommended(stats['recommended_mode']))
+        btn_start_rec.pack(side=tk.RIGHT)
+
+        # Table of Questions & 5-Step Mode Milestones
+        table_frame = ttk.LabelFrame(main_frame, text='📋 Sentence-by-Sentence Learning Path Matrix', padding=10)
+        table_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 15))
+
+        scroll = ScrollableFrame(table_frame)
+        scroll.pack(fill=tk.BOTH, expand=True)
+        content = scroll.scrollable_frame
+
+        # Header row
+        hdr = tk.Frame(content, bg='#eaecee', padx=5, pady=4)
+        hdr.pack(fill=tk.X, pady=(0, 4))
+        tk.Label(hdr, text='Sentence', font=('', 10, 'bold'), width=32, anchor=tk.W, bg='#eaecee').pack(side=tk.LEFT)
+        tk.Label(hdr, text='1. 🎯 Assembly', font=('', 9, 'bold'), width=12, bg='#eaecee').pack(side=tk.LEFT)
+        tk.Label(hdr, text='2. 🧩 Blanks', font=('', 9, 'bold'), width=12, bg='#eaecee').pack(side=tk.LEFT)
+        tk.Label(hdr, text='3. 🎧 Listen', font=('', 9, 'bold'), width=12, bg='#eaecee').pack(side=tk.LEFT)
+        tk.Label(hdr, text='4. 🎙️ Voice', font=('', 9, 'bold'), width=12, bg='#eaecee').pack(side=tk.LEFT)
+        tk.Label(hdr, text='5. 🎓 Status', font=('', 9, 'bold'), width=14, bg='#eaecee').pack(side=tk.LEFT)
+
+        for i, item in enumerate(self.lesson_deck.qa_data, 1):
+            key = MemoryManager.get_sentence_key(item.question, item.chunks)
+            info = ProgressTracker.get_milestone_summary(tracker_store, key)
+
+            row_bg = '#ffffff' if i % 2 == 0 else '#f9f9f9'
+            row = tk.Frame(content, bg=row_bg, padx=5, pady=6, bd=1, relief=tk.GROOVE)
+            row.pack(fill=tk.X, pady=2)
+
+            q_short = item.question[:28] + '...' if len(item.question) > 28 else item.question
+            tk.Label(row, text=f"{i}. {q_short}", font=('', 10), width=32, anchor=tk.W, bg=row_bg).pack(side=tk.LEFT)
+
+            # Step 1
+            t1 = "✅ Done" if info['has_mastery'] else "⚪ Pending"
+            c1 = "#27ae60" if info['has_mastery'] else "#95a5a6"
+            tk.Label(row, text=t1, font=('', 9, 'bold'), width=12, fg=c1, bg=row_bg).pack(side=tk.LEFT)
+
+            # Step 2
+            t2 = "✅ Done" if info['has_blanks'] else ("⏳ Next" if info['step'] == 2 else "⚪ Pending")
+            c2 = "#27ae60" if info['has_blanks'] else ("#d35400" if info['step'] == 2 else "#95a5a6")
+            tk.Label(row, text=t2, font=('', 9, 'bold'), width=12, fg=c2, bg=row_bg).pack(side=tk.LEFT)
+
+            # Step 3
+            t3 = "✅ Done" if info['has_listening'] else ("⏳ Next" if info['step'] == 3 else "⚪ Pending")
+            c3 = "#27ae60" if info['has_listening'] else ("#d35400" if info['step'] == 3 else "#95a5a6")
+            tk.Label(row, text=t3, font=('', 9, 'bold'), width=12, fg=c3, bg=row_bg).pack(side=tk.LEFT)
+
+            # Step 4
+            t4 = "✅ Done" if info['has_voice'] else ("⏳ Next" if info['step'] == 4 else "⚪ Pending")
+            c4 = "#27ae60" if info['has_voice'] else ("#d35400" if info['step'] == 4 else "#95a5a6")
+            tk.Label(row, text=t4, font=('', 9, 'bold'), width=12, fg=c4, bg=row_bg).pack(side=tk.LEFT)
+
+            # Step 5
+            t5, color5 = MemoryManager.get_status_badge(item.question, item.chunks, memory_store)
+            tk.Label(row, text=t5, font=('', 9, 'bold'), width=14, fg=color5, bg=row_bg).pack(side=tk.LEFT)
+
+        # Bottom Close Button
+        btn_box = ttk.Frame(main_frame)
+        btn_box.pack(fill=tk.X)
+        ttk.Button(btn_box, text='Close', command=self.destroy).pack(side=tk.RIGHT)
+
+    def launch_recommended(self, mode):
+        self.on_mode_select_callback(mode)
+        self.destroy()
