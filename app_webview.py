@@ -18,7 +18,6 @@ def launch_webview_app():
         min_size=(960, 680),
         text_select=True
     )
-    api.set_window(window)
     webview.start()
 
 if __name__ == '__main__':

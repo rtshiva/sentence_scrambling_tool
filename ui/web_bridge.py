@@ -12,11 +12,8 @@ from core.tts_engine import TTSManager
 from core.models import QuestionItem, ExamGoal
 
 class WebBridgeAPI:
-    def __init__(self, window=None):
-        self.window = window
-
-    def set_window(self, window):
-        self.window = window
+    def __init__(self):
+        pass
 
     def get_state(self) -> Dict[str, Any]:
         active_prof = ProfileManager.get_active_profile_name()
