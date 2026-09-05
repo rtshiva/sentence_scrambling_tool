@@ -148,6 +148,8 @@ class TestUIModes(unittest.TestCase):
 
     def test_guided_mission_mode_flow(self):
         from ui.widgets import AnswerChip
+        self.app.model.qa_data = [QuestionItem("Q_Mission", ["One", "Two", "Three", "Four"])]
+        self.app.model.reset_deck()
         self.app.mode_var.set('🧭 Guided Mission')
         self.app.on_mode_change()
         self.assertEqual(self.app.game_mode, 'guided_mission')
@@ -177,8 +179,17 @@ class TestUIModes(unittest.TestCase):
                 self.assertIsInstance(w, tk.Label)
                 self.assertEqual(w['text'], curr_q.chunks[idx])
 
-        # Solve by selecting missing chunks in order
+        initial_stage1_texts = [w['text'] if isinstance(w, tk.Label) else w.lbl['text'] for w in self.app.answer_flow.winfo_children()]
+
+        # Test selecting one chunk and then clearing in Guided Mission Stage 1
         missing_chunks = [curr_q.chunks[i] for i in self.app.hidden_chunk_indices]
+        self.app.select_chunk(missing_chunks[0])
+        self.app.clear_selection()
+        cleared_stage1_texts = [w['text'] if isinstance(w, tk.Label) else w.lbl['text'] for w in self.app.answer_flow.winfo_children()]
+        self.assertEqual(initial_stage1_texts, cleared_stage1_texts)
+        self.assertEqual(self.app.effective_game_mode, 'fill_blanks')
+
+        # Solve by selecting missing chunks in order
         for mc in missing_chunks:
             self.app.select_chunk(mc)
 
@@ -191,6 +202,49 @@ class TestUIModes(unittest.TestCase):
             if isinstance(w, AnswerChip):
                 self.assertFalse(w.is_blank)
                 self.assertEqual(w.lbl['fg'], '#065f46')
+
+    def test_blanks_mode_clear_undo_hint_buttons_preserve_sentence(self):
+        from ui.widgets import AnswerChip
+        self.app.model.qa_data = [QuestionItem("Q_Test", ["Alpha", "Beta", "Gamma", "Delta"])]
+        self.app.model.reset_deck()
+        self.app.mode_var.set('🧩 Fill in Blanks')
+        self.app.on_mode_change()
+        self.assertEqual(self.app.effective_game_mode, 'fill_blanks')
+        self.assertEqual(len(self.app.hidden_chunk_indices), 2)
+
+        curr_q = self.app.model.get_current_question()
+        initial_board_texts = [w['text'] if isinstance(w, tk.Label) else w.lbl['text'] for w in self.app.answer_flow.winfo_children()]
+        initial_hidden_indices = list(self.app.hidden_chunk_indices)
+
+        # 1. Select a chunk -> filled into first blank slot
+        self.app.select_chunk(self.app.chunk_buttons[0]['text'])
+        self.assertEqual(len(self.app.user_selected_chunks), 1)
+        self.assertEqual(str(self.app.undo_btn['state']), 'normal')
+        self.assertEqual(str(self.app.clear_btn['state']), 'normal')
+
+        # 2. Click Clear -> Must preserve the exact same fixed phrases and empty slots!
+        self.app.clear_selection()
+        cleared_board_texts = [w['text'] if isinstance(w, tk.Label) else w.lbl['text'] for w in self.app.answer_flow.winfo_children()]
+        self.assertEqual(initial_board_texts, cleared_board_texts)
+        self.assertEqual(self.app.hidden_chunk_indices, initial_hidden_indices)
+        self.assertEqual(len(self.app.user_selected_chunks), 0)
+        self.assertEqual(str(self.app.undo_btn['state']), 'disabled')
+        # All pool buttons should be back to NORMAL
+        self.assertTrue(all(b['btn'].state == tk.NORMAL for b in self.app.chunk_buttons))
+
+        # 3. Test Undo
+        self.app.select_chunk(self.app.chunk_buttons[0]['text'])
+        self.assertEqual(len(self.app.user_selected_chunks), 1)
+        self.app.undo_last()
+        self.assertEqual(len(self.app.user_selected_chunks), 0)
+        self.assertEqual(str(self.app.undo_btn['state']), 'disabled')
+        self.assertTrue(all(b['btn'].state == tk.NORMAL for b in self.app.chunk_buttons))
+
+        # 4. Test Hint
+        self.app.give_hint()
+        self.assertEqual(len(self.app.user_selected_chunks), 1)
+        expected_first = curr_q.chunks[self.app.hidden_chunk_indices[0]]
+        self.assertEqual(self.app.user_selected_chunks[0], expected_first)
 
     def test_dialogs_instantiation(self):
         from ui.deck_dialog import DeckLibraryDialog

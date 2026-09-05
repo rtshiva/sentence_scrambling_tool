@@ -60,6 +60,7 @@ class SentenceJigsawApp:
 
         # Game State
         self.game_mode = 'mastery'
+        self.current_round_mode = 'mastery'
         self.original_chunks = []
         self.user_selected_chunks = []
         self.chunk_buttons = []
@@ -90,6 +91,8 @@ class SentenceJigsawApp:
     @property
     def effective_game_mode(self) -> str:
         if self.game_mode == 'guided_mission':
+            if hasattr(self, 'current_round_mode') and self.current_round_mode:
+                return self.current_round_mode
             curr_q = self.model.get_current_question()
             if curr_q:
                 st = getattr(curr_q, 'ladder_stage', 1)
@@ -1156,6 +1159,7 @@ class SentenceJigsawApp:
             info = MissionEngine.get_stage_info(st)
             self.memory_badge.config(text=f"{info['icon']} {info['short_name']} (Stage {st})", fg='#4338ca')
             mode = MissionEngine.get_mode_for_stage(st)
+            self.current_round_mode = mode
             if mode == 'fill_blanks':
                 self.setup_fill_in_blanks_round()
             elif mode == 'voice_mastery':
@@ -1167,12 +1171,16 @@ class SentenceJigsawApp:
                 if mode == 'listening':
                     self.root.after(300, self.speak_current_question)
         elif self.game_mode == 'writing':
+            self.current_round_mode = 'writing'
             self.setup_writing_round()
         elif self.game_mode == 'voice_mastery':
+            self.current_round_mode = 'voice_mastery'
             self.setup_voice_mastery_round()
         elif self.game_mode == 'fill_blanks':
+            self.current_round_mode = 'fill_blanks'
             self.setup_fill_in_blanks_round()
         else:
+            self.current_round_mode = self.game_mode
             self.setup_standard_round()
 
         if self.effective_game_mode == 'listening':
@@ -1333,6 +1341,9 @@ class SentenceJigsawApp:
         elif mode_name == 'speed_run':
             self.mode_var.set('⏱️ Speed Run (3m)')
             self.game_mode = 'speed_run'
+        elif mode_name == 'fill_blanks':
+            self.mode_var.set('🧩 Fill in Blanks')
+            self.game_mode = 'fill_blanks'
         else:
             self.mode_var.set('🎯 Mastery')
             self.game_mode = 'mastery'
@@ -1724,6 +1735,7 @@ class SentenceJigsawApp:
             self.user_selected_chunks.append(chunk)
         self.render_answer_chips()
         self.undo_btn.config(state=tk.NORMAL)
+        self.clear_btn.config(state=tk.NORMAL)
 
         for item in self.chunk_buttons:
             if item['text'] == chunk and item['btn'].state == tk.NORMAL:
@@ -1746,6 +1758,7 @@ class SentenceJigsawApp:
                     
             if not self.user_selected_chunks:
                 self.undo_btn.config(state=tk.DISABLED)
+                self.clear_btn.config(state=tk.DISABLED)
                 self.listen_answer_btn.config(state=tk.DISABLED)
                 
             self.next_btn.config(state=tk.DISABLED)
@@ -1784,10 +1797,19 @@ class SentenceJigsawApp:
         self.flawless_attempt = False
         
         if self.effective_game_mode == 'fill_blanks':
+            expected_blanks = [self.original_chunks[i] for i in self.hidden_chunk_indices]
+            first_wrong_idx = None
+            for idx, chunk in enumerate(self.user_selected_chunks):
+                if idx >= len(expected_blanks) or chunk != expected_blanks[idx]:
+                    first_wrong_idx = idx
+                    break
+            if first_wrong_idx is not None:
+                while len(self.user_selected_chunks) > first_wrong_idx:
+                    self.remove_chunk(self.user_selected_chunks[-1])
+
             current_len = len(self.user_selected_chunks)
-            if current_len < len(self.hidden_chunk_indices):
-                correct_idx = self.hidden_chunk_indices[current_len]
-                target_chunk = self.original_chunks[correct_idx]
+            if current_len < len(expected_blanks):
+                target_chunk = expected_blanks[current_len]
                 self.select_chunk(target_chunk)
         else:
             current_len = len(self.user_selected_chunks)
@@ -1803,22 +1825,26 @@ class SentenceJigsawApp:
 
     def clear_selection(self):
         self.user_selected_chunks.clear()
-        self.render_answer_chips()
         self.update_board_visuals(self.theme['board_bg_default'])
         
         self.undo_btn.config(state=tk.DISABLED)
         self.next_btn.config(state=tk.DISABLED)
         self.hint_btn.config(state=tk.NORMAL)
         self.listen_answer_btn.config(state=tk.DISABLED)
-        
+
+        if self.effective_game_mode == 'fill_blanks':
+            # In Blanks mode, keep all fixed phrases and sentence structure intact!
+            # Only reset filled blanks to empty slots and re-enable all pool choices.
+            self.render_answer_chips()
+            for item in self.chunk_buttons:
+                item['btn'].set_state(tk.NORMAL, bg=item['color'])
+            return
+
+        self.render_answer_chips()
         # Re-shuffle pool blocks and re-assign shortcut badges on Clear
         self.buttons_frame.clear_widgets()
         self.chunk_buttons.clear()
-
-        if self.effective_game_mode == 'fill_blanks':
-            self.setup_fill_in_blanks_round()
-        else:
-            self.setup_standard_round()
+        self.setup_standard_round()
 
     def check_answer(self):
         is_correct = False
