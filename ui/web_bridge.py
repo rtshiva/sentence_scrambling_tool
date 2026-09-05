@@ -88,6 +88,7 @@ class WebBridgeAPI:
         if exams:
             res = DeckManager.calculate_exam_metrics(exams[0]['id'])
             res['exam_name'] = exams[0].get('title', 'Target Exam')
+            res['all_exams'] = exams
             return res
         return {
             'exam_name': 'Class 4 Mid-Term Exam',
@@ -96,19 +97,61 @@ class WebBridgeAPI:
             'mastered_cards': 0,
             'daily_quota': 0,
             'readiness_percent': 0,
-            'status_tag': 'On Track'
+            'status_tag': 'On Track',
+            'all_exams': [],
+            'selected_scope': {},
+            'chapters_breakdown': []
         }
 
-    def save_exam_goal(self, name: str, target_date_str: str, target_cards: int, deck_ids: List[str]) -> Dict[str, Any]:
+    def get_deck_chapters(self, deck_id: str) -> List[Dict[str, Any]]:
+        return DeckManager.get_deck_chapters(deck_id)
+
+    def get_all_decks_with_chapters(self) -> List[Dict[str, Any]]:
+        return DeckManager.get_all_decks_with_chapters()
+
+    def get_exam_details(self, exam_id: Optional[str] = None) -> Dict[str, Any]:
+        exams = DeckManager.list_exams()
+        if not exam_id and exams:
+            exam_id = exams[0]['id']
+        if exam_id:
+            res = DeckManager.calculate_exam_metrics(exam_id)
+            res['all_exams'] = exams
+            res['exam_name'] = res.get('title', 'Target Exam')
+            return res
+        return self.get_exam_metrics()
+
+    def save_exam_config(self, exam_data: Dict[str, Any]) -> Dict[str, Any]:
+        return self.save_exam_goal(
+            name=exam_data.get('title', exam_data.get('name', 'Exam')),
+            target_date_str=exam_data.get('target_date', ''),
+            target_cards=exam_data.get('target_cards', 0),
+            deck_ids=exam_data.get('deck_ids', []),
+            selected_scope=exam_data.get('selected_scope', {}),
+            exam_id=exam_data.get('id')
+        )
+
+    def save_exam_goal(
+        self, 
+        name: str, 
+        target_date_str: str, 
+        target_cards: int, 
+        deck_ids: List[str],
+        selected_scope: Optional[Dict[str, List[str]]] = None,
+        exam_id: Optional[str] = None
+    ) -> Dict[str, Any]:
         goal = {
             'title': name,
             'target_date': target_date_str,
-            'target_cards_mastered': int(target_cards),
-            'deck_ids': deck_ids
+            'target_cards_mastered': int(target_cards) if target_cards else 0,
+            'deck_ids': deck_ids,
+            'selected_scope': selected_scope or {}
         }
-        exam_id = DeckManager.save_exam(goal)
-        res = DeckManager.calculate_exam_metrics(exam_id)
+        if exam_id:
+            goal['id'] = exam_id
+        saved_id = DeckManager.save_exam(goal)
+        res = DeckManager.calculate_exam_metrics(saved_id)
         res['exam_name'] = name
+        res['all_exams'] = DeckManager.list_exams()
         return res
 
     def evaluate_spelling(self, expected: str, typed: str) -> Dict[str, Any]:
@@ -140,7 +183,6 @@ class WebBridgeAPI:
             return False
 
     def launch_gameplay(self, deck_id: Optional[str] = None, mode_name: str = 'guided_mission') -> bool:
-        import threading
         cards = []
         if deck_id:
             deck = DeckManager.get_deck(deck_id)
@@ -153,6 +195,23 @@ class WebBridgeAPI:
         if not cards:
             return False
 
+        return self._start_gameplay_thread(cards, mode_name=mode_name, deck_id=deck_id)
+
+    def launch_exam_mission(self, exam_id: Optional[str] = None) -> bool:
+        exams = DeckManager.list_exams()
+        if not exam_id and exams:
+            exam_id = exams[0]['id']
+        if not exam_id:
+            return False
+
+        cards = DeckManager.get_exam_cards(exam_id)
+        if not cards:
+            return False
+
+        return self._start_gameplay_thread(cards, mode_name='guided_mission', deck_id=None)
+
+    def _start_gameplay_thread(self, cards: list, mode_name: str = 'guided_mission', deck_id: Optional[str] = None) -> bool:
+        import threading
         def _run_tkinter():
             from ui.main_window import SentenceJigsawApp
             root = tk.Tk()

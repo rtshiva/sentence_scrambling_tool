@@ -11,6 +11,7 @@ from core.models import QuestionItem, ExamGoal
 from core.memory import MemoryManager
 from ui.dialogs import LessonEditor
 from ui.widgets import ScrollableFrame
+from ui.exam_goal_dialog import ExamGoalDialog
 
 class HomeDashboardView(ttk.Frame):
     """Primary Home Landing Page for Sentence Jigsaw.
@@ -36,6 +37,7 @@ class HomeDashboardView(ttk.Frame):
         self.all_decks: List[Dict[str, Any]] = []
         self.filtered_decks: List[Dict[str, Any]] = []
         self.deck_vars: Dict[str, tk.BooleanVar] = {}
+        self.cached_chapters_breakdown: List[Dict[str, Any]] = []
 
         self.setup_ui()
         self.refresh_data()
@@ -599,7 +601,7 @@ class HomeDashboardView(ttk.Frame):
     def setup_tab_exam(self):
         parent = self.tab_exam
 
-        # Readiness Metric Card
+        # 1. Readiness Metric Card
         self.exam_card = tk.Frame(parent, bg='#f8fafc', bd=1, relief=tk.SOLID, padx=16, pady=12)
         self.exam_card.pack(fill=tk.X, pady=(0, 10))
 
@@ -618,38 +620,73 @@ class HomeDashboardView(ttk.Frame):
         self.exam_details_lbl = ttk.Label(info_box, text='', font=('', 9), foreground='#475569')
         self.exam_details_lbl.pack(anchor=tk.W, pady=(2, 0))
 
-        # Exam Settings Form
-        form_frame = ttk.LabelFrame(parent, text='Target Exam Configuration', padding=10)
-        form_frame.pack(fill=tk.X, pady=(0, 10))
+        config_btn = tk.Button(
+            inner,
+            text='✏️ Configure Exam & Scope',
+            font=('', 10, 'bold'),
+            bg='#4f46e5',
+            fg='#ffffff',
+            activebackground='#4338ca',
+            activeforeground='#ffffff',
+            relief=tk.FLAT,
+            padx=12,
+            pady=6,
+            cursor='hand2',
+            command=self.open_exam_goal_dialog
+        )
+        config_btn.pack(side=tk.RIGHT, padx=4)
 
-        ttk.Label(form_frame, text='Exam Name:').grid(row=0, column=0, sticky=tk.W, pady=3)
-        self.exam_title_var = tk.StringVar(value='Mid-Term Assessment')
-        ttk.Entry(form_frame, textvariable=self.exam_title_var, width=28).grid(row=0, column=1, sticky=tk.W, padx=6, pady=3)
+        # 2. Tagged Chapters Mastery Breakdown ("Mastered vs. In Progress")
+        breakdown_box = ttk.LabelFrame(parent, text='📖 Tagged Chapters Mastery Breakdown ("Mastered vs. In Progress")', padding=10)
+        breakdown_box.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
-        ttk.Label(form_frame, text='Target Date:').grid(row=0, column=2, sticky=tk.W, padx=(12, 0), pady=3)
-        default_target = (date.today() + timedelta(days=14)).strftime('%Y-%m-%d')
-        self.exam_date_var = tk.StringVar(value=default_target)
-        self.exam_date_var.trace_add('write', lambda *a: self.recalculate_exam_preview())
-        ttk.Entry(form_frame, textvariable=self.exam_date_var, width=14).grid(row=0, column=3, sticky=tk.W, padx=6, pady=3)
+        # Filter bar
+        filter_bar = ttk.Frame(breakdown_box)
+        filter_bar.pack(fill=tk.X, pady=(0, 6))
 
-        ttk.Label(form_frame, text='Daily Max Cards:').grid(row=1, column=0, sticky=tk.W, pady=3)
-        self.exam_cap_var = tk.IntVar(value=15)
-        ttk.Spinbox(form_frame, from_=5, to=40, textvariable=self.exam_cap_var, width=6).grid(row=1, column=1, sticky=tk.W, padx=6, pady=3)
+        ttk.Label(filter_bar, text='Filter Chapters:', font=('', 9, 'bold')).pack(side=tk.LEFT, padx=(0, 6))
+        self.chapter_filter_var = tk.StringVar(value='all')
 
-        # Decks Checklist
-        decks_box = ttk.LabelFrame(parent, text='Decks Included in Exam Scope', padding=8)
-        decks_box.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        for val, label in [('all', 'All Tagged'), ('in_progress', 'Needs Work'), ('mastered', 'Mastered')]:
+            rb = ttk.Radiobutton(
+                filter_bar, 
+                text=label, 
+                value=val, 
+                variable=self.chapter_filter_var,
+                command=self.render_chapters_breakdown
+            )
+            rb.pack(side=tk.LEFT, padx=6)
 
-        self.exam_deck_scroll_frame = ttk.Frame(decks_box)
-        self.exam_deck_scroll_frame.pack(fill=tk.BOTH, expand=True)
+        # Treeview for Chapter Breakdown
+        cols = ('chapter', 'deck', 'cards', 'mastered', 'progress', 'status')
+        self.chapters_tree = ttk.Treeview(breakdown_box, columns=cols, show='headings', height=8)
+        self.chapters_tree.heading('chapter', text='Chapter / Lesson Name')
+        self.chapters_tree.heading('deck', text='Parent Deck')
+        self.chapters_tree.heading('cards', text='Total Cards')
+        self.chapters_tree.heading('mastered', text='Mastered')
+        self.chapters_tree.heading('progress', text='Readiness')
+        self.chapters_tree.heading('status', text='Status')
 
-        # Action Buttons
+        self.chapters_tree.column('chapter', width=220)
+        self.chapters_tree.column('deck', width=160)
+        self.chapters_tree.column('cards', width=80, anchor=tk.CENTER)
+        self.chapters_tree.column('mastered', width=80, anchor=tk.CENTER)
+        self.chapters_tree.column('progress', width=90, anchor=tk.CENTER)
+        self.chapters_tree.column('status', width=120, anchor=tk.CENTER)
+
+        ch_scroll = ttk.Scrollbar(breakdown_box, orient=tk.VERTICAL, command=self.chapters_tree.yview)
+        self.chapters_tree.configure(yscrollcommand=ch_scroll.set)
+
+        self.chapters_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        ch_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # 3. Action Buttons Row
         exam_actions = ttk.Frame(parent)
         exam_actions.pack(fill=tk.X)
 
         self.start_exam_btn = tk.Button(
             exam_actions,
-            text='🎯 Start Daily Exam Mission',
+            text='🎯 Start Today\'s Exam Mission (Practice Tagged Chapters)',
             font=('', 11, 'bold'),
             bg='#059669',
             fg='#ffffff',
@@ -663,66 +700,87 @@ class HomeDashboardView(ttk.Frame):
         )
         self.start_exam_btn.pack(side=tk.LEFT)
 
-        ttk.Button(exam_actions, text='💾 Save Exam Goal', command=self.save_exam_settings).pack(side=tk.RIGHT)
+        ttk.Button(
+            exam_actions, 
+            text='✏️ Edit Exam & Chapters', 
+            command=self.open_exam_goal_dialog
+        ).pack(side=tk.RIGHT)
+
+    def open_exam_goal_dialog(self):
+        exams = DeckManager.list_exams()
+        current_exam = exams[0] if exams else None
+        dlg = ExamGoalDialog(self, current_exam=current_exam, on_start_exam_mission_callback=self.on_start_session)
+        self.wait_window(dlg)
+        self.refresh_data()
+
+    def render_chapters_breakdown(self):
+        self.chapters_tree.delete(*self.chapters_tree.get_children())
+        filter_mode = self.chapter_filter_var.get()
+
+        for ch in self.cached_chapters_breakdown:
+            is_mastered = ch.get('is_mastered', False)
+            if filter_mode == 'mastered' and not is_mastered:
+                continue
+            if filter_mode == 'in_progress' and is_mastered:
+                continue
+
+            self.chapters_tree.insert('', tk.END, values=(
+                ch.get('chapter_name', ''),
+                ch.get('deck_title', ''),
+                ch.get('total_cards', 0),
+                ch.get('mastered_cards', 0),
+                f"{ch.get('readiness_percent', 0)}%",
+                ch.get('status', '')
+            ))
 
     def recalculate_exam_preview(self):
-        sel_decks = [d_id for d_id, var in self.deck_vars.items() if var.get()]
-        exam_id = 'current_exam_preview'
-        dummy = {
-            'id': exam_id,
-            'title': self.exam_title_var.get(),
-            'target_date': self.exam_date_var.get(),
-            'target_stage': 6,
-            'daily_max_cap': self.exam_cap_var.get(),
-            'deck_ids': sel_decks
-        }
-        DeckManager.save_exam(dummy)
-        metrics = DeckManager.calculate_exam_metrics(exam_id)
+        exams = DeckManager.list_exams()
+        if not exams:
+            self.exam_gauge.config(text='0%')
+            self.exam_status_lbl.config(text='No Exam Configured')
+            self.exam_details_lbl.config(text='Click "Configure Exam & Scope" to select chapters.')
+            self.cached_chapters_breakdown = []
+            self.render_chapters_breakdown()
+            return
 
+        active_exam = exams[0]
+        metrics = DeckManager.calculate_exam_metrics(active_exam['id'])
         pct = metrics.get('readiness_percent', 0)
         days_left = metrics.get('days_left', 14)
         status_tag = metrics.get('status_tag', 'Planning')
-        self.exam_gauge.config(text=f"{pct}%")
-        self.exam_status_lbl.config(text=f"Target: {self.exam_title_var.get()} • {status_tag}")
 
-        details = f"Days Remaining: {days_left} | Total Exam Cards: {metrics.get('total_cards', 0)} | Mastered: {metrics.get('mastered_cards', 0)}\n" \
-                  f"Cards Left: {metrics.get('total_cards', 0) - metrics.get('mastered_cards', 0)} | Recommended Daily Practice: {metrics.get('daily_quota', 0)} cards/day"
+        self.exam_gauge.config(text=f"{pct}%")
+        self.exam_status_lbl.config(text=f"Target: {active_exam.get('title', 'Exam')} • {status_tag}")
+        
+        chaps = metrics.get('chapters_breakdown', [])
+        self.cached_chapters_breakdown = chaps
+        self.render_chapters_breakdown()
+
+        mastered_chaps = sum(1 for c in chaps if c.get('is_mastered'))
+        details = f"Days Left: {days_left} | Tagged Chapters: {len(chaps)} ({mastered_chaps} Mastered) | " \
+                  f"Total Cards: {metrics.get('total_cards', 0)} ({metrics.get('mastered_cards', 0)} Mastered) | " \
+                  f"Daily Goal: {metrics.get('daily_quota', 0)} cards/day"
         self.exam_details_lbl.config(text=details)
 
-    def save_exam_settings(self):
-        sel_decks = [d_id for d_id, var in self.deck_vars.items() if var.get()]
-        exam_data = {
-            'id': 'main_exam',
-            'title': self.exam_title_var.get().strip() or 'Exam Assessment',
-            'target_date': self.exam_date_var.get().strip(),
-            'deck_ids': sel_decks,
-            'daily_max_cap': self.exam_cap_var.get(),
-            'target_stage': 6
-        }
-        DeckManager.save_exam(exam_data)
-        messagebox.showinfo('Success', 'Exam goal saved successfully!', parent=self)
-        self.refresh_data()
-
     def start_daily_exam_mission(self):
-        self.save_exam_settings()
-        sel_decks = [d_id for d_id, var in self.deck_vars.items() if var.get()]
-        if not sel_decks:
-            messagebox.showinfo('No Decks', 'Please select at least one deck for the exam.', parent=self)
+        exams = DeckManager.list_exams()
+        if not exams:
+            messagebox.showinfo('No Exam Configured', 'Please configure an exam and tag chapters first.', parent=self)
+            self.open_exam_goal_dialog()
             return
 
-        all_cards = []
-        for d_id in sel_decks:
-            all_cards.extend(DeckManager.get_deck_questions(d_id))
-
-        all_cards.sort(key=lambda x: getattr(x, 'ladder_stage', 1))
-        cap = self.exam_cap_var.get()
-        exam_cards = all_cards[:cap] if len(all_cards) > cap else all_cards
-
+        exam_id = exams[0]['id']
+        exam_cards = DeckManager.get_exam_cards(exam_id)
         if not exam_cards:
-            messagebox.showinfo('Empty Scope', 'No cards found in selected decks.', parent=self)
+            messagebox.showinfo('Empty Scope', 'No cards found in the tagged chapters for this exam.', parent=self)
             return
 
-        self.on_start_session(exam_cards, 'guided_mission', None)
+        # Sort by ladder stage (cards needing the most practice first)
+        exam_cards.sort(key=lambda x: getattr(x, 'ladder_stage', 1))
+        cap = exams[0].get('daily_max_cap', 15)
+        session_cards = exam_cards[:cap] if len(exam_cards) > cap else exam_cards
+
+        self.on_start_session(session_cards, 'guided_mission', None)
 
     # =========================================================================
     # TAB 4: WRITING MODE SANDBOX
@@ -843,27 +901,5 @@ class HomeDashboardView(ttk.Frame):
             self.queue_listbox.insert(tk.END, f"{info['icon']} [Stage {st} - {info['short_name']}] {item.question} ➔ {ans}")
         self.queue_badge.config(text=f"{len(queue)} Sentences Due Today")
 
-        # Update Exam Settings & Checklist
-        cur_exam = exams[0] if exams else None
-        if cur_exam:
-            self.exam_title_var.set(cur_exam.get('title', 'Exam'))
-            self.exam_date_var.set(cur_exam.get('target_date', ''))
-            self.exam_cap_var.set(cur_exam.get('daily_max_cap', 15))
-
-        for w in self.exam_deck_scroll_frame.winfo_children():
-            w.destroy()
-
-        self.deck_vars = {}
-        linked_ids = set(cur_exam.get('deck_ids', [])) if cur_exam else set()
-        for d in self.all_decks:
-            is_checked = (d['id'] in linked_ids) if cur_exam else True
-            var = tk.BooleanVar(value=is_checked)
-            var.trace_add('write', lambda *a: self.recalculate_exam_preview())
-            self.deck_vars[d['id']] = var
-            ttk.Checkbutton(
-                self.exam_deck_scroll_frame,
-                text=f"{d['title']} ({len(d.get('cards', []))} cards)",
-                variable=var
-            ).pack(anchor=tk.W, pady=2)
-
+        # Update Exam Tab & Chapters Breakdown
         self.recalculate_exam_preview()

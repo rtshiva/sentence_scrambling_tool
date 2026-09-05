@@ -60,6 +60,7 @@ class ExamGoal:
     target_stage: int = 6
     deck_ids: List[str] = dataclasses.field(default_factory=list)
     daily_max_cap: int = 15
+    selected_scope: Dict[str, List[str]] = dataclasses.field(default_factory=dict)
 
     def to_dict(self):
         return {
@@ -68,7 +69,8 @@ class ExamGoal:
             'target_date': self.target_date,
             'target_stage': self.target_stage,
             'deck_ids': list(self.deck_ids),
-            'daily_max_cap': self.daily_max_cap
+            'daily_max_cap': self.daily_max_cap,
+            'selected_scope': {k: list(v) for k, v in self.selected_scope.items()}
         }
 
     @classmethod
@@ -79,5 +81,6 @@ class ExamGoal:
             target_date=data.get('target_date', ''),
             target_stage=data.get('target_stage', 6),
             deck_ids=list(data.get('deck_ids', [])),
-            daily_max_cap=data.get('daily_max_cap', 15)
+            daily_max_cap=data.get('daily_max_cap', 15),
+            selected_scope=dict(data.get('selected_scope', {}))
         )

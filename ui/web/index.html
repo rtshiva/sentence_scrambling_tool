@@ -199,70 +199,76 @@
 
     <!-- ==================== TAB 3: EXAM READINESS & PACING ==================== -->
     <section id="tab-exam" class="tab-content hidden space-y-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <!-- Left 2 Cols: Metrics & Gauge -->
-        <div class="md:col-span-2 bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-          <div class="flex justify-between items-start">
-            <div>
-              <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Target Exam</span>
-              <h2 id="exam-title" class="text-xl font-black text-slate-900">Class 4 Mid-Term English Exam</h2>
-              <p id="exam-meta" class="text-xs text-slate-500 mt-0.5">Exam Date: In 14 Days • 85 Cards in Scope</p>
-            </div>
-            <span id="exam-status-tag" class="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1.5 rounded-full">On Track</span>
+      <!-- Exam Header & Configuration Controls -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Target Exam</span>
+            <span id="exam-status-tag" class="text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">On Track</span>
           </div>
-
-          <!-- Progress Bar -->
-          <div>
-            <div class="flex justify-between text-xs font-bold text-slate-600 mb-2">
-              <span>Overall Readiness</span>
-              <span id="exam-readiness-val">62% Complete</span>
-            </div>
-            <div class="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden">
-              <div id="exam-progress-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-500" style="width: 62%"></div>
-            </div>
-          </div>
-
-          <!-- 3 Stats Cards -->
-          <div class="grid grid-cols-3 gap-4">
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-center">
-              <div class="text-xs text-slate-500 font-medium">Days Left</div>
-              <div id="stat-days-left" class="text-2xl font-black text-slate-900 mt-1">14</div>
-            </div>
-            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-center">
-              <div class="text-xs text-slate-500 font-medium">Mastered / Total</div>
-              <div id="stat-cards-count" class="text-2xl font-black text-indigo-600 mt-1">53 / 85</div>
-            </div>
-            <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3.5 text-center">
-              <div class="text-xs text-emerald-800 font-medium">Daily Goal</div>
-              <div id="stat-daily-quota" class="text-2xl font-black text-emerald-700 mt-1">3 Cards/Day</div>
-            </div>
-          </div>
-
-          <button onclick="launchExamMission()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-3 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
-            <span>🎯</span> Start Today's Exam Mission Queue
+          <h2 id="exam-title" class="text-xl font-black text-slate-900 mt-1">Class 4 Mid-Term English Exam</h2>
+          <p id="exam-meta" class="text-xs text-slate-500 mt-0.5">Exam Date: In 14 Days &bull; Tagged Chapters Scope</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openExamScopeModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5">
+            <span>✏️</span> Edit Exam & Tag Chapters
+          </button>
+          <button onclick="openCreateExamModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5">
+            <span>+</span> New Exam
           </button>
         </div>
+      </div>
 
-        <!-- Right Col: Exam Goal Editor -->
-        <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-          <h3 class="text-base font-bold text-slate-900">Edit Exam Target</h3>
-          <div class="space-y-3 text-xs">
-            <div>
-              <label class="block font-semibold text-slate-600 mb-1">Exam Name</label>
-              <input type="text" id="edit-exam-name" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-            </div>
-            <div>
-              <label class="block font-semibold text-slate-600 mb-1">Exam Target Date</label>
-              <input type="date" id="edit-exam-date" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-            </div>
-            <div>
-              <label class="block font-semibold text-slate-600 mb-1">Target Mastery Count</label>
-              <input type="number" id="edit-exam-target" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-            </div>
-            <button onclick="saveExamGoal()" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-bold py-2.5 rounded-xl transition mt-2">
-              Update Exam Target
-            </button>
+      <!-- Readiness Gauge & Pacing Cards -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+        <div>
+          <div class="flex justify-between text-xs font-bold text-slate-600 mb-2">
+            <span>Overall Exam Readiness (Across Tagged Chapters)</span>
+            <span id="exam-readiness-val">0% Complete</span>
           </div>
+          <div class="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden">
+            <div id="exam-progress-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- 3 Stats Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+            <div class="text-xs text-slate-500 font-medium">Days Remaining</div>
+            <div id="stat-days-left" class="text-2xl font-black text-slate-900 mt-1">14</div>
+          </div>
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
+            <div class="text-xs text-slate-500 font-medium">Mastered / Total Tagged Cards</div>
+            <div id="stat-cards-count" class="text-2xl font-black text-indigo-600 mt-1">0 / 0</div>
+          </div>
+          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+            <div class="text-xs text-emerald-800 font-medium">Recommended Daily Goal</div>
+            <div id="stat-daily-quota" class="text-2xl font-black text-emerald-700 mt-1">3 Cards/Day</div>
+          </div>
+        </div>
+
+        <button onclick="launchExamMission()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-3 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
+          <span>🎯</span> Start Today's Exam Mission (Practice Tagged Chapters)
+        </button>
+      </div>
+
+      <!-- Chapter-by-Chapter Mastery Breakdown ("Mastered vs Not Yet") -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
+        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Chapter Mastery Breakdown</h3>
+            <p class="text-xs text-slate-500">Track which specific chapters are fully mastered vs. needing practice before exam day.</p>
+          </div>
+          <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
+            <button onclick="filterChapterBreakdown('all')" id="ch-filter-all" class="px-3 py-1 rounded-lg bg-white shadow-xs text-indigo-700">All Tagged</button>
+            <button onclick="filterChapterBreakdown('in_progress')" id="ch-filter-in_progress" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900">Needs Work</button>
+            <button onclick="filterChapterBreakdown('mastered')" id="ch-filter-mastered" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900">Mastered</button>
+          </div>
+        </div>
+
+        <!-- Chapters List / Grid -->
+        <div id="exam-chapters-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+          <!-- Rendered dynamically via JS -->
         </div>
       </div>
     </section>
@@ -353,6 +359,62 @@
         <button onclick="saveNewDeck()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition">
           Save Deck
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Exam Configuration & Chapter Scope Modal -->
+  <div id="exam-scope-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50 overflow-y-auto">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-5 my-8">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div>
+          <h3 class="text-lg font-black text-slate-900" id="exam-scope-modal-title">Configure Exam & Tag Chapters</h3>
+          <p class="text-xs text-slate-500">Select only the specific chapters/lessons required for this exam.</p>
+        </div>
+        <button onclick="closeExamScopeModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <!-- Form Inputs -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+        <div class="sm:col-span-2">
+          <label class="block font-bold text-slate-700 mb-1">Exam Name / Title</label>
+          <input type="text" id="modal-exam-name" placeholder="e.g. Mid-Term Assessment" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Exam Target Date</label>
+          <input type="date" id="modal-exam-date" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+        </div>
+      </div>
+
+      <!-- Decks & Chapters Hierarchy Tree -->
+      <div class="space-y-2">
+        <div class="flex justify-between items-center">
+          <label class="block text-xs font-bold text-slate-800">Select Chapters Included in Exam Scope:</label>
+          <div class="text-[11px] text-slate-500">
+            <button onclick="selectAllExamScope(true)" class="text-indigo-600 hover:underline font-semibold">Select All</button> &bull;
+            <button onclick="selectAllExamScope(false)" class="text-slate-500 hover:underline font-semibold">Clear All</button>
+          </div>
+        </div>
+        <div id="modal-exam-tree" class="max-h-72 overflow-y-auto space-y-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
+          <!-- Rendered dynamically via JS -->
+        </div>
+      </div>
+
+      <!-- Scope Live Summary Footer -->
+      <div class="p-3 bg-indigo-50 border border-indigo-100 rounded-xl flex justify-between items-center text-xs">
+        <div>
+          <span class="text-slate-600">Tagged Chapters: <strong id="modal-summary-chaps" class="text-indigo-900">0</strong></span> &bull;
+          <span class="text-slate-600">Total Cards: <strong id="modal-summary-cards" class="text-indigo-900">0</strong></span>
+        </div>
+        <span class="bg-white border border-indigo-200 text-indigo-700 font-bold px-3 py-1 rounded-lg">
+          Daily Quota: <span id="modal-summary-quota">0</span>/day
+        </span>
+      </div>
+
+      <!-- Actions -->
+      <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
+        <button onclick="closeExamScopeModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+        <button onclick="saveExamScopeConfig()" class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition">Save Exam Configuration</button>
       </div>
     </div>
   </div>

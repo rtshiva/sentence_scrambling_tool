@@ -151,18 +151,90 @@ class DeckManager:
         return ProfileManager.delete_active_exam(exam_id)
 
     @classmethod
+    def get_deck_chapters(cls, deck_id: str) -> List[Dict[str, Any]]:
+        """Groups cards in a deck by chapter/lesson_name with mastery stats."""
+        deck = cls.get_deck(deck_id)
+        if not deck:
+            return []
+        
+        cards = deck.get('cards', [])
+        chapters_map: Dict[str, List[dict]] = {}
+        for c in cards:
+            ch_name = (c.get('lesson_name') or '').strip() or 'General / Unassigned'
+            chapters_map.setdefault(ch_name, []).append(c)
+
+        result = []
+        for ch_name, ch_cards in chapters_map.items():
+            tot = len(ch_cards)
+            mst = sum(1 for c in ch_cards if c.get('ladder_stage', 1) >= 6)
+            pct = int(round((mst / tot) * 100)) if tot > 0 else 0
+            result.append({
+                'chapter_name': ch_name,
+                'deck_id': deck_id,
+                'deck_title': deck.get('title', 'Deck'),
+                'total_cards': tot,
+                'mastered_cards': mst,
+                'readiness_percent': pct,
+                'cards': ch_cards
+            })
+        return result
+
+    @classmethod
+    def get_all_decks_with_chapters(cls) -> List[Dict[str, Any]]:
+        """Returns all decks with their chapter hierarchies."""
+        decks = cls.list_decks()
+        result = []
+        for d in decks:
+            chaps = cls.get_deck_chapters(d['id'])
+            result.append({
+                'id': d['id'],
+                'title': d.get('title', 'Untitled Deck'),
+                'subject': d.get('subject', 'General'),
+                'total_cards': len(d.get('cards', [])),
+                'chapters': chaps
+            })
+        return result
+
+    @classmethod
+    def get_exam_cards(cls, exam_id: str) -> List[QuestionItem]:
+        """Returns only the cards in the tagged chapters of the exam."""
+        exam = cls.get_exam(exam_id)
+        if not exam:
+            return []
+        
+        linked_deck_ids = exam.get('deck_ids', [])
+        selected_scope = exam.get('selected_scope', {})
+        
+        cards = []
+        for d_id in linked_deck_ids:
+            deck_questions = cls.get_deck_questions(d_id)
+            if d_id in selected_scope:
+                allowed_chaps = set(selected_scope[d_id])
+                for q in deck_questions:
+                    ch_name = (q.lesson_name or '').strip() or 'General / Unassigned'
+                    if ch_name in allowed_chaps or '*' in allowed_chaps:
+                        cards.append(q)
+            else:
+                cards.extend(deck_questions)
+        return cards
+
+    @classmethod
     def calculate_exam_metrics(cls, exam_id: str, now_date: Optional[date] = None) -> Dict[str, Any]:
         exam = cls.get_exam(exam_id)
         if not exam:
             return {
+                'id': exam_id,
                 'title': 'Unknown Exam',
+                'target_date': '',
                 'days_left': 0,
                 'total_cards': 0,
                 'target_stage': 6,
                 'mastered_cards': 0,
                 'readiness_percent': 0,
                 'daily_quota': 0,
-                'status_tag': 'No Exam'
+                'status_tag': 'No Exam',
+                'selected_scope': {},
+                'chapters_breakdown': []
             }
 
         if now_date is None:
@@ -180,22 +252,66 @@ class DeckManager:
         target_stage = exam.get('target_stage', 6)
         daily_cap = exam.get('daily_max_cap', 15)
         linked_deck_ids = exam.get('deck_ids', [])
+        selected_scope = exam.get('selected_scope', {})
 
         all_cards = []
+        chapters_breakdown = []
+
         for d_id in linked_deck_ids:
-            all_cards.extend(cls.get_deck_questions(d_id))
+            deck = cls.get_deck(d_id)
+            if not deck:
+                continue
+            deck_title = deck.get('title', 'Deck')
+            all_chaps = cls.get_deck_chapters(d_id)
+            has_scope = (d_id in selected_scope)
+            allowed_chaps = set(selected_scope[d_id]) if has_scope else set()
+            
+            for ch in all_chaps:
+                ch_name = ch['chapter_name']
+                is_selected = (not has_scope) or (ch_name in allowed_chaps) or ('*' in allowed_chaps)
+                if is_selected:
+                    ch_cards = ch['cards']
+                    q_items = [QuestionItem.from_dict(c) for c in ch_cards]
+                    all_cards.extend(q_items)
+                    
+                    ch_tot = len(ch_cards)
+                    ch_mst = sum(1 for c in q_items if c.ladder_stage >= target_stage)
+                    ch_pct = int(round((ch_mst / ch_tot) * 100)) if ch_tot > 0 else 0
+                    has_practice = any(c.ladder_stage > 1 for c in q_items)
+                    
+                    if ch_pct == 100:
+                        st_label = "⭐ Mastered"
+                    elif ch_pct > 0 or has_practice:
+                        st_label = "🔄 In Progress"
+                    else:
+                        st_label = "⏳ Not Started"
+
+                    chapters_breakdown.append({
+                        'deck_id': d_id,
+                        'deck_title': deck_title,
+                        'chapter_name': ch_name,
+                        'total_cards': ch_tot,
+                        'mastered_cards': ch_mst,
+                        'readiness_percent': ch_pct,
+                        'status': st_label,
+                        'is_mastered': (ch_pct == 100)
+                    })
 
         total_cards = len(all_cards)
         if total_cards == 0:
             return {
+                'id': exam_id,
                 'title': exam.get('title', 'Exam'),
+                'target_date': target_date_str,
                 'days_left': days_left,
                 'total_cards': 0,
                 'target_stage': target_stage,
                 'mastered_cards': 0,
                 'readiness_percent': 0,
                 'daily_quota': 0,
-                'status_tag': 'Empty Decks'
+                'status_tag': 'Empty Scope',
+                'selected_scope': selected_scope,
+                'chapters_breakdown': []
             }
 
         current_stages_sum = sum(min(c.ladder_stage, target_stage) for c in all_cards)
@@ -219,14 +335,18 @@ class DeckManager:
             status_tag = "🟡 Steady Progress"
 
         return {
+            'id': exam_id,
             'title': exam.get('title', 'Exam'),
+            'target_date': target_date_str,
             'days_left': days_left,
             'total_cards': total_cards,
             'target_stage': target_stage,
             'mastered_cards': mastered_cards,
             'readiness_percent': readiness_pct,
             'daily_quota': daily_quota,
-            'status_tag': status_tag
+            'status_tag': status_tag,
+            'selected_scope': selected_scope,
+            'chapters_breakdown': chapters_breakdown
         }
 
     @classmethod

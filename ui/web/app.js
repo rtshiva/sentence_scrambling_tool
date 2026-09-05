@@ -2,20 +2,26 @@
 // Sentence Jigsaw 3.0 Web Application Logic
 let state = {
   active_profile: 'Arya',
-  profiles: ['Arya', 'Student 2'],
+  profiles: ['Arya'],
   decks: [],
   exam_metrics: {
+    id: 'exam_midterm',
     exam_name: 'Class 4 Mid-Term English Exam',
+    target_date: '',
     days_left: 14,
-    total_cards: 85,
-    mastered_cards: 53,
+    total_cards: 0,
+    mastered_cards: 0,
     daily_quota: 3,
-    readiness_percent: 62,
-    status_tag: 'On Track'
+    readiness_percent: 0,
+    status_tag: 'On Track',
+    selected_scope: {},
+    chapters_breakdown: []
   },
+  all_decks_chapters: [],
   mission_queue: [],
   current_scope: 'all',
-  selected_step: 4
+  selected_step: 4,
+  chapter_filter: 'all'
 };
 
 const ladderStepsInfo = {
@@ -54,59 +60,82 @@ const ladderStepsInfo = {
 // Initialize bridge or fallback to demo data
 window.addEventListener('pywebviewready', async function() {
   console.log("pywebview bridge is ready!");
-  try {
-    const pyState = await window.pywebview.api.get_state();
-    if (pyState) {
-      state = { ...state, ...pyState };
-    }
-  } catch (e) {
-    console.warn("Failed to load initial state from Python:", e);
-  }
+  await reloadState();
   refreshUI();
 });
 
-// If opened in plain browser (development preview)
+async function reloadState() {
+  try {
+    if (window.pywebview) {
+      const pyState = await window.pywebview.api.get_state();
+      if (pyState) {
+        state = { ...state, ...pyState };
+      }
+      const decksChaps = await window.pywebview.api.get_all_decks_with_chapters();
+      if (decksChaps) {
+        state.all_decks_chapters = decksChaps;
+      }
+    }
+  } catch (e) {
+    console.warn("Failed to load state from Python:", e);
+  }
+}
+
+// Development preview fallback
 window.addEventListener('DOMContentLoaded', () => {
   setTimeout(() => {
     if (!window.pywebview) {
       console.log("Running in standalone preview mode with sample data.");
-      // Seed sample decks if empty
       if (!state.decks || state.decks.length === 0) {
         state.decks = [
           {
             id: 'deck_1',
-            title: 'English Class 4 - Chapter 1',
+            title: 'English Class 4 - Reader',
             subject: 'English Grammar',
-            description: 'Core reading vocabulary and sentence patterns from Chapter 1.',
+            description: 'Core reading vocabulary and sentence patterns from Reader.',
             cards: [
-              { question: 'Q1', chunks: ['The', 'cat', 'slept'], ladder_stage: 6 },
-              { question: 'Q2', chunks: ['The', 'sun', 'rose'], ladder_stage: 4 },
-              { question: 'Q3', chunks: ['Birds', 'sing', 'sweetly'], ladder_stage: 2 }
-            ],
-            tags: ['exam', 'ch1']
-          },
-          {
-            id: 'deck_2',
-            title: 'Science: Plants & Photosynthesis',
-            subject: 'Science',
-            description: 'Scientific facts and plant lifecycle sentences.',
-            cards: [
-              { question: 'Q1', chunks: ['Plants', 'absorb', 'sunlight'], ladder_stage: 5 },
-              { question: 'Q2', chunks: ['Chlorophyll', 'traps', 'light'], ladder_stage: 3 }
+              { question: 'The wind whispered softly.', chunks: ['The wind', 'whispered', 'softly.'], lesson_name: 'Chapter 1: The Wind', ladder_stage: 6 },
+              { question: 'Leaves danced in the autumn sky.', chunks: ['Leaves', 'danced in', 'the autumn sky.'], lesson_name: 'Chapter 1: The Wind', ladder_stage: 6 },
+              { question: 'The ant worked tirelessly all summer.', chunks: ['The ant', 'worked tirelessly', 'all summer.'], lesson_name: 'Chapter 2: The Ant & Grasshopper', ladder_stage: 4 },
+              { question: 'Winter arrived with bitter frost.', chunks: ['Winter', 'arrived with', 'bitter frost.'], lesson_name: 'Chapter 2: The Ant & Grasshopper', ladder_stage: 2 },
+              { question: 'Birds migrate south for warmth.', chunks: ['Birds', 'migrate south', 'for warmth.'], lesson_name: 'Chapter 3: Flying High', ladder_stage: 1 }
             ],
             tags: ['exam']
           },
           {
-            id: 'deck_3',
-            title: 'French Basics: Greetings & Numbers',
-            subject: 'French Basics',
-            description: 'Daily conversational expressions and numbers in French.',
+            id: 'deck_2',
+            title: 'Science Concepts Class 4',
+            subject: 'Science',
+            description: 'Plant biology, habitats, and solar system concepts.',
             cards: [
-              { question: 'Q1', chunks: ['Bonjour', 'mon', 'ami'], ladder_stage: 1 }
+              { question: 'Chlorophyll absorbs green light.', chunks: ['Chlorophyll', 'absorbs', 'green light.'], lesson_name: 'Chapter 1: Photosynthesis', ladder_stage: 6 },
+              { question: 'Roots anchor the plant firmly in soil.', chunks: ['Roots', 'anchor the plant', 'firmly in soil.'], lesson_name: 'Chapter 1: Photosynthesis', ladder_stage: 5 },
+              { question: 'Jupiter is the largest planet.', chunks: ['Jupiter', 'is the largest', 'planet.'], lesson_name: 'Chapter 2: Solar System', ladder_stage: 3 }
             ],
-            tags: []
+            tags: ['exam']
           }
         ];
+
+        state.exam_metrics = {
+          id: 'exam_midterm',
+          exam_name: 'Class 4 Mid-Term English & Science Exam',
+          target_date: '2026-09-20',
+          days_left: 14,
+          total_cards: 7,
+          mastered_cards: 3,
+          daily_quota: 2,
+          readiness_percent: 65,
+          status_tag: 'On Track',
+          selected_scope: {
+            'deck_1': ['Chapter 1: The Wind', 'Chapter 2: The Ant & Grasshopper'],
+            'deck_2': ['Chapter 1: Photosynthesis']
+          },
+          chapters_breakdown: [
+            { deck_id: 'deck_1', deck_title: 'English Class 4 - Reader', chapter_name: 'Chapter 1: The Wind', total_cards: 2, mastered_cards: 2, readiness_percent: 100, status: '⭐ Mastered', is_mastered: true },
+            { deck_id: 'deck_1', deck_title: 'English Class 4 - Reader', chapter_name: 'Chapter 2: The Ant & Grasshopper', total_cards: 2, mastered_cards: 0, readiness_percent: 50, status: '🔄 In Progress', is_mastered: false },
+            { deck_id: 'deck_2', deck_title: 'Science Concepts Class 4', chapter_name: 'Chapter 1: Photosynthesis', total_cards: 2, mastered_cards: 1, readiness_percent: 85, status: '🔄 In Progress', is_mastered: false }
+          ]
+        };
       }
       refreshUI();
     }
@@ -114,17 +143,15 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function refreshUI() {
-  // Update header student info
   document.getElementById('active-student-name').textContent = state.active_profile;
   
-  // Update target exam banner
   if (state.exam_metrics) {
     const em = state.exam_metrics;
-    document.getElementById('target-exam-text').textContent = `${em.exam_name || 'Class 4 Mid-Term'} (${em.days_left || 14} Days)`;
+    document.getElementById('target-exam-text').textContent = `${em.exam_name || 'Mid-Term Exam'} (${em.days_left || 14} Days)`;
     
     // Tab 3 elements
     document.getElementById('exam-title').textContent = em.exam_name || 'Class 4 Mid-Term English Exam';
-    document.getElementById('exam-meta').textContent = `Exam Date: In ${em.days_left || 14} Days • ${em.total_cards || 0} Cards in Scope`;
+    document.getElementById('exam-meta').textContent = `Target Date: In ${em.days_left || 14} Days • ${em.total_cards || 0} Cards in Scope across Tagged Chapters`;
     document.getElementById('exam-readiness-val').textContent = `${em.readiness_percent || 0}% Complete`;
     document.getElementById('exam-progress-bar').style.width = `${em.readiness_percent || 0}%`;
     document.getElementById('stat-days-left').textContent = em.days_left || 0;
@@ -132,33 +159,428 @@ function refreshUI() {
     document.getElementById('stat-daily-quota').textContent = `${em.daily_quota || 0} Cards/Day`;
     document.getElementById('exam-status-tag').textContent = em.status_tag || 'On Track';
     
-    // Status tag styling
     const tagEl = document.getElementById('exam-status-tag');
-    if (em.status_tag === 'Intensive') {
-      tagEl.className = 'text-xs bg-rose-100 text-rose-800 font-bold px-3 py-1.5 rounded-full';
-    } else if (em.status_tag === 'Moderate') {
-      tagEl.className = 'text-xs bg-amber-100 text-amber-800 font-bold px-3 py-1.5 rounded-full';
+    if (em.status_tag && em.status_tag.includes('Urgent')) {
+      tagEl.className = 'text-[11px] bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full';
+    } else if (em.status_tag && em.status_tag.includes('Steady')) {
+      tagEl.className = 'text-[11px] bg-amber-100 text-amber-800 font-bold px-2.5 py-0.5 rounded-full';
     } else {
-      tagEl.className = 'text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1.5 rounded-full';
+      tagEl.className = 'text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full';
     }
+
+    renderChapterBreakdown();
   }
 
-  // Populate subject filter options
   populateSubjectFilter();
-
-  // Render decks
   filterDecks();
-
-  // Render mission queue
   renderMissionQueue();
 }
 
+// ----------------- Chapter Mastery Breakdown -----------------
+function filterChapterBreakdown(filterType) {
+  state.chapter_filter = filterType;
+  ['all', 'in_progress', 'mastered'].forEach(f => {
+    const btn = document.getElementById('ch-filter-' + f);
+    if (btn) {
+      if (f === filterType) {
+        btn.className = 'px-3 py-1 rounded-lg bg-white shadow-xs text-indigo-700 font-bold';
+      } else {
+        btn.className = 'px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900';
+      }
+    }
+  });
+  renderChapterBreakdown();
+}
+
+function renderChapterBreakdown() {
+  const container = document.getElementById('exam-chapters-container');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const em = state.exam_metrics;
+  const chapters = em.chapters_breakdown || [];
+
+  const filtered = chapters.filter(ch => {
+    if (state.chapter_filter === 'mastered') return ch.is_mastered;
+    if (state.chapter_filter === 'in_progress') return !ch.is_mastered;
+    return true;
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = `
+      <div class="col-span-full py-8 text-center bg-slate-50 border border-slate-200 rounded-xl p-6">
+        <div class="text-3xl mb-1">📖</div>
+        <div class="text-sm font-bold text-slate-700">No Chapters in this View</div>
+        <p class="text-xs text-slate-500 mt-0.5">Click "Edit Exam & Tag Chapters" to select which chapters are included in this exam.</p>
+      </div>
+    `;
+    return;
+  }
+
+  filtered.forEach(ch => {
+    const card = document.createElement('div');
+    card.className = `p-4 rounded-xl border transition flex flex-col justify-between space-y-3 ${ch.is_mastered ? 'bg-emerald-50/50 border-emerald-200' : 'bg-white border-slate-200 shadow-xs'}`;
+    
+    card.innerHTML = `
+      <div>
+        <div class="flex items-center justify-between gap-2 mb-1.5">
+          <span class="text-[11px] font-bold text-slate-500 truncate max-w-[180px]">${ch.deck_title}</span>
+          <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full ${ch.is_mastered ? 'bg-emerald-100 text-emerald-800' : (ch.mastered_cards > 0 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600')}">
+            ${ch.status}
+          </span>
+        </div>
+        <h4 class="text-sm font-bold text-slate-900 leading-snug">${ch.chapter_name}</h4>
+      </div>
+
+      <div>
+        <div class="flex justify-between text-[11px] font-semibold text-slate-500 mb-1">
+          <span>Mastery: ${ch.mastered_cards} / ${ch.total_cards} Cards</span>
+          <span class="font-bold ${ch.is_mastered ? 'text-emerald-700' : 'text-slate-700'}">${ch.readiness_percent}%</span>
+        </div>
+        <div class="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+          <div class="h-full rounded-full transition-all duration-300 ${ch.is_mastered ? 'bg-emerald-500' : 'bg-indigo-600'}" style="width: ${ch.readiness_percent}%"></div>
+        </div>
+      </div>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
+// ----------------- Exam Scope Modal & Chapter Tagging -----------------
+let modalScopeState = {
+  exam_id: null,
+  selected_scope: {}, // deck_id -> Set of chapter names
+  decks_data: []
+};
+
+async function openExamScopeModal(isNew = false) {
+  const modal = document.getElementById('exam-scope-modal');
+  const treeContainer = document.getElementById('modal-exam-tree');
+  treeContainer.innerHTML = '<div class="text-center py-4 text-xs text-slate-400">Loading chapters...</div>';
+
+  const em = state.exam_metrics || {};
+  modalScopeState.exam_id = isNew ? null : (em.id || null);
+  document.getElementById('modal-exam-name').value = isNew ? 'Final Term Exam' : (em.exam_name || 'Mid-Term Assessment');
+  
+  const defaultDate = new Date();
+  defaultDate.setDate(defaultDate.getDate() + 14);
+  document.getElementById('modal-exam-date').value = (isNew || !em.target_date) 
+    ? defaultDate.toISOString().split('T')[0] 
+    : em.target_date;
+
+  // Clone current selected scope
+  modalScopeState.selected_scope = {};
+  if (!isNew && em.selected_scope) {
+    for (const [d_id, chaps] of Object.entries(em.selected_scope)) {
+      modalScopeState.selected_scope[d_id] = new Set(chaps);
+    }
+  }
+
+  modal.classList.remove('hidden');
+
+  // Load all decks with chapters
+  let decksWithChaps = state.all_decks_chapters;
+  if (window.pywebview) {
+    try {
+      decksWithChaps = await window.pywebview.api.get_all_decks_with_chapters();
+      state.all_decks_chapters = decksWithChaps;
+    } catch (e) {
+      console.warn("Failed to fetch decks with chapters:", e);
+    }
+  }
+
+  if (!decksWithChaps || decksWithChaps.length === 0) {
+    // Generate from state.decks
+    decksWithChaps = (state.decks || []).map(d => {
+      const chapsMap = {};
+      (d.cards || []).forEach(c => {
+        const ch = (c.lesson_name || '').trim() || 'General / Unassigned';
+        chapsMap[ch] = (chapsMap[ch] || 0) + 1;
+      });
+      return {
+        id: d.id,
+        title: d.title,
+        subject: d.subject,
+        chapters: Object.entries(chapsMap).map(([name, count]) => ({ chapter_name: name, total_cards: count }))
+      };
+    });
+  }
+
+  modalScopeState.decks_data = decksWithChaps;
+  renderModalExamTree();
+}
+
+function openCreateExamModal() {
+  openExamScopeModal(true);
+}
+
+function closeExamScopeModal() {
+  document.getElementById('exam-scope-modal').classList.add('hidden');
+}
+
+function renderModalExamTree() {
+  const treeContainer = document.getElementById('modal-exam-tree');
+  treeContainer.innerHTML = '';
+
+  const decks = modalScopeState.decks_data || [];
+  if (decks.length === 0) {
+    treeContainer.innerHTML = '<div class="text-center py-4 text-xs text-slate-500">No decks found. Please create or import a deck first.</div>';
+    return;
+  }
+
+  decks.forEach(deck => {
+    const deckBox = document.createElement('div');
+    deckBox.className = 'bg-white border border-slate-200 rounded-xl p-3 shadow-xs space-y-2';
+
+    const selSet = modalScopeState.selected_scope[deck.id] || new Set();
+    const chapters = deck.chapters || [];
+    const allChecked = chapters.length > 0 && chapters.every(ch => selSet.has(ch.chapter_name));
+    const someChecked = chapters.some(ch => selSet.has(ch.chapter_name));
+
+    // Deck Header Row
+    const deckHdr = document.createElement('div');
+    deckHdr.className = 'flex items-center justify-between';
+
+    const deckLabel = document.createElement('label');
+    deckLabel.className = 'flex items-center gap-2 cursor-pointer font-bold text-xs text-slate-800';
+
+    const deckChk = document.createElement('input');
+    deckChk.type = 'checkbox';
+    deckChk.id = `deck-chk-${deck.id}`;
+    deckChk.checked = allChecked;
+    deckChk.indeterminate = (someChecked && !allChecked);
+    deckChk.className = 'rounded text-indigo-600 focus:ring-indigo-500';
+    deckChk.addEventListener('change', (e) => toggleDeckAllChapters(deck.id, e.target.checked));
+
+    deckLabel.appendChild(deckChk);
+    const titleSpan = document.createElement('span');
+    titleSpan.textContent = `📁 ${deck.title}`;
+    deckLabel.appendChild(titleSpan);
+
+    const subSpan = document.createElement('span');
+    subSpan.className = 'text-[10px] font-normal text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full';
+    subSpan.textContent = deck.subject || 'General';
+    deckLabel.appendChild(subSpan);
+
+    const chapCountSpan = document.createElement('span');
+    chapCountSpan.className = 'text-[11px] text-slate-400';
+    chapCountSpan.textContent = `${chapters.length} Chapters`;
+
+    deckHdr.appendChild(deckLabel);
+    deckHdr.appendChild(chapCountSpan);
+    deckBox.appendChild(deckHdr);
+
+    // Chapters Checklist
+    const chList = document.createElement('div');
+    chList.className = 'pl-6 pt-1 space-y-1.5 border-t border-slate-100';
+
+    chapters.forEach(ch => {
+      const isChecked = selSet.has(ch.chapter_name);
+      const chRow = document.createElement('label');
+      chRow.className = 'flex items-center justify-between text-xs text-slate-700 cursor-pointer hover:bg-slate-50 p-1 rounded-lg';
+
+      const leftDiv = document.createElement('div');
+      leftDiv.className = 'flex items-center gap-2';
+
+      const chChk = document.createElement('input');
+      chChk.type = 'checkbox';
+      chChk.id = `ch-chk-${deck.id}-${escapeId(ch.chapter_name)}`;
+      chChk.checked = isChecked;
+      chChk.className = 'rounded text-indigo-600 focus:ring-indigo-500';
+      chChk.addEventListener('change', (e) => toggleSingleChapter(deck.id, ch.chapter_name, e.target.checked));
+
+      const nameSpan = document.createElement('span');
+      nameSpan.className = 'font-medium';
+      nameSpan.textContent = ch.chapter_name;
+
+      leftDiv.appendChild(chChk);
+      leftDiv.appendChild(nameSpan);
+
+      const countBadge = document.createElement('span');
+      countBadge.className = 'text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full';
+      countBadge.textContent = `${ch.total_cards || 0} cards`;
+
+      chRow.appendChild(leftDiv);
+      chRow.appendChild(countBadge);
+      chList.appendChild(chRow);
+    });
+
+    deckBox.appendChild(chList);
+    treeContainer.appendChild(deckBox);
+  });
+
+  updateModalLiveSummary();
+}
+
+function escapeId(str) {
+  return (str || '').replace(/[^a-zA-Z0-9]/g, '_');
+}
+
+function escapeAttr(str) {
+  return (str || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+}
+
+function toggleDeckAllChapters(deckId, isChecked) {
+  const deck = (modalScopeState.decks_data || []).find(d => d.id === deckId);
+  if (!deck) return;
+  
+  if (!modalScopeState.selected_scope[deckId]) {
+    modalScopeState.selected_scope[deckId] = new Set();
+  }
+
+  (deck.chapters || []).forEach(ch => {
+    if (isChecked) {
+      modalScopeState.selected_scope[deckId].add(ch.chapter_name);
+    } else {
+      modalScopeState.selected_scope[deckId].delete(ch.chapter_name);
+    }
+  });
+
+  renderModalExamTree();
+}
+
+function toggleSingleChapter(deckId, chapterName, isChecked) {
+  if (!modalScopeState.selected_scope[deckId]) {
+    modalScopeState.selected_scope[deckId] = new Set();
+  }
+  if (isChecked) {
+    modalScopeState.selected_scope[deckId].add(chapterName);
+  } else {
+    modalScopeState.selected_scope[deckId].delete(chapterName);
+  }
+
+  // Update parent deck checkbox state
+  const deck = (modalScopeState.decks_data || []).find(d => d.id === deckId);
+  if (deck) {
+    const deckChk = document.getElementById(`deck-chk-${deckId}`);
+    if (deckChk) {
+      const selSet = modalScopeState.selected_scope[deckId] || new Set();
+      const chaps = deck.chapters || [];
+      const allChecked = chaps.length > 0 && chaps.every(c => selSet.has(c.chapter_name));
+      const someChecked = chaps.some(c => selSet.has(c.chapter_name));
+      deckChk.checked = allChecked;
+      deckChk.indeterminate = (someChecked && !allChecked);
+    }
+  }
+
+  updateModalLiveSummary();
+}
+
+function selectAllExamScope(selectAll) {
+  (modalScopeState.decks_data || []).forEach(d => {
+    const deckId = d.id;
+    if (!modalScopeState.selected_scope[deckId]) {
+      modalScopeState.selected_scope[deckId] = new Set();
+    }
+    (d.chapters || []).forEach(ch => {
+      if (selectAll) {
+        modalScopeState.selected_scope[deckId].add(ch.chapter_name);
+      } else {
+        modalScopeState.selected_scope[deckId].delete(ch.chapter_name);
+      }
+    });
+  });
+  renderModalExamTree();
+}
+
+function updateModalLiveSummary() {
+  let totalChaps = 0;
+  let totalCards = 0;
+
+  (modalScopeState.decks_data || []).forEach(d => {
+    const selSet = modalScopeState.selected_scope[d.id] || new Set();
+    (d.chapters || []).forEach(ch => {
+      if (selSet.has(ch.chapter_name)) {
+        totalChaps += 1;
+        totalCards += (ch.total_cards || 0);
+      }
+    });
+  });
+
+  document.getElementById('modal-summary-chaps').textContent = totalChaps;
+  document.getElementById('modal-summary-cards').textContent = totalCards;
+
+  const dateVal = document.getElementById('modal-exam-date').value;
+  let daysLeft = 14;
+  if (dateVal) {
+    const diff = Math.ceil((new Date(dateVal) - new Date()) / (1000 * 60 * 60 * 24));
+    daysLeft = Math.max(1, diff);
+  }
+  const quota = Math.max(2, Math.ceil(totalCards / daysLeft));
+  document.getElementById('modal-summary-quota').textContent = quota;
+}
+
+async function saveExamScopeConfig() {
+  const name = document.getElementById('modal-exam-name').value.trim();
+  const dateStr = document.getElementById('modal-exam-date').value;
+  if (!name) {
+    alert("Please enter an exam title.");
+    return;
+  }
+
+  // Convert Set back to arrays
+  const serializableScope = {};
+  const includedDeckIds = [];
+  let totalCardsCount = 0;
+
+  for (const [deckId, chSet] of Object.entries(modalScopeState.selected_scope)) {
+    if (chSet.size > 0) {
+      serializableScope[deckId] = Array.from(chSet);
+      includedDeckIds.push(deckId);
+    }
+  }
+
+  if (includedDeckIds.length === 0) {
+    alert("Please tag at least one chapter for this exam.");
+    return;
+  }
+
+  if (window.pywebview) {
+    try {
+      const refreshed = await window.pywebview.api.save_exam_goal(
+        name,
+        dateStr,
+        totalCardsCount,
+        includedDeckIds,
+        serializableScope,
+        modalScopeState.exam_id
+      );
+      if (refreshed) {
+        state.exam_metrics = refreshed;
+      }
+    } catch (e) {
+      console.warn("Failed to save exam config:", e);
+    }
+  } else {
+    // Client-side simulation
+    state.exam_metrics.exam_name = name;
+    state.exam_metrics.target_date = dateStr;
+    state.exam_metrics.selected_scope = serializableScope;
+  }
+
+  closeExamScopeModal();
+  await reloadState();
+  refreshUI();
+}
+
+function launchExamMission() {
+  const examId = state.exam_metrics ? state.exam_metrics.id : null;
+  if (window.pywebview) {
+    window.pywebview.api.launch_exam_mission(examId);
+  } else {
+    alert("Launching Exam Mission scoped to tagged chapters!");
+  }
+}
+
+// ----------------- Standard Tabs, Search & Decks -----------------
 function populateSubjectFilter() {
   const subjects = new Set();
   (state.decks || []).forEach(d => {
     if (d.subject) subjects.add(d.subject);
   });
   const sel = document.getElementById('deck-subject-filter');
+  if (!sel) return;
   const currVal = sel.value;
   sel.innerHTML = '<option value="All">All Subjects</option>';
   subjects.forEach(s => {
@@ -191,18 +613,24 @@ function setScope(scope) {
   state.current_scope = scope;
   ['all', 'exam', 'due'].forEach(s => {
     const btn = document.getElementById('scope-' + s);
-    if (s === scope) {
-      btn.className = 'px-3 py-1 rounded-lg bg-white shadow-xs text-indigo-700 font-bold';
-    } else {
-      btn.className = 'px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900';
+    if (btn) {
+      if (s === scope) {
+        btn.className = 'px-3 py-1 rounded-lg bg-white shadow-xs text-indigo-700 font-bold';
+      } else {
+        btn.className = 'px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900';
+      }
     }
   });
   filterDecks();
 }
 
 function filterDecks() {
-  const query = (document.getElementById('deck-search').value || '').toLowerCase();
-  const subject = document.getElementById('deck-subject-filter').value;
+  const searchEl = document.getElementById('deck-search');
+  const subjectEl = document.getElementById('deck-subject-filter');
+  if (!searchEl || !subjectEl) return;
+
+  const query = (searchEl.value || '').toLowerCase();
+  const subject = subjectEl.value;
   const scope = state.current_scope;
 
   const filtered = (state.decks || []).filter(deck => {
@@ -216,8 +644,6 @@ function filterDecks() {
     let matchesScope = true;
     if (scope === 'exam') {
       matchesScope = (deck.tags && deck.tags.includes('exam'));
-    } else if (scope === 'due') {
-      matchesScope = true; // In full engine, checks spaced repetition
     }
 
     return matchesSearch && matchesSubject && matchesScope;
@@ -228,6 +654,7 @@ function filterDecks() {
 
 function renderDecksGrid(decks) {
   const grid = document.getElementById('decks-grid');
+  if (!grid) return;
   grid.innerHTML = '';
 
   if (decks.length === 0) {
@@ -288,7 +715,7 @@ function renderDecksGrid(decks) {
         <button onclick="launchDeckJigsaw('${deck.id}')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs px-3 py-2 rounded-xl transition">
           Play Jigsaw
         </button>
-        <button onclick="confirmDeleteDeck('${deck.id}', '${deck.title}')" class="text-slate-400 hover:text-rose-600 text-sm px-2 py-1 transition" title="Delete Deck">
+        <button onclick="confirmDeleteDeck('${deck.id}', '${escapeAttr(deck.title)}')" class="text-slate-400 hover:text-rose-600 text-sm px-2 py-1 transition" title="Delete Deck">
           🗑️
         </button>
       </div>
@@ -301,14 +728,14 @@ function renderDecksGrid(decks) {
 function renderMissionQueue() {
   const list = document.getElementById('mission-queue-list');
   const countBadge = document.getElementById('queue-count-badge');
+  if (!list || !countBadge) return;
   list.innerHTML = '';
 
   const queue = state.mission_queue && state.mission_queue.length > 0 
     ? state.mission_queue 
     : [
         { question: 'The gentle breeze whispered softly through the trees.', ladder_stage: 4 },
-        { question: 'Photosynthesis converts sunlight into usable energy.', ladder_stage: 5 },
-        { question: 'Curiosity and perseverance are keys to discovery.', ladder_stage: 2 }
+        { question: 'Photosynthesis converts sunlight into usable energy.', ladder_stage: 5 }
       ];
 
   countBadge.textContent = `${queue.length} Cards Due`;
@@ -376,7 +803,6 @@ async function submitWriting() {
   }
 
   if (!evalResult) {
-    // Basic client-side simulation if bridge not present
     const cleanTarget = target.toLowerCase().replace(/[^a-z0-9 ]/g, '');
     const cleanInput = input.toLowerCase().replace(/[^a-z0-9 ]/g, '');
     const match = cleanTarget === cleanInput;
@@ -450,14 +876,6 @@ function launchMissionGameplay() {
     window.pywebview.api.launch_gameplay(null, 'guided_mission');
   } else {
     alert("Launching Daily Guided Mission Queue!");
-  }
-}
-
-function launchExamMission() {
-  if (window.pywebview) {
-    window.pywebview.api.launch_gameplay(null, 'guided_mission');
-  } else {
-    alert("Launching Exam Goal Mission Queue!");
   }
 }
 
