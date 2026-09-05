@@ -32,6 +32,7 @@ from ui.dialogs import ProfileManagementDialog, SettingsDialog, LessonEditor, Pr
 from ui.ai_coach_dialog import AICoachDialog
 from ui.deck_dialog import DeckLibraryDialog
 from ui.exam_goal_dialog import ExamGoalDialog
+from ui.mission_hub_dialog import MissionHubDialog
 
 class SentenceJigsawApp:
     def __init__(self, root):
@@ -151,6 +152,23 @@ class SentenceJigsawApp:
         
         self.progress_bar = ttk.Progressbar(self.tool_frame, orient=tk.HORIZONTAL, length=140, mode='determinate')
         self.progress_bar.pack(side=tk.LEFT, padx=(10, 8))
+
+        # Mission & Deck Hub Launch Button (Prominently styled in Indigo)
+        self.mission_hub_btn = tk.Button(
+            self.tool_frame,
+            text='🚀 Mission Hub & Decks',
+            font=('', 9, 'bold'),
+            bg='#4f46e5',
+            fg='#ffffff',
+            activebackground='#4338ca',
+            activeforeground='#ffffff',
+            relief=tk.FLAT,
+            padx=10,
+            pady=2,
+            cursor='hand2',
+            command=self.open_mission_hub
+        )
+        self.mission_hub_btn.pack(side=tk.LEFT, padx=(0, 4))
 
         # Quick Access to Decks & Exam Pacing
         ttk.Button(self.tool_frame, text='🗂️ Decks', command=self.open_deck_library).pack(side=tk.LEFT, padx=2)
@@ -674,6 +692,8 @@ class SentenceJigsawApp:
         self.root.bind('<Control-R>', lambda e: self._handle_control_action(self.toggle_recording))
         self.root.bind('<Control-p>', lambda e: self._handle_control_action(self.play_my_recording, self.play_my_voice_btn))
         self.root.bind('<Control-P>', lambda e: self._handle_control_action(self.play_my_recording, self.play_my_voice_btn))
+        self.root.bind('<Control-m>', lambda e: self.open_mission_hub())
+        self.root.bind('<Control-M>', lambda e: self.open_mission_hub())
 
         # Tile shortcuts: 1-9, 0, then letters A-Z (all available since controls use Ctrl/Bksp/Esc/Enter)
         shortcuts = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0'] + [chr(c) for c in range(ord('a'), ord('z')+1)]
@@ -1212,31 +1232,32 @@ class SentenceJigsawApp:
             DeckManager.update_card_stage(self.active_deck_id, getattr(data, 'card_id', ''), next_st, passed)
         self.score_label.config(text=msg)
 
-    def open_deck_library(self):
-        def on_selected(deck):
-            cards = [QuestionItem.from_dict(c) for c in deck.get('cards', [])]
-            if not cards:
-                messagebox.showinfo('Empty Deck', f'Deck "{deck.get("title")}" has no questions. Add some using Edit.', parent=self.root)
-                return
-            self.active_deck_id = deck.get('id')
+    def open_mission_hub(self, tab_index: int = 0, event=None):
+        def on_start_cards(cards, mode_name, deck_id=None):
+            self.active_deck_id = deck_id
             self.model.qa_data = cards
+            if mode_name == 'guided_mission':
+                self.mode_var.set('🧭 Guided Mission')
+                self.game_mode = 'guided_mission'
+            else:
+                self.mode_var.set('🎯 Mastery')
+                self.game_mode = 'mastery'
             self.model.reset_deck()
             self.update_level_dropdown()
             self.load_current_question()
-            self.progress_label.config(text=f'Deck: {deck.get("title")} ({len(cards)} cards)')
-        DeckLibraryDialog(self.root, on_deck_selected_callback=on_selected)
+            if deck_id:
+                deck = DeckManager.get_deck(deck_id)
+                title = deck.get('title', 'Deck') if deck else 'Deck'
+                self.progress_label.config(text=f'Deck: {title} ({len(cards)} cards)')
+            else:
+                self.progress_label.config(text=f'Mission: {len(cards)} cards')
+        MissionHubDialog(self.root, on_start_cards_callback=on_start_cards, initial_tab=tab_index)
+
+    def open_deck_library(self):
+        self.open_mission_hub(tab_index=1)
 
     def open_exam_dialog(self):
-        def on_start_exam(exam_cards):
-            self.active_deck_id = None
-            self.model.qa_data = exam_cards
-            self.mode_var.set('🧭 Guided Mission')
-            self.game_mode = 'guided_mission'
-            self.model.reset_deck()
-            self.update_level_dropdown()
-            self.load_current_question()
-            self.progress_label.config(text=f'🎯 Exam Mission: {len(exam_cards)} cards')
-        ExamGoalDialog(self.root, on_start_exam_mission_callback=on_start_exam)
+        self.open_mission_hub(tab_index=2)
 
     def setup_voice_mastery_round(self):
         # Hide Jigsaw pool and answer board in Voice Mastery mode

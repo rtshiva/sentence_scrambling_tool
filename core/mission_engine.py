@@ -143,3 +143,11 @@ class MissionEngine:
         if daily_target and len(combined) > daily_target:
             return combined[:daily_target]
         return combined
+
+    @classmethod
+    def get_daily_mission_queue(cls, decks: list, memory_store: dict = None, max_count: int = 15) -> List[QuestionItem]:
+        from core.deck_manager import DeckManager
+        all_items = []
+        for d in decks:
+            all_items.extend(DeckManager.get_deck_questions(d.get('id', '')))
+        return cls.build_mission_queue(all_items, memory_store=memory_store, daily_target=max_count)

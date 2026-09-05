@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sentence Jigsaw - Mission & Deck System Mockup</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --card-bg: #ffffff;
+      --border-color: #e2e8f0;
+    }
+    .ladder-step.active {
+      border-color: #4f46e5;
+      background-color: #eef2ff;
+      color: #3730a3;
+    }
+    .ladder-step.completed {
+      border-color: #10b981;
+      background-color: #ecfdf5;
+      color: #065f46;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased p-4 md:p-8">
+
+  <div class="max-w-6xl mx-auto space-y-6">
+
+    <!-- Header & Concept Overview -->
+    <header class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div>
+        <div class="flex items-center gap-3">
+          <span class="text-3xl">🚀</span>
+          <div>
+            <h1 class="text-2xl font-bold text-slate-900">Sentence Jigsaw 3.0: Mission & Deck Architecture</h1>
+            <p class="text-sm text-slate-500">Interactive Feature Mockup: Guided Learning Ladder, Anki-style Decks & Exam Readiness</p>
+          </div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-2 rounded-xl text-sm font-medium">
+        <span>👤 Student: <strong>Arya</strong></span>
+        <span class="text-indigo-300">|</span>
+        <span>🎯 Target Exam: <strong>Class 4 Mid-Term (14 Days)</strong></span>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="flex border-b border-slate-200 gap-2 overflow-x-auto pb-1">
+      <button onclick="switchTab('tab-mission')" id="btn-tab-mission" class="tab-btn px-4 py-2.5 font-semibold text-sm rounded-t-lg border-b-2 border-indigo-600 text-indigo-600 bg-white">
+        🧭 1. Guided Mission Mode & Ladder
+      </button>
+      <button onclick="switchTab('tab-writing')" id="btn-tab-writing" class="tab-btn px-4 py-2.5 font-semibold text-sm rounded-t-lg border-b-2 border-transparent text-slate-600 hover:text-slate-900">
+        ✍️ 2. Writing & Spelling Mode Sandbox
+      </button>
+      <button onclick="switchTab('tab-decks')" id="btn-tab-decks" class="tab-btn px-4 py-2.5 font-semibold text-sm rounded-t-lg border-b-2 border-transparent text-slate-600 hover:text-slate-900">
+        🗂️ 3. Anki-Style Deck Library
+      </button>
+      <button onclick="switchTab('tab-exam')" id="btn-tab-exam" class="tab-btn px-4 py-2.5 font-semibold text-sm rounded-t-lg border-b-2 border-transparent text-slate-600 hover:text-slate-900">
+        🎯 4. Exam Readiness & Daily Pacing
+      </button>
+    </div>
+
+    <!-- TAB 1: Guided Mission Mode & Ladder -->
+    <section id="tab-mission" class="tab-content space-y-6">
+      <!-- Pedagogy Explanation Card -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-900 mb-1">The 6-Stage Pedagogical Mastery Ladder</h2>
+        <p class="text-sm text-slate-500 mb-6">Each question smoothly ascends the difficulty ladder from contextual recognition up to active, unassisted recall.</p>
+
+        <!-- The 6 Steps Progress Bar -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+          <div class="ladder-step completed border-2 rounded-xl p-3 text-center transition-all cursor-pointer" onclick="setLadderStep(1)">
+            <div class="text-2xl mb-1">🧩</div>
+            <div class="font-bold text-xs">Stage 1</div>
+            <div class="text-sm font-semibold">Fill Blanks</div>
+            <div class="text-[11px] text-emerald-600 mt-1 font-medium">✓ Recognition</div>
+          </div>
+
+          <div class="ladder-step completed border-2 rounded-xl p-3 text-center transition-all cursor-pointer" onclick="setLadderStep(2)">
+            <div class="text-2xl mb-1">🎯</div>
+            <div class="font-bold text-xs">Stage 2</div>
+            <div class="text-sm font-semibold">Jigsaw Puzzle</div>
+            <div class="text-[11px] text-emerald-600 mt-1 font-medium">✓ Structure</div>
+          </div>
+
+          <div class="ladder-step completed border-2 rounded-xl p-3 text-center transition-all cursor-pointer" onclick="setLadderStep(3)">
+            <div class="text-2xl mb-1">🎧</div>
+            <div class="font-bold text-xs">Stage 3</div>
+            <div class="text-sm font-semibold">Listening</div>
+            <div class="text-[11px] text-emerald-600 mt-1 font-medium">✓ Auditory</div>
+          </div>
+
+          <div class="ladder-step active border-2 rounded-xl p-3 text-center transition-all cursor-pointer shadow-sm" onclick="setLadderStep(4)">
+            <div class="text-2xl mb-1">🎙️</div>
+            <div class="font-bold text-xs">Stage 4</div>
+            <div class="text-sm font-semibold">Voice Mastery</div>
+            <div class="text-[11px] text-indigo-700 mt-1 font-bold">● Current Stage</div>
+          </div>
+
+          <div class="ladder-step border-2 border-slate-200 rounded-xl p-3 text-center transition-all cursor-pointer bg-slate-50 text-slate-600" onclick="setLadderStep(5)">
+            <div class="text-2xl mb-1">⏱️</div>
+            <div class="font-bold text-xs">Stage 5</div>
+            <div class="text-sm font-semibold">Speed Run</div>
+            <div class="text-[11px] text-slate-400 mt-1">Fluency & Recall</div>
+          </div>
+
+          <div class="ladder-step border-2 border-slate-200 rounded-xl p-3 text-center transition-all cursor-pointer bg-slate-50 text-slate-600" onclick="setLadderStep(6)">
+            <div class="text-2xl mb-1">✍️</div>
+            <div class="font-bold text-xs">Stage 6</div>
+            <div class="text-sm font-semibold">Writing / Typing</div>
+            <div class="text-[11px] text-slate-400 mt-1">Exact Spelling</div>
+          </div>
+        </div>
+
+        <!-- Live Step Interactive Simulation Preview -->
+        <div id="step-preview-box" class="border border-indigo-100 bg-indigo-50/40 rounded-xl p-5">
+          <div class="flex items-center justify-between mb-3">
+            <span id="step-preview-title" class="text-sm font-bold text-indigo-900 uppercase tracking-wide">Stage 4: Voice Mastery Production</span>
+            <span class="text-xs bg-indigo-100 text-indigo-800 px-2.5 py-1 rounded-full font-semibold">Goal: Pass with &ge; 80% pronunciation score</span>
+          </div>
+          <p id="step-preview-desc" class="text-sm text-slate-600 leading-relaxed mb-4">
+            The sentence text is displayed. The learner speaks aloud into the microphone. The Whisper AI engine transcribes the audio, and the AI Teacher provides word-by-word visual phonics feedback. Once mastered, this card automatically graduates to <strong>Stage 5 (Speed Run)</strong>!
+          </p>
+          <div class="flex gap-2">
+            <button onclick="advanceMockStep()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2 rounded-lg transition-colors shadow-sm">
+              Simulate Correct Passing Answer ➔ (Advance Question to Next Stage)
+            </button>
+            <button onclick="resetMockStep()" class="bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 text-xs font-semibold px-3 py-2 rounded-lg transition-colors">
+              Restart at Stage 1
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Today's Mission Queue Visualization -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div class="flex justify-between items-center mb-4">
+          <div>
+            <h3 class="text-base font-bold text-slate-900">Today's Mission Queue: 12 Sentences Due</h3>
+            <p class="text-xs text-slate-500">Smart multi-stage batch assembled from Spaced Repetition + Upcoming Exam priorities</p>
+          </div>
+          <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-3 py-1.5 rounded-full">Daily Target: 8 / 12 Finished</span>
+        </div>
+
+        <div class="divide-y divide-slate-100">
+          <div class="py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">✍️</span>
+              <div>
+                <p class="text-sm font-semibold text-slate-800">The solar system consists of eight planets and the Sun.</p>
+                <p class="text-xs text-slate-400">Deck: Science Terms • Stage 6 Writing</p>
+              </div>
+            </div>
+            <span class="text-xs bg-purple-100 text-purple-800 font-bold px-2.5 py-1 rounded-md">Stage 6: Typing</span>
+          </div>
+
+          <div class="py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">🎙️</span>
+              <div>
+                <p class="text-sm font-semibold text-slate-800">सूर्य पूर्व दिशा से उगता है और पश्चिम में अस्त होता है।</p>
+                <p class="text-xs text-slate-400">Deck: Hindi Vyakaran • Stage 4 Voice</p>
+              </div>
+            </div>
+            <span class="text-xs bg-blue-100 text-blue-800 font-bold px-2.5 py-1 rounded-md">Stage 4: Voice</span>
+          </div>
+
+          <div class="py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">🎧</span>
+              <div>
+                <p class="text-sm font-semibold text-slate-800">Honesty is the best policy under all circumstances.</p>
+                <p class="text-xs text-slate-400">Deck: Moral Stories • Stage 3 Listening</p>
+              </div>
+            </div>
+            <span class="text-xs bg-amber-100 text-amber-800 font-bold px-2.5 py-1 rounded-md">Stage 3: Listening</span>
+          </div>
+
+          <div class="py-3 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <span class="text-lg">🧩</span>
+              <div>
+                <p class="text-sm font-semibold text-slate-800">Plants produce oxygen through the process of photosynthesis.</p>
+                <p class="text-xs text-slate-400">Deck: Science Terms • Stage 1 Blanks</p>
+              </div>
+            </div>
+            <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2.5 py-1 rounded-md">Stage 1: Blanks</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 2: Writing & Spelling Mode Sandbox -->
+    <section id="tab-writing" class="tab-content hidden space-y-6">
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div class="flex justify-between items-start mb-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="text-2xl">✍️</span>
+              <h2 class="text-lg font-bold text-slate-900">Writing & Spelling Mode (Stage 6)</h2>
+            </div>
+            <p class="text-sm text-slate-500 mt-1">The ultimate mastery level. The student types the full sentence. Spelling, syntax, and accuracy are strictly evaluated.</p>
+          </div>
+          <span class="text-xs bg-indigo-100 text-indigo-800 font-bold px-3 py-1 rounded-full">Interactive Sandbox</span>
+        </div>
+
+        <!-- Question Display -->
+        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 mb-5">
+          <div class="text-xs font-bold text-slate-400 uppercase mb-1">Question Prompt:</div>
+          <div class="text-base font-semibold text-slate-800">How do plants prepare their food?</div>
+          <div class="text-xs text-slate-500 italic mt-1">Expected Answer: <strong>Plants prepare food through photosynthesis using sunlight.</strong></div>
+        </div>
+
+        <!-- Typing Interface -->
+        <div class="space-y-3">
+          <label class="block text-sm font-bold text-slate-700">Type Your Answer Below:</label>
+          <textarea id="writing-input" rows="3" class="w-full p-4 border-2 border-slate-300 rounded-xl focus:border-indigo-500 focus:outline-none font-mono text-base shadow-sm" placeholder="Type here... (Try intentionally misspelling 'photosynthesis' to see spelling feedback)"></textarea>
+          
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2">
+              <button onclick="checkTypingAnswer()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-5 py-2.5 rounded-xl shadow-sm transition-colors">
+                ✓ Check Spelling & Grammar
+              </button>
+              <button onclick="fillTypoSample()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-lg">
+                Insert Sample with Typo
+              </button>
+              <button onclick="fillCorrectSample()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3 py-2 rounded-lg">
+                Insert Correct Sample
+              </button>
+            </div>
+            <div class="text-xs text-slate-500">
+              Assists: <label class="inline-flex items-center gap-1"><input type="checkbox" id="chk-ignore-punct" checked> Ignore Punctuation/Case</label>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback Result Panel -->
+        <div id="writing-feedback" class="mt-5 hidden border rounded-xl p-5 transition-all">
+          <div id="writing-status-badge" class="inline-block text-xs font-bold px-3 py-1 rounded-full mb-3"></div>
+          <div id="writing-diff-view" class="text-sm font-mono space-y-2"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: Anki-Style Deck Library -->
+    <section id="tab-decks" class="tab-content hidden space-y-6">
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Student Deck Repository</h2>
+            <p class="text-sm text-slate-500">No loose files required! All lessons are saved as structured, revision-ready decks with instant spaced repetition tracking.</p>
+          </div>
+          <div class="flex items-center gap-2">
+            <button class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm">
+              + New Deck
+            </button>
+            <button class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-semibold px-3 py-2 rounded-xl">
+              📂 Import File
+            </button>
+          </div>
+        </div>
+
+        <!-- Search and Filter Bar -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          <input type="text" placeholder="🔍 Search decks or tags..." class="border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+          <select class="border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+            <option>All Subjects</option>
+            <option>Science</option>
+            <option>Hindi Vyakaran</option>
+            <option>English Grammar</option>
+            <option>Social Studies</option>
+          </select>
+          <select class="border border-slate-300 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+            <option>All Decks (6)</option>
+            <option>Assigned to Upcoming Exam (3)</option>
+            <option>Due for Revision Today (4)</option>
+          </select>
+        </div>
+
+        <!-- Decks Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <!-- Deck 1 -->
+          <div class="border-2 border-indigo-200 bg-white rounded-2xl p-5 shadow-sm hover:border-indigo-400 transition-all flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-xs bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-md">Science • Class 4</span>
+                <span class="text-xs bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-md">🎯 Mid-Term</span>
+              </div>
+              <h3 class="font-bold text-slate-900 text-base mb-1">Plants & Photosynthesis</h3>
+              <p class="text-xs text-slate-500 mb-4">Leaf anatomy, chlorophyll, stomata and solar energy cycles.</p>
+              
+              <!-- Progress breakdown -->
+              <div class="space-y-1 mb-4">
+                <div class="flex justify-between text-xs font-semibold text-slate-600">
+                  <span>Overall Mastery</span>
+                  <span>78% (Level 5+)</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden flex">
+                  <div class="bg-purple-600 h-full" style="width: 40%" title="Stage 6 Writing (40%)"></div>
+                  <div class="bg-blue-600 h-full" style="width: 25%" title="Stage 4 Voice (25%)"></div>
+                  <div class="bg-emerald-500 h-full" style="width: 15%" title="Stage 2 Jigsaw (15%)"></div>
+                  <div class="bg-slate-200 h-full" style="width: 20%" title="Unseen (20%)"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-slate-400 pt-0.5">
+                  <span>32 Cards Total</span>
+                  <span class="text-amber-600 font-bold">5 Due Today</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex gap-2 pt-3 border-t border-slate-100">
+              <button class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 rounded-lg">Study Mission</button>
+              <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-2.5 py-2 rounded-lg">⚙️</button>
+            </div>
+          </div>
+
+          <!-- Deck 2 -->
+          <div class="border border-slate-200 bg-white rounded-2xl p-5 shadow-sm hover:border-slate-400 transition-all flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-xs bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-md">Hindi • Grammar</span>
+                <span class="text-xs bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded-md">🎯 Mid-Term</span>
+              </div>
+              <h3 class="font-bold text-slate-900 text-base mb-1">संज्ञा और सर्वनाम (Nouns & Pronouns)</h3>
+              <p class="text-xs text-slate-500 mb-4">वाक्य रचना, वचन, लिंग और कारक अभ्यास।</p>
+              
+              <div class="space-y-1 mb-4">
+                <div class="flex justify-between text-xs font-semibold text-slate-600">
+                  <span>Overall Mastery</span>
+                  <span>62% (Level 4+)</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden flex">
+                  <div class="bg-purple-600 h-full" style="width: 20%"></div>
+                  <div class="bg-blue-600 h-full" style="width: 30%"></div>
+                  <div class="bg-emerald-500 h-full" style="width: 25%"></div>
+                  <div class="bg-slate-200 h-full" style="width: 25%"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-slate-400 pt-0.5">
+                  <span>24 Cards Total</span>
+                  <span class="text-amber-600 font-bold">4 Due Today</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex gap-2 pt-3 border-t border-slate-100">
+              <button class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 rounded-lg">Study Mission</button>
+              <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-2.5 py-2 rounded-lg">⚙️</button>
+            </div>
+          </div>
+
+          <!-- Deck 3 -->
+          <div class="border border-slate-200 bg-white rounded-2xl p-5 shadow-sm hover:border-slate-400 transition-all flex flex-col justify-between">
+            <div>
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-xs bg-sky-100 text-sky-800 font-bold px-2 py-0.5 rounded-md">English • Tenses</span>
+                <span class="text-xs bg-slate-100 text-slate-600 font-medium px-2 py-0.5 rounded-md">General</span>
+              </div>
+              <h3 class="font-bold text-slate-900 text-base mb-1">Past & Perfect Tenses</h3>
+              <p class="text-xs text-slate-500 mb-4">Irregular verbs, has/have/had usage in complex sentences.</p>
+              
+              <div class="space-y-1 mb-4">
+                <div class="flex justify-between text-xs font-semibold text-slate-600">
+                  <span>Overall Mastery</span>
+                  <span>92% (Level 6)</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-2.5 overflow-hidden flex">
+                  <div class="bg-purple-600 h-full" style="width: 85%"></div>
+                  <div class="bg-blue-600 h-full" style="width: 10%"></div>
+                  <div class="bg-slate-200 h-full" style="width: 5%"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-slate-400 pt-0.5">
+                  <span>40 Cards Total</span>
+                  <span class="text-emerald-600 font-bold">All Caught Up ✓</span>
+                </div>
+              </div>
+            </div>
+            <div class="flex gap-2 pt-3 border-t border-slate-100">
+              <button class="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold py-2 rounded-lg">Review (Optional)</button>
+              <button class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs px-2.5 py-2 rounded-lg">⚙️</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 4: Exam Readiness & Daily Pacing -->
+    <section id="tab-exam" class="tab-content hidden space-y-6">
+      <!-- Exam Goal Hero Card -->
+      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 pb-6 border-b border-slate-100">
+          <div>
+            <div class="inline-flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold px-3 py-1 rounded-full mb-2">
+              <span>📅 Target Exam Date: Sept 19, 2026 (14 Days Remaining)</span>
+            </div>
+            <h2 class="text-2xl font-extrabold text-slate-900">Class 4 Term-1 Assessment</h2>
+            <p class="text-sm text-slate-500 mt-1">Decks Linked: <strong>Science Terms (Ch 1-4)</strong>, <strong>Hindi Vyakaran</strong>, <strong>English Tenses</strong></p>
+          </div>
+
+          <!-- Readiness Gauge -->
+          <div class="flex items-center gap-4 bg-slate-50 border border-slate-200 p-4 rounded-2xl">
+            <div class="relative w-16 h-16 flex items-center justify-center">
+              <svg class="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                <path class="text-slate-200" stroke-width="3.5" stroke="currentColor" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                <path class="text-indigo-600 stroke-current" stroke-width="3.5" stroke-dasharray="74, 100" stroke-linecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+              </svg>
+              <span class="absolute text-sm font-black text-indigo-700">74%</span>
+            </div>
+            <div>
+              <div class="text-xs font-bold uppercase text-slate-400">Exam Readiness</div>
+              <div class="text-base font-extrabold text-emerald-600">On Track 🟢</div>
+              <div class="text-[11px] text-slate-500">Target: Level 5+ on all 96 cards</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Pacing & Daily Quota Planner -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-6">
+          <div class="bg-indigo-50/50 border border-indigo-100 rounded-xl p-4">
+            <div class="text-xs font-bold text-indigo-800 uppercase tracking-wide">Daily Target Quota</div>
+            <div class="text-2xl font-black text-indigo-900 mt-1">7 Cards / Day</div>
+            <p class="text-xs text-slate-600 mt-1">Paced smoothly so Arya never feels overwhelmed. No cramming required!</p>
+          </div>
+
+          <div class="bg-emerald-50/50 border border-emerald-100 rounded-xl p-4">
+            <div class="text-xs font-bold text-emerald-800 uppercase tracking-wide">Today's Progress</div>
+            <div class="text-2xl font-black text-emerald-900 mt-1">5 of 7 Done</div>
+            <p class="text-xs text-slate-600 mt-1">2 more cards to maintain the green streak for today.</p>
+          </div>
+
+          <div class="bg-purple-50/50 border border-purple-100 rounded-xl p-4">
+            <div class="text-xs font-bold text-purple-800 uppercase tracking-wide">Weak Areas Highlighted</div>
+            <div class="text-base font-bold text-purple-900 mt-1">Photosynthesis Spelling</div>
+            <p class="text-xs text-slate-600 mt-1">Stage 6 typing error rate: 22%. Automatically re-queued for tomorrow.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script>
+    // Tab Switching
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('border-indigo-600', 'text-indigo-600', 'bg-white');
+        btn.classList.add('border-transparent', 'text-slate-600');
+      });
+      document.getElementById(tabId).classList.remove('hidden');
+      const activeBtn = document.getElementById('btn-' + tabId);
+      activeBtn.classList.remove('border-transparent', 'text-slate-600');
+      activeBtn.classList.add('border-indigo-600', 'text-indigo-600', 'bg-white');
+    }
+
+    // Interactive Ladder Stages Simulation
+    const stagesInfo = [
+      { step: 1, name: "Stage 1: Fill in Blanks", icon: "🧩", goal: "Select missing chunk from distractors", desc: "Focuses on recognition and basic context clues. Ideal for brand new sentences." },
+      { step: 2, name: "Stage 2: Sentence Jigsaw", icon: "🎯", goal: "Assemble scrambled chunks in correct order", desc: "Trains sentence structure, syntax, and word ordering without spelling stress." },
+      { step: 3, name: "Stage 3: Listening Comprehension", icon: "🎧", goal: "Listen to spoken audio and solve with hidden prompt", desc: "Develops auditory decoding and listening comprehension." },
+      { step: 4, name: "Stage 4: Voice Mastery", icon: "🎙️", goal: "Speak full answer aloud into microphone", desc: "Whisper STT transcribes speech, and the AI Teacher analyzes pronunciation and accuracy." },
+      { step: 5, name: "Stage 5: Speed Run Fluency", icon: "⏱️", goal: "Solve rapidly under a gentle timer", desc: "Consolidates automaticity and fast cognitive retrieval." },
+      { step: 6, name: "Stage 6: Writing & Spelling", icon: "✍️", goal: "Type the full sentence with correct spelling", desc: "True unassisted recall. Ensures learner can produce the sentence in writing." }
+    ];
+
+    let currentStep = 4;
+
+    function setLadderStep(stepNum) {
+      currentStep = stepNum;
+      const info = stagesInfo[stepNum - 1];
+      
+      document.querySelectorAll('.ladder-step').forEach((el, idx) => {
+        el.className = 'ladder-step border-2 rounded-xl p-3 text-center transition-all cursor-pointer ';
+        if (idx + 1 < stepNum) {
+          el.className += 'completed border-emerald-300 bg-emerald-50 text-emerald-800';
+        } else if (idx + 1 === stepNum) {
+          el.className += 'active border-indigo-600 bg-indigo-50 text-indigo-900 shadow-sm';
+        } else {
+          el.className += 'border-slate-200 bg-slate-50 text-slate-600';
+        }
+      });
+
+      document.getElementById('step-preview-title').innerText = info.name;
+      document.getElementById('step-preview-desc').innerHTML = `
+        <strong>${info.goal}</strong>.<br>${info.desc}
+      `;
+    }
+
+    function advanceMockStep() {
+      if (currentStep < 6) {
+        setLadderStep(currentStep + 1);
+      } else {
+        alert("🎉 Congratulations! This card has reached Stage 6 Mastery and is 100% Exam Ready!");
+      }
+    }
+
+    function resetMockStep() {
+      setLadderStep(1);
+    }
+
+    // Writing Mode Sandbox Logic
+    const expectedSentence = "Plants prepare food through photosynthesis using sunlight.";
+
+    function fillTypoSample() {
+      document.getElementById('writing-input').value = "Plants prepare food through photosythesis using sonlight.";
+      checkTypingAnswer();
+    }
+
+    function fillCorrectSample() {
+      document.getElementById('writing-input').value = "Plants prepare food through photosynthesis using sunlight.";
+      checkTypingAnswer();
+    }
+
+    function checkTypingAnswer() {
+      const userText = document.getElementById('writing-input').value.trim();
+      const feedbackDiv = document.getElementById('writing-feedback');
+      const badge = document.getElementById('writing-status-badge');
+      const diffView = document.getElementById('writing-diff-view');
+
+      if (!userText) {
+        alert("Please enter a sentence to test!");
+        return;
+      }
+
+      feedbackDiv.classList.remove('hidden');
+
+      const cleanUser = userText.toLowerCase().replace(/[.,!?;:]/g, '');
+      const cleanExpected = expectedSentence.toLowerCase().replace(/[.,!?;:]/g, '');
+
+      if (cleanUser === cleanExpected) {
+        feedbackDiv.className = "mt-5 border border-emerald-200 bg-emerald-50 rounded-xl p-5";
+        badge.className = "inline-block text-xs font-bold px-3 py-1 rounded-full mb-3 bg-emerald-600 text-white";
+        badge.innerText = "⭐ Flawless Spelling & Syntax (100% Match!)";
+        diffView.innerHTML = `<div class="text-emerald-800">You typed: <span class="underline font-bold">${userText}</span></div>
+        <div class="text-xs text-emerald-700 mt-2">Card graduated to <strong>Stage 6 Mastered</strong> in Science Deck!</div>`;
+      } else {
+        feedbackDiv.className = "mt-5 border border-amber-200 bg-amber-50 rounded-xl p-5";
+        badge.className = "inline-block text-xs font-bold px-3 py-1 rounded-full mb-3 bg-amber-600 text-white";
+        badge.innerText = "🔍 Spelling Review Needed";
+        
+        // Simple word by word highlight
+        const userWords = userText.split(/\s+/);
+        const expWords = expectedSentence.split(/\s+/);
+        
+        let highlighted = userWords.map((w, idx) => {
+          const expectedW = expWords[idx] || "";
+          if (w.toLowerCase().replace(/[.,!?;:]/g, '') === expectedW.toLowerCase().replace(/[.,!?;:]/g, '')) {
+            return `<span class="text-emerald-700">${w}</span>`;
+          } else {
+            return `<span class="bg-rose-200 text-rose-900 px-1 py-0.5 rounded font-bold underline" title="Expected: ${expectedW}">${w}</span>`;
+          }
+        }).join(" ");
+
+        diffView.innerHTML = `
+          <div class="text-slate-700 mb-1">Your Submission: ${highlighted}</div>
+          <div class="text-xs text-slate-500">Correct Target: <span class="font-bold text-slate-800">${expectedSentence}</span></div>
+          <div class="text-xs text-amber-800 mt-3 font-medium">Tip: Pay close attention to highlighted words. Card kept in review for tomorrow's practice.</div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>

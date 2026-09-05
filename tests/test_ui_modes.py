@@ -164,6 +164,7 @@ class TestUIModes(unittest.TestCase):
     def test_dialogs_instantiation(self):
         from ui.deck_dialog import DeckLibraryDialog
         from ui.exam_goal_dialog import ExamGoalDialog
+        from ui.mission_hub_dialog import MissionHubDialog
 
         deck_dlg = DeckLibraryDialog(self.root)
         self.assertTrue(deck_dlg.winfo_exists())
@@ -172,6 +173,11 @@ class TestUIModes(unittest.TestCase):
         exam_dlg = ExamGoalDialog(self.root)
         self.assertTrue(exam_dlg.winfo_exists())
         exam_dlg.destroy()
+
+        hub_dlg = MissionHubDialog(self.root)
+        self.assertTrue(hub_dlg.winfo_exists())
+        self.assertEqual(len(hub_dlg.notebook.tabs()), 4)
+        hub_dlg.destroy()
 
 if __name__ == '__main__':
     unittest.main()
