@@ -10,7 +10,8 @@ REQUIRED_MODULES = [
     ('sv_ttk', 'sv-ttk>=2.6.0'),
     ('edge_tts', 'edge-tts>=7.0.0'),
     ('pygame', 'pygame>=2.6.0'),
-    ('requests', 'requests>=2.28.0')
+    ('requests', 'requests>=2.28.0'),
+    ('webview', 'pywebview>=5.0.0')
 ]
 
 def check_and_install_dependencies():
@@ -35,13 +36,25 @@ def check_and_install_dependencies():
             print(f"⚠️ Warning: Automatic install failed ({e}).")
             print("Please run manually: pip install -r requirements.txt\n")
 
-def launch_app():
+def launch_tkinter():
     import tkinter as tk
     from ui.main_window import SentenceJigsawApp
 
     root = tk.Tk()
     app = SentenceJigsawApp(root)
     root.mainloop()
+
+def launch_app():
+    if '--classic' in sys.argv or '--tkinter' in sys.argv:
+        launch_tkinter()
+        return
+
+    try:
+        from app_webview import launch_webview_app
+        launch_webview_app()
+    except Exception as e:
+        print(f"Notice: Launching standard GUI ({e})...")
+        launch_tkinter()
 
 if __name__ == '__main__':
     check_and_install_dependencies()

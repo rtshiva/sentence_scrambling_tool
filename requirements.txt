@@ -3,3 +3,4 @@ edge-tts>=7.0.0
 pygame>=2.6.0
 requests>=2.28.0
 faster-whisper>=1.0.0
+pywebview>=5.0.0
