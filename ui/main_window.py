@@ -5,6 +5,7 @@ import os
 import platform
 import webbrowser
 import tempfile
+from typing import Optional, List, Dict, Any
 
 try:
     import sv_ttk
@@ -33,6 +34,7 @@ from ui.ai_coach_dialog import AICoachDialog
 from ui.deck_dialog import DeckLibraryDialog
 from ui.exam_goal_dialog import ExamGoalDialog
 from ui.mission_hub_dialog import MissionHubDialog
+from ui.home_dashboard import HomeDashboardView
 
 class SentenceJigsawApp:
     def __init__(self, root):
@@ -100,8 +102,11 @@ class SentenceJigsawApp:
         return f'⏱️ Speed Run ({mins}m)'
 
     def setup_ui(self):
+        # Master Gameplay Container (Contains top header, toolbar, board, controls)
+        self.gameplay_container = ttk.Frame(self.root)
+
         # Apple HIG Tier 1: Header / Navigation & Profile Bar
-        self.top_frame = ttk.Frame(self.root, padding=(16, 10, 16, 6))
+        self.top_frame = ttk.Frame(self.gameplay_container, padding=(16, 10, 16, 6))
         self.top_frame.pack(fill=tk.X)
         
         # User Profile Switcher
@@ -144,8 +149,25 @@ class SentenceJigsawApp:
         self.score_label.pack(side=tk.RIGHT, padx=6)
 
         # Apple HIG Tier 2: Unified Utilities Toolbar & Progress Status Bar
-        self.tool_frame = ttk.Frame(self.root, padding=(16, 0, 16, 8))
+        self.tool_frame = ttk.Frame(self.gameplay_container, padding=(16, 0, 16, 8))
         self.tool_frame.pack(fill=tk.X)
+
+        # Back to Home Dashboard / Deck Repository Button
+        self.back_home_btn = tk.Button(
+            self.tool_frame,
+            text='🏠 Home / Decks',
+            font=('', 9, 'bold'),
+            bg='#4f46e5',
+            fg='#ffffff',
+            activebackground='#4338ca',
+            activeforeground='#ffffff',
+            relief=tk.FLAT,
+            padx=12,
+            pady=2,
+            cursor='hand2',
+            command=self.show_home_view
+        )
+        self.back_home_btn.pack(side=tk.LEFT, padx=(0, 6))
 
         self.progress_label = ttk.Label(self.tool_frame, text='No file loaded', font=('', 11, 'bold'), foreground='#64748b')
         self.progress_label.pack(side=tk.LEFT)
@@ -183,7 +205,7 @@ class SentenceJigsawApp:
         ttk.Button(self.tool_frame, text='🔄 Restart', command=self.restart_lesson).pack(side=tk.RIGHT, padx=2)
 
         # Apple HIG Docked Bottom Action Bar (Fixed, never scrolls out of view)
-        self.controls_frame = tk.Frame(self.root, bg=self.theme.get('card_bg', '#ffffff'), bd=1, relief=tk.SOLID, padx=20, pady=12)
+        self.controls_frame = tk.Frame(self.gameplay_container, bg=self.theme.get('card_bg', '#ffffff'), bd=1, relief=tk.SOLID, padx=20, pady=12)
         self.controls_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
         controls_inner = ttk.Frame(self.controls_frame)
@@ -205,7 +227,7 @@ class SentenceJigsawApp:
         self.next_btn.pack(side=tk.LEFT, padx=6)
 
         # Main Scrollable Interactive Canvas
-        self.main_scroll = ScrollableFrame(self.root, padding=20)
+        self.main_scroll = ScrollableFrame(self.gameplay_container, padding=20)
         self.main_scroll.pack(fill=tk.BOTH, expand=True)
         content_frame = self.main_scroll.scrollable_frame
 
@@ -439,6 +461,15 @@ class SentenceJigsawApp:
         self.buttons_frame = FlowFrame(content_frame, h_spacing=12, v_spacing=12)
         self.buttons_frame.pack(fill=tk.X, pady=5, expand=True)
 
+        # Home Dashboard Landing View (Student Deck Repository is Tab 1)
+        self.home_view = HomeDashboardView(
+            self.root,
+            on_start_session=self.start_session_from_home,
+            on_open_profile_manager=self.open_profile_manager
+        )
+        # Show Home Dashboard by default on launch!
+        self.home_view.pack(fill=tk.BOTH, expand=True)
+
     def toggle_recording(self):
         if VoiceRecorder.is_recording():
             success = VoiceRecorder.stop_recording()
@@ -662,11 +693,14 @@ class SentenceJigsawApp:
             target_file = 'sentences.txt'
 
         if target_file:
-            self.load_lesson_file(target_file, save_to_profile=False)
+            self.load_lesson_file(target_file, save_to_profile=False, switch_view=False)
         else:
             self.model.reset_deck()
             self.update_level_dropdown()
             self.load_current_question()
+
+        if hasattr(self, 'home_view'):
+            self.home_view.refresh_data()
 
     def setup_bindings(self):
         # Reserved keys for core gameplay controls:
@@ -960,13 +994,11 @@ class SentenceJigsawApp:
         prof_file = ProfileManager.get_profile_questions_filepath(active_prof)
 
         if last_file and os.path.exists(last_file):
-            self.load_lesson_file(last_file, save_to_profile=False)
+            self.load_lesson_file(last_file, save_to_profile=False, switch_view=False)
         elif os.path.exists(prof_file):
-            self.load_lesson_file(prof_file, save_to_profile=False)
+            self.load_lesson_file(prof_file, save_to_profile=False, switch_view=False)
         elif os.path.exists('sentences.txt'):
-            self.load_lesson_file('sentences.txt', save_to_profile=True)
-        else:
-            messagebox.showinfo('Welcome', 'Welcome to Sentence Jigsaw!\n\nPlease load a sentence file or click "Edit" to create one.')
+            self.load_lesson_file('sentences.txt', save_to_profile=True, switch_view=False)
 
     def open_editor(self):
         self.stop_timer()
@@ -983,9 +1015,9 @@ class SentenceJigsawApp:
             filetypes=[('Text Files', '*.txt'), ('All Files', '*.*')]
         )
         if filename:
-            self.load_lesson_file(filename, save_to_profile=True)
+            self.load_lesson_file(filename, save_to_profile=True, switch_view=True)
 
-    def load_lesson_file(self, filename, save_to_profile=True):
+    def load_lesson_file(self, filename, save_to_profile=True, switch_view=True):
         try:
             self.model.load_file(filename)
             self.update_level_dropdown()
@@ -1005,6 +1037,11 @@ class SentenceJigsawApp:
                     sentences_to_prefetch.append(' '.join(item.chunks))
             DictionaryManager.prefetch_words_async(words)
             DictionaryManager.prefetch_questions_async(sentences_to_prefetch)
+
+            if switch_view and hasattr(self, 'home_view') and hasattr(self, 'gameplay_container'):
+                if self.home_view.winfo_manager() == 'pack':
+                    self.home_view.pack_forget()
+                    self.gameplay_container.pack(fill=tk.BOTH, expand=True)
 
             if self.game_mode == 'speed_run':
                 self.start_speed_run()
@@ -1232,32 +1269,72 @@ class SentenceJigsawApp:
             DeckManager.update_card_stage(self.active_deck_id, getattr(data, 'card_id', ''), next_st, passed)
         self.score_label.config(text=msg)
 
-    def open_mission_hub(self, tab_index: int = 0, event=None):
-        def on_start_cards(cards, mode_name, deck_id=None):
-            self.active_deck_id = deck_id
-            self.model.qa_data = cards
-            if mode_name == 'guided_mission':
-                self.mode_var.set('🧭 Guided Mission')
-                self.game_mode = 'guided_mission'
-            else:
-                self.mode_var.set('🎯 Mastery')
-                self.game_mode = 'mastery'
-            self.model.reset_deck()
-            self.update_level_dropdown()
-            self.load_current_question()
-            if deck_id:
-                deck = DeckManager.get_deck(deck_id)
-                title = deck.get('title', 'Deck') if deck else 'Deck'
-                self.progress_label.config(text=f'Deck: {title} ({len(cards)} cards)')
-            else:
-                self.progress_label.config(text=f'Mission: {len(cards)} cards')
-        MissionHubDialog(self.root, on_start_cards_callback=on_start_cards, initial_tab=tab_index)
+    def show_home_view(self, tab_index: Optional[int] = None):
+        self.stop_timer()
+        if hasattr(self, 'gameplay_container'):
+            self.gameplay_container.pack_forget()
+        if hasattr(self, 'home_view'):
+            self.home_view.pack(fill=tk.BOTH, expand=True)
+            self.home_view.refresh_data()
+            if tab_index is not None:
+                try:
+                    self.home_view.notebook.select(tab_index)
+                except Exception:
+                    pass
+
+    def start_session_from_home(self, cards, mode_name, deck_id=None):
+        if not cards:
+            messagebox.showinfo('No Cards', 'No cards available for this session.', parent=self.root)
+            return
+        self.active_deck_id = deck_id
+        self.model.qa_data = cards
+        if mode_name == 'guided_mission':
+            self.mode_var.set('🧭 Guided Mission')
+            self.game_mode = 'guided_mission'
+        elif mode_name == 'writing':
+            self.mode_var.set('✍️ Writing & Spelling')
+            self.game_mode = 'writing'
+        elif mode_name == 'listening':
+            self.mode_var.set('🎧 Listening')
+            self.game_mode = 'listening'
+        elif mode_name == 'voice_mastery':
+            self.mode_var.set('🎙️ Voice Mastery')
+            self.game_mode = 'voice_mastery'
+        elif mode_name == 'speed_run':
+            self.mode_var.set('⏱️ Speed Run (3m)')
+            self.game_mode = 'speed_run'
+        else:
+            self.mode_var.set('🎯 Mastery')
+            self.game_mode = 'mastery'
+
+        if hasattr(self, 'home_view'):
+            self.home_view.pack_forget()
+        if hasattr(self, 'gameplay_container'):
+            self.gameplay_container.pack(fill=tk.BOTH, expand=True)
+
+        self.model.reset_deck()
+        self.progress_bar['maximum'] = self.model.total_questions()
+        self.update_level_dropdown()
+        self.load_current_question()
+        if deck_id:
+            deck = DeckManager.get_deck(deck_id)
+            title = deck.get('title', 'Deck') if deck else 'Deck'
+            self.progress_label.config(text=f'Deck: {title} ({len(cards)} cards)')
+        else:
+            self.progress_label.config(text=f'Mission: {len(cards)} cards')
+
+    def open_mission_hub(self, tab_index: int = 1, event=None):
+        # 0 in old hub was Mission Ladder -> tab 1 in HomeDashboardView
+        # 1 in old hub was Decks -> tab 0 in HomeDashboardView
+        # 2 in old hub was Exam -> tab 2 in HomeDashboardView
+        target_tab = 1 if tab_index == 0 else (0 if tab_index == 1 else 2)
+        self.show_home_view(tab_index=target_tab)
 
     def open_deck_library(self):
-        self.open_mission_hub(tab_index=1)
+        self.show_home_view(tab_index=0)
 
     def open_exam_dialog(self):
-        self.open_mission_hub(tab_index=2)
+        self.show_home_view(tab_index=2)
 
     def setup_voice_mastery_round(self):
         # Hide Jigsaw pool and answer board in Voice Mastery mode
@@ -1832,11 +1909,12 @@ class SentenceJigsawApp:
                 self.progress_bar['value'] = self.model.total_questions()
                 SoundPlayer.play_success()
                 active_name = ProfileManager.get_active_profile_name()
-                response = messagebox.askyesno('Congratulations!', f'Great job {active_name}! You completed all due review sentences for this session!\n\nLoad another lesson file?')
+                response = messagebox.askyesno(
+                    'Congratulations!',
+                    f'Great job {active_name}! You completed all sentences for this session!\n\nReturn to Student Deck Repository / Home?'
+                )
                 if response:
-                    self.open_file_dialog()
-                else:
-                    self.root.quit()
+                    self.show_home_view()
 
     def generate_worksheet(self):
         if not self.model.qa_data:

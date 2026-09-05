@@ -177,7 +177,33 @@ class TestUIModes(unittest.TestCase):
         hub_dlg = MissionHubDialog(self.root)
         self.assertTrue(hub_dlg.winfo_exists())
         self.assertEqual(len(hub_dlg.notebook.tabs()), 4)
-        hub_dlg.destroy()
+    def test_home_dashboard_landing_and_transitions(self):
+        # 1. On launch, HomeDashboardView must be packed by default
+        self.assertEqual(self.app.home_view.winfo_manager(), 'pack')
+        self.assertEqual(self.app.gameplay_container.winfo_manager(), '')
+
+        # 2. Deck Repository is Tab 1 (index 0) of notebook
+        tabs = self.app.home_view.notebook.tabs()
+        self.assertEqual(len(tabs), 4)
+        tab1_text = self.app.home_view.notebook.tab(0, 'text')
+        self.assertIn('Deck Repository', tab1_text)
+
+        # 3. Starting a session transitions from home_view to gameplay_container
+        sample_cards = [
+            QuestionItem("Home Q1", ["Alpha", "Beta"]),
+            QuestionItem("Home Q2", ["Gamma", "Delta"])
+        ]
+        self.app.start_session_from_home(sample_cards, 'guided_mission', deck_id='sample_deck')
+        self.assertEqual(self.app.home_view.winfo_manager(), '')
+        self.assertEqual(self.app.gameplay_container.winfo_manager(), 'pack')
+        self.assertEqual(self.app.game_mode, 'guided_mission')
+        self.assertEqual(self.app.active_deck_id, 'sample_deck')
+
+        # 4. Navigating back to home switches views and updates data
+        self.app.show_home_view(tab_index=2)
+        self.assertEqual(self.app.gameplay_container.winfo_manager(), '')
+        self.assertEqual(self.app.home_view.winfo_manager(), 'pack')
+        self.assertEqual(self.app.home_view.notebook.index(self.app.home_view.notebook.select()), 2)
 
 if __name__ == '__main__':
     unittest.main()
