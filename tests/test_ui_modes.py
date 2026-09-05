@@ -69,6 +69,28 @@ class TestUIModes(unittest.TestCase):
         self.assertTrue(hasattr(self.app, 'studio_restart_btn'))
         self.assertEqual(self.app.studio_restart_btn['text'], '🔄 Retry from Start')
 
+        # Hint, Undo, Clear, and header voice buttons must be hidden in Voice Mastery
+        self.assertEqual(self.app.hint_btn.winfo_manager(), '')
+        self.assertEqual(self.app.undo_btn.winfo_manager(), '')
+        self.assertEqual(self.app.clear_btn.winfo_manager(), '')
+        self.assertEqual(self.app.record_btn.winfo_manager(), '')
+        self.assertEqual(self.app.play_my_voice_btn.winfo_manager(), '')
+        self.assertEqual(self.app.ai_eval_btn.winfo_manager(), '')
+
+        # Switching back to standard Mastery mode must restore them
+        self.app.mode_var.set('🎯 Mastery')
+        self.app.on_mode_change()
+        self.assertEqual(self.app.hint_btn.winfo_manager(), 'pack')
+        self.assertEqual(self.app.undo_btn.winfo_manager(), 'pack')
+        self.assertEqual(self.app.clear_btn.winfo_manager(), 'pack')
+        self.assertEqual(self.app.record_btn.winfo_manager(), 'pack')
+        self.assertEqual(self.app.play_my_voice_btn.winfo_manager(), 'pack')
+        self.assertEqual(self.app.ai_eval_btn.winfo_manager(), 'pack')
+
+        # Switch back to Voice Mastery to continue voice tests
+        self.app.mode_var.set('🎙️ Voice Mastery')
+        self.app.on_mode_change()
+
         # Test restart_voice_recording lifecycle
         from unittest.mock import patch
         with patch('core.voice_recorder.VoiceRecorder.start_recording', return_value=True):
@@ -98,6 +120,58 @@ class TestUIModes(unittest.TestCase):
         self.app.handle_voice_mastery_evaluation(score=98, feedback_text="Flawless!")
         self.app.next_sentence()
         self.assertEqual(len(self.app.model.deck), 1)
+
+    def test_writing_mode_layout_and_submission(self):
+        self.app.mode_var.set('✍️ Writing Mode')
+        self.app.on_mode_change()
+        self.assertEqual(self.app.game_mode, 'writing')
+
+        # Check UI components
+        self.assertEqual(self.app.writing_studio.winfo_manager(), 'pack')
+        self.assertEqual(self.app.buttons_frame.winfo_manager(), '')
+        self.assertEqual(self.app.voice_studio.winfo_manager(), '')
+
+        # Test partial or typo answer
+        self.app.writing_input.delete('1.0', tk.END)
+        self.app.writing_input.insert(tk.END, 'A X C')
+        self.app.submit_writing_answer()
+        self.assertFalse(self.app.flawless_attempt)
+        self.assertIn('Review Needed', self.app.writing_status_badge['text'])
+
+        # Test flawless answer
+        self.app.writing_input.delete('1.0', tk.END)
+        self.app.writing_input.insert(tk.END, 'A B C')
+        self.app.submit_writing_answer()
+        self.assertTrue(self.app.flawless_attempt)
+        self.assertEqual(str(self.app.next_btn['state']), 'normal')
+        self.assertIn('Flawless', self.app.writing_status_badge['text'])
+
+    def test_guided_mission_mode_flow(self):
+        self.app.mode_var.set('🧭 Guided Mission')
+        self.app.on_mode_change()
+        self.assertEqual(self.app.game_mode, 'guided_mission')
+
+        curr_q = self.app.model.get_current_question()
+        self.assertIsNotNone(curr_q)
+        # Default ladder_stage is 1 -> fill_blanks round
+        self.assertEqual(getattr(curr_q, 'ladder_stage', 1), 1)
+        self.assertEqual(self.app.writing_studio.winfo_manager(), '')
+
+        # Advance current card stage through evaluation
+        self.app.handle_guided_mission_completion(curr_q, flawless=True, score=100)
+        self.assertEqual(curr_q.ladder_stage, 2)
+
+    def test_dialogs_instantiation(self):
+        from ui.deck_dialog import DeckLibraryDialog
+        from ui.exam_goal_dialog import ExamGoalDialog
+
+        deck_dlg = DeckLibraryDialog(self.root)
+        self.assertTrue(deck_dlg.winfo_exists())
+        deck_dlg.destroy()
+
+        exam_dlg = ExamGoalDialog(self.root)
+        self.assertTrue(exam_dlg.winfo_exists())
+        exam_dlg.destroy()
 
 if __name__ == '__main__':
     unittest.main()

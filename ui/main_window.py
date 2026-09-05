@@ -12,7 +12,7 @@ try:
 except ImportError:
     HAS_SV_TTK = False
 
-from core.models import DEFAULT_SETTINGS
+from core.models import DEFAULT_SETTINGS, QuestionItem
 from core.profile_manager import ProfileManager
 from core.lesson_deck import LessonDeck
 from core.memory import MemoryManager
@@ -22,11 +22,16 @@ from core.dictionary_cache import DictionaryManager
 from core.voice_recorder import VoiceRecorder
 from core.game_engine import GameEngine
 from core.progress_tracker import ProgressTracker
+from core.deck_manager import DeckManager
+from core.mission_engine import MissionEngine
+from core.spelling_evaluator import SpellingEvaluator
 
 from ui.theme import get_theme, ENCOURAGEMENTS
 from ui.widgets import ScrollableFrame, FlowFrame, AnswerChip, DraggablePoolButton
 from ui.dialogs import ProfileManagementDialog, SettingsDialog, LessonEditor, ProgressDashboardDialog
 from ui.ai_coach_dialog import AICoachDialog
+from ui.deck_dialog import DeckLibraryDialog
+from ui.exam_goal_dialog import ExamGoalDialog
 
 class SentenceJigsawApp:
     def __init__(self, root):
@@ -66,9 +71,14 @@ class SentenceJigsawApp:
         self.timer_seconds_remaining = self.settings.get('speed_run_duration_seconds', 180)
         self.timer_active = False
         self.timer_after_id = None
+        self._listening_after_id = None
         self.speed_run_score = 0
         self.speed_run_streak = 0
         self.speed_run_total_solved = 0
+
+        # Decks and Exam Goal state
+        self.active_deck_id = None
+        self.active_exam_id = None
 
         self.setup_ui()
         self.setup_bindings()
@@ -108,8 +118,8 @@ class SentenceJigsawApp:
         self.mode_cb = ttk.Combobox(
             self.top_frame, 
             textvariable=self.mode_var, 
-            values=['🎯 Mastery', self.get_speed_run_mode_label(), '🧩 Fill in Blanks', '🎧 Listening Mode', '🎙️ Voice Mastery'], 
-            width=16, 
+            values=['🧭 Guided Mission', '🎯 Mastery', self.get_speed_run_mode_label(), '🧩 Fill in Blanks', '🎧 Listening Mode', '🎙️ Voice Mastery', '✍️ Writing Mode'], 
+            width=18, 
             state='readonly', 
             font=('', 10)
         )
@@ -139,8 +149,12 @@ class SentenceJigsawApp:
         self.progress_label = ttk.Label(self.tool_frame, text='No file loaded', font=('', 11, 'bold'), foreground='#64748b')
         self.progress_label.pack(side=tk.LEFT)
         
-        self.progress_bar = ttk.Progressbar(self.tool_frame, orient=tk.HORIZONTAL, length=160, mode='determinate')
-        self.progress_bar.pack(side=tk.LEFT, padx=10)
+        self.progress_bar = ttk.Progressbar(self.tool_frame, orient=tk.HORIZONTAL, length=140, mode='determinate')
+        self.progress_bar.pack(side=tk.LEFT, padx=(10, 8))
+
+        # Quick Access to Decks & Exam Pacing
+        ttk.Button(self.tool_frame, text='🗂️ Decks', command=self.open_deck_library).pack(side=tk.LEFT, padx=2)
+        ttk.Button(self.tool_frame, text='🎯 Exam Goal', command=self.open_exam_dialog).pack(side=tk.LEFT, padx=2)
 
         # Utility Buttons (Segmented on the right side)
         ttk.Button(self.tool_frame, text='📊 Progress', command=self.open_dashboard).pack(side=tk.RIGHT, padx=2)
@@ -322,6 +336,85 @@ class SentenceJigsawApp:
         )
         self.studio_feedback_lbl.pack(anchor=tk.W, fill=tk.X)
 
+        # --- Writing / Typing Studio Card (Used in Writing Mode & Stage 6) ---
+        self.writing_studio = tk.Frame(content_frame, bg='#ffffff', bd=1, relief=tk.SOLID, padx=20, pady=20)
+        # Managed dynamically via pack/pack_forget
+
+        self.writing_studio_title = ttk.Label(
+            self.writing_studio, 
+            text='✍️ Writing & Spelling Studio', 
+            font=('', 15, 'bold'), 
+            foreground='#0f172a'
+        )
+        self.writing_studio_title.pack(anchor=tk.W, pady=(0, 4))
+
+        self.writing_studio_instructions = ttk.Label(
+            self.writing_studio,
+            text='Type the complete sentence using your keyboard. Spelling, accuracy, and word order will be evaluated.',
+            font=('', 11),
+            foreground='#475569'
+        )
+        self.writing_studio_instructions.pack(anchor=tk.W, pady=(0, 10))
+
+        # Text input area
+        self.writing_input = tk.Text(
+            self.writing_studio,
+            font=('', 13),
+            height=3,
+            wrap=tk.WORD,
+            bd=1,
+            relief=tk.SOLID,
+            padx=12,
+            pady=8
+        )
+        self.writing_input.pack(fill=tk.X, pady=(0, 10))
+        self.writing_input.bind('<Return>', self._handle_writing_return)
+
+        writing_btn_row = ttk.Frame(self.writing_studio)
+        writing_btn_row.pack(fill=tk.X, pady=(0, 8))
+
+        self.writing_submit_btn = ttk.Button(
+            writing_btn_row,
+            text='✓ Check Answer (Enter)',
+            command=self.submit_writing_answer
+        )
+        self.writing_submit_btn.pack(side=tk.LEFT, padx=(0, 8))
+
+        self.writing_status_badge = tk.Label(
+            writing_btn_row,
+            text='Type your answer above and press Enter',
+            font=('', 10, 'bold'),
+            bg='#f1f5f9',
+            fg='#475569',
+            padx=10,
+            pady=4,
+            bd=1,
+            relief=tk.SOLID
+        )
+        self.writing_status_badge.pack(side=tk.LEFT)
+
+        # Word-by-word visual feedback diff display
+        self.writing_diff_frame = ttk.Frame(self.writing_studio)
+        self.writing_diff_frame.pack(fill=tk.X, pady=(4, 0))
+
+        self.writing_diff_display = tk.Text(
+            self.writing_diff_frame,
+            font=('', 12),
+            height=3,
+            wrap=tk.WORD,
+            bd=1,
+            relief=tk.SOLID,
+            padx=10,
+            pady=8
+        )
+        self.writing_diff_display.pack(fill=tk.X)
+        self.writing_diff_display.tag_configure('correct', foreground='#16a34a', font=('', 12, 'bold'))
+        self.writing_diff_display.tag_configure('typo', foreground='#ca8a04', underline=True, font=('', 12, 'bold'))
+        self.writing_diff_display.tag_configure('wrong', foreground='#dc2626', underline=True, font=('', 12, 'bold'))
+        self.writing_diff_display.tag_configure('missing', foreground='#7c3aed', font=('', 12, 'italic'))
+        self.writing_diff_display.tag_configure('extra', foreground='#e11d48', font=('', 12, 'italic'))
+        self.writing_diff_display.config(state=tk.DISABLED)
+
         self.pool_label = ttk.Label(content_frame, text='Available Blocks (Click or drag to answer):', font=('', 13, 'bold'), foreground='#64748b')
         self.pool_label.pack(anchor=tk.W, pady=(12, 5))
         
@@ -454,6 +547,11 @@ class SentenceJigsawApp:
             )
             self.score_label.config(text='Keep practicing! We\'ll try this sentence again soon. 🔄')
             self.next_btn.config(state=tk.NORMAL)
+
+        if self.game_mode == 'guided_mission':
+            data = self.model.get_current_question()
+            if data:
+                self.handle_guided_mission_completion(data, flawless=is_pass, score=score)
 
     def play_my_recording(self):
         self.play_my_voice_btn.config(text='▶️ Playing...', state=tk.DISABLED)
@@ -609,10 +707,12 @@ class SentenceJigsawApp:
         if button_widget is not None:
             if str(button_widget['state']) != 'normal':
                 return
+            if button_widget.winfo_manager() != 'pack':
+                return
         action_callable()
 
     def _handle_gameplay_shortcut(self, index: int):
-        if self._is_focus_in_text_or_modal():
+        if self._is_focus_in_text_or_modal() or self.game_mode in ('voice_mastery', 'writing'):
             return
         self.trigger_chunk_by_index(index)
 
@@ -637,6 +737,11 @@ class SentenceJigsawApp:
         TTSManager.speak(chunk_text, rate_str=rate, override_voice=voice_override)
 
     def speak_current_question(self):
+        try:
+            if not self.root.winfo_exists():
+                return
+        except Exception:
+            return
         data = self.model.get_current_question()
         if not data:
             return
@@ -727,7 +832,7 @@ class SentenceJigsawApp:
         
         curr_val = self.mode_var.get()
         new_speed_lbl = self.get_speed_run_mode_label()
-        self.mode_cb['values'] = ['🎯 Mastery', new_speed_lbl, '🧩 Fill in Blanks', '🎧 Listening Mode', '🎙️ Voice Mastery']
+        self.mode_cb['values'] = ['🧭 Guided Mission', '🎯 Mastery', new_speed_lbl, '🧩 Fill in Blanks', '🎧 Listening Mode', '🎙️ Voice Mastery', '✍️ Writing Mode']
         
         if 'Speed Run' in curr_val:
             self.mode_var.set(new_speed_lbl)
@@ -741,6 +846,16 @@ class SentenceJigsawApp:
         if 'Speed Run' in mode_str:
             self.game_mode = 'speed_run'
             self.start_speed_run()
+        elif 'Mission' in mode_str:
+            self.game_mode = 'guided_mission'
+            self.stop_timer()
+            self.model.reset_deck()
+            self.load_current_question()
+        elif 'Writing' in mode_str:
+            self.game_mode = 'writing'
+            self.stop_timer()
+            self.model.reset_deck()
+            self.load_current_question()
         elif 'Fill in Blanks' in mode_str:
             self.game_mode = 'fill_blanks'
             self.stop_timer()
@@ -791,8 +906,17 @@ class SentenceJigsawApp:
     def stop_timer(self):
         self.timer_active = False
         if self.timer_after_id:
-            self.root.after_cancel(self.timer_after_id)
+            try:
+                self.root.after_cancel(self.timer_after_id)
+            except Exception:
+                pass
             self.timer_after_id = None
+        if hasattr(self, '_listening_after_id') and self._listening_after_id:
+            try:
+                self.root.after_cancel(self._listening_after_id)
+            except Exception:
+                pass
+            self._listening_after_id = None
 
     def end_speed_run(self):
         SoundPlayer.play_success()
@@ -942,7 +1066,25 @@ class SentenceJigsawApp:
         self.chunk_buttons.clear()
         self.answer_flow.clear_widgets()
 
-        if self.game_mode == 'voice_mastery':
+        if self.game_mode == 'guided_mission':
+            curr_q = self.model.get_current_question()
+            st = getattr(curr_q, 'ladder_stage', 1) if curr_q else 1
+            info = MissionEngine.get_stage_info(st)
+            self.memory_badge.config(text=f"{info['icon']} {info['short_name']} (Stage {st})", fg='#4338ca')
+            mode = MissionEngine.get_mode_for_stage(st)
+            if mode == 'fill_blanks':
+                self.setup_fill_in_blanks_round()
+            elif mode == 'voice_mastery':
+                self.setup_voice_mastery_round()
+            elif mode == 'writing':
+                self.setup_writing_round()
+            else:
+                self.setup_standard_round()
+                if mode == 'listening':
+                    self.root.after(300, self.speak_current_question)
+        elif self.game_mode == 'writing':
+            self.setup_writing_round()
+        elif self.game_mode == 'voice_mastery':
             self.setup_voice_mastery_round()
         elif self.game_mode == 'fill_blanks':
             self.setup_fill_in_blanks_round()
@@ -950,7 +1092,12 @@ class SentenceJigsawApp:
             self.setup_standard_round()
 
         if self.game_mode == 'listening':
-            self.root.after(300, self.speak_current_question)
+            if hasattr(self, '_listening_after_id') and self._listening_after_id:
+                try:
+                    self.root.after_cancel(self._listening_after_id)
+                except Exception:
+                    pass
+            self._listening_after_id = self.root.after(300, self.speak_current_question)
 
         self.root.update_idletasks()
         self.main_scroll.canvas.yview_moveto(0)
@@ -959,13 +1106,156 @@ class SentenceJigsawApp:
         except Exception:
             pass
 
-    def setup_voice_mastery_round(self):
-        # Hide Jigsaw pool and answer board in Voice Mastery mode
+    def setup_writing_round(self):
+        # Hide Jigsaw pool, answer board, and voice studio
         self.answer_header.pack_forget()
         self.answer_board.pack_forget()
         self.answer_meaning_display.pack_forget()
         self.pool_label.pack_forget()
         self.buttons_frame.pack_forget()
+        self.voice_studio.pack_forget()
+
+        # Hide bottom action buttons not relevant in writing mode
+        self.hint_btn.pack_forget()
+        self.undo_btn.pack_forget()
+        self.clear_btn.pack_forget()
+
+        # Hide top duplicate voice controls
+        self.record_btn.pack_forget()
+        self.play_my_voice_btn.pack_forget()
+        self.ai_eval_btn.pack_forget()
+
+        # Display Writing Practice Studio card
+        self.writing_studio.pack(fill=tk.X, pady=(10, 10))
+        self.writing_input.delete('1.0', tk.END)
+        self.writing_diff_display.config(state=tk.NORMAL)
+        self.writing_diff_display.delete('1.0', tk.END)
+        self.writing_diff_display.config(state=tk.DISABLED)
+        self.writing_status_badge.config(
+            text='Type the complete answer above and press Enter',
+            bg='#f1f5f9',
+            fg='#475569'
+        )
+        try:
+            self.writing_input.focus_set()
+        except Exception:
+            pass
+
+    def _handle_writing_return(self, event=None):
+        self.submit_writing_answer()
+        return 'break'
+
+    def submit_writing_answer(self):
+        user_text = self.writing_input.get('1.0', tk.END).strip()
+        if not user_text:
+            messagebox.showinfo('Empty Answer', 'Please type your answer before checking.', parent=self.root)
+            return
+
+        data = self.model.get_current_question()
+        if not data:
+            return
+
+        target_text = " ".join(self.original_chunks)
+        res = SpellingEvaluator.evaluate(user_text, target_text, ignore_case=True, ignore_punctuation=True)
+        score = res['score']
+
+        # Render diff display
+        self.writing_diff_display.config(state=tk.NORMAL)
+        self.writing_diff_display.delete('1.0', tk.END)
+
+        for token in res['tokens']:
+            status = token['status']
+            text = token['text'] + ' '
+            self.writing_diff_display.insert(tk.END, text, status)
+
+        self.writing_diff_display.config(state=tk.DISABLED)
+
+        # Track activity
+        key = MemoryManager.get_sentence_key(data.question, data.chunks)
+        t_store = ProfileManager.get_active_tracker_store()
+        ProgressTracker.record_mode_activity(t_store, key, 'writing')
+        ProfileManager.save_active_tracker_store(t_store)
+
+        if res['is_perfect'] or score >= 90:
+            SoundPlayer.play_success()
+            self.flawless_attempt = True
+            self.writing_status_badge.config(
+                text=f"⭐ Flawless! ({score}% Match) • Spelling & Syntax Verified",
+                bg='#dcfce7',
+                fg='#166534'
+            )
+            self.score_label.config(text=f"+100 pts! ⭐ Written Mastered")
+            self.next_btn.config(state=tk.NORMAL)
+            if self.game_mode == 'guided_mission':
+                self.handle_guided_mission_completion(data, flawless=True, score=score)
+        else:
+            SoundPlayer.play_error()
+            self.flawless_attempt = False
+            self.writing_status_badge.config(
+                text=f"🔄 Review Needed ({score}% Match) • Notice highlighted words",
+                bg='#ffe4e6',
+                fg='#9f1239'
+            )
+            self.score_label.config(text="Check spelling of highlighted words 🔄")
+            self.next_btn.config(state=tk.NORMAL)
+            if self.game_mode == 'guided_mission':
+                self.handle_guided_mission_completion(data, flawless=False, score=score)
+
+    def handle_guided_mission_completion(self, data, flawless: bool, score: int = 100):
+        curr_st = getattr(data, 'ladder_stage', 1)
+        passed, next_st, msg = MissionEngine.evaluate_advancement(
+            curr_st, 
+            {'flawless': flawless, 'score': score}
+        )
+        data.ladder_stage = next_st
+        if passed and self.active_deck_id:
+            DeckManager.update_card_stage(self.active_deck_id, getattr(data, 'card_id', ''), next_st, passed)
+        self.score_label.config(text=msg)
+
+    def open_deck_library(self):
+        def on_selected(deck):
+            cards = [QuestionItem.from_dict(c) for c in deck.get('cards', [])]
+            if not cards:
+                messagebox.showinfo('Empty Deck', f'Deck "{deck.get("title")}" has no questions. Add some using Edit.', parent=self.root)
+                return
+            self.active_deck_id = deck.get('id')
+            self.model.qa_data = cards
+            self.model.reset_deck()
+            self.update_level_dropdown()
+            self.load_current_question()
+            self.progress_label.config(text=f'Deck: {deck.get("title")} ({len(cards)} cards)')
+        DeckLibraryDialog(self.root, on_deck_selected_callback=on_selected)
+
+    def open_exam_dialog(self):
+        def on_start_exam(exam_cards):
+            self.active_deck_id = None
+            self.model.qa_data = exam_cards
+            self.mode_var.set('🧭 Guided Mission')
+            self.game_mode = 'guided_mission'
+            self.model.reset_deck()
+            self.update_level_dropdown()
+            self.load_current_question()
+            self.progress_label.config(text=f'🎯 Exam Mission: {len(exam_cards)} cards')
+        ExamGoalDialog(self.root, on_start_exam_mission_callback=on_start_exam)
+
+    def setup_voice_mastery_round(self):
+        # Hide Jigsaw pool and answer board in Voice Mastery mode
+        self.writing_studio.pack_forget()
+        self.answer_header.pack_forget()
+        self.answer_board.pack_forget()
+        self.answer_meaning_display.pack_forget()
+        self.pool_label.pack_forget()
+        self.buttons_frame.pack_forget()
+
+        # Hide bottom action buttons not relevant in Voice Mastery mode
+        self.hint_btn.pack_forget()
+        self.undo_btn.pack_forget()
+        self.clear_btn.pack_forget()
+
+        # Hide top duplicate voice controls in question header (studio has dedicated controls)
+        self.record_btn.pack_forget()
+        self.play_my_voice_btn.pack_forget()
+        self.ai_eval_btn.pack_forget()
 
         # Display Voice Practice Studio card prominently
         self.voice_studio.pack(fill=tk.X, pady=(10, 10))
@@ -975,13 +1265,31 @@ class SentenceJigsawApp:
         self.studio_eval_btn.config(state=tk.NORMAL if VoiceRecorder.has_recording() else tk.DISABLED)
 
     def setup_standard_round(self):
-        # Restore jigsaw elements if coming from voice mastery
+        # Restore jigsaw elements if coming from voice or writing mastery
         self.voice_studio.pack_forget()
+        self.writing_studio.pack_forget()
         self.answer_header.pack(fill=tk.X, pady=(5, 5))
         self.answer_board.pack(pady=5, fill=tk.X)
         self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X)
         self.pool_label.pack(anchor=tk.W, pady=(12, 5))
         self.buttons_frame.pack(fill=tk.X, pady=5, expand=True)
+
+        # Restore top voice buttons if hidden
+        if self.ai_eval_btn.winfo_manager() != 'pack':
+            self.ai_eval_btn.pack(side=tk.RIGHT, padx=4)
+            self.play_my_voice_btn.pack(side=tk.RIGHT, padx=4)
+            self.record_btn.pack(side=tk.RIGHT, padx=4)
+
+        # Restore bottom dock buttons (hint, undo, clear) before skip_btn
+        if self.hint_btn.winfo_manager() != 'pack':
+            if hasattr(self, 'skip_btn') and self.skip_btn.winfo_manager() == 'pack':
+                self.hint_btn.pack(side=tk.LEFT, padx=6, before=self.skip_btn)
+                self.undo_btn.pack(side=tk.LEFT, padx=6, before=self.skip_btn)
+                self.clear_btn.pack(side=tk.LEFT, padx=6, before=self.skip_btn)
+            else:
+                self.hint_btn.pack(side=tk.LEFT, padx=6)
+                self.undo_btn.pack(side=tk.LEFT, padx=6)
+                self.clear_btn.pack(side=tk.LEFT, padx=6)
 
         scrambled = GameEngine.scramble_chunks(self.original_chunks)
         tile_colors = self.theme.get('tile_colors', ['#bae1ff']).copy()
@@ -1011,6 +1319,31 @@ class SentenceJigsawApp:
         self.render_answer_chips()
 
     def setup_fill_in_blanks_round(self):
+        # Restore jigsaw elements if coming from voice or writing mastery
+        self.voice_studio.pack_forget()
+        self.writing_studio.pack_forget()
+        self.answer_header.pack(fill=tk.X, pady=(5, 5))
+        self.answer_board.pack(pady=5, fill=tk.X)
+        self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X)
+        self.pool_label.pack(anchor=tk.W, pady=(12, 5))
+        self.buttons_frame.pack(fill=tk.X, pady=5, expand=True)
+
+        # Restore top voice buttons if hidden
+        if self.ai_eval_btn.winfo_manager() != 'pack':
+            self.ai_eval_btn.pack(side=tk.RIGHT, padx=4)
+            self.play_my_voice_btn.pack(side=tk.RIGHT, padx=4)
+            self.record_btn.pack(side=tk.RIGHT, padx=4)
+
+        # Restore bottom dock buttons (hint, undo, clear) before skip_btn
+        if self.hint_btn.winfo_manager() != 'pack':
+            if hasattr(self, 'skip_btn') and self.skip_btn.winfo_manager() == 'pack':
+                self.hint_btn.pack(side=tk.LEFT, padx=6, before=self.skip_btn)
+                self.undo_btn.pack(side=tk.LEFT, padx=6, before=self.skip_btn)
+                self.clear_btn.pack(side=tk.LEFT, padx=6, before=self.skip_btn)
+            else:
+                self.hint_btn.pack(side=tk.LEFT, padx=6)
+                self.undo_btn.pack(side=tk.LEFT, padx=6)
+                self.clear_btn.pack(side=tk.LEFT, padx=6)
         mode = self.settings.get('fill_blanks_count_mode', 'auto')
         self.hidden_chunk_indices = GameEngine.calculate_blank_indices(self.original_chunks, mode)
         blank_chunks = [self.original_chunks[i] for i in self.hidden_chunk_indices]
@@ -1403,6 +1736,11 @@ class SentenceJigsawApp:
             self.skip_btn.config(state=tk.DISABLED)
             self.undo_btn.config(state=tk.DISABLED) 
             self.hint_btn.config(state=tk.DISABLED)
+
+            if self.game_mode == 'guided_mission':
+                data = self.model.get_current_question()
+                if data:
+                    self.handle_guided_mission_completion(data, flawless=self.flawless_attempt, score=100)
         else:
             SoundPlayer.play_error()
             self.flawless_attempt = False
@@ -1459,7 +1797,7 @@ class SentenceJigsawApp:
             ProgressTracker.record_mode_activity(t_store, key, self.game_mode)
             ProfileManager.save_active_tracker_store(t_store)
 
-        repeat = (self.game_mode in ('mastery', 'listening', 'voice_mastery'))
+        repeat = (self.game_mode in ('mastery', 'listening', 'voice_mastery', 'writing', 'guided_mission'))
         self.model.process_result(flawless=self.flawless_attempt, repeat_on_error=repeat)
         
         if not self.model.is_finished():

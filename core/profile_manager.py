@@ -250,3 +250,53 @@ class ProfileManager:
         profile['memory'] = {}
         profile['tracker'] = {}
         cls._save()
+
+    @classmethod
+    def get_active_decks(cls) -> Dict[str, Any]:
+        cls._load()
+        profile = cls.get_active_profile()
+        return profile.setdefault('decks', {})
+
+    @classmethod
+    def save_active_deck(cls, deck_id: str, deck_data: dict):
+        cls._load()
+        profile = cls.get_active_profile()
+        profile.setdefault('decks', {})
+        profile['decks'][deck_id] = deck_data
+        cls._save()
+
+    @classmethod
+    def delete_active_deck(cls, deck_id: str) -> bool:
+        cls._load()
+        profile = cls.get_active_profile()
+        decks = profile.setdefault('decks', {})
+        if deck_id in decks:
+            del decks[deck_id]
+            cls._save()
+            return True
+        return False
+
+    @classmethod
+    def get_active_exams(cls) -> Dict[str, Any]:
+        cls._load()
+        profile = cls.get_active_profile()
+        return profile.setdefault('exams', {})
+
+    @classmethod
+    def save_active_exam(cls, exam_id: str, exam_data: dict):
+        cls._load()
+        profile = cls.get_active_profile()
+        profile.setdefault('exams', {})
+        profile['exams'][exam_id] = exam_data
+        cls._save()
+
+    @classmethod
+    def delete_active_exam(cls, exam_id: str) -> bool:
+        cls._load()
+        profile = cls.get_active_profile()
+        exams = profile.setdefault('exams', {})
+        if exam_id in exams:
+            del exams[exam_id]
+            cls._save()
+            return True
+        return False

@@ -24,6 +24,10 @@ class SoundPlayer:
             cls._play_async('success')
 
     @classmethod
+    def play_correct(cls):
+        cls.play_success()
+
+    @classmethod
     def play_error(cls):
         if cls.sound_enabled:
             cls._play_async('error')

@@ -1,5 +1,6 @@
+import uuid
 import dataclasses
-from typing import List
+from typing import List, Dict, Any, Optional
 
 DEFAULT_SETTINGS = {
     'speed_run_duration_seconds': 180,  # Default 3 minutes
@@ -20,20 +21,63 @@ class QuestionItem:
     chunks: List[str]
     meaning: str = ""
     lesson_name: str = ""
+    card_id: str = ""
+    ladder_stage: int = 1  # Stages 1 to 6 (1: Blanks, 2: Jigsaw, 3: Listening, 4: Voice, 5: Speed, 6: Writing)
+    stage_history: List[Dict[str, Any]] = dataclasses.field(default_factory=list)
+
+    def __post_init__(self):
+        if not self.card_id:
+            self.card_id = str(uuid.uuid4())[:8]
 
     def to_dict(self):
         return {
+            'card_id': self.card_id,
             'question': self.question,
             'chunks': list(self.chunks),
             'meaning': self.meaning,
-            'lesson_name': self.lesson_name
+            'lesson_name': self.lesson_name,
+            'ladder_stage': self.ladder_stage,
+            'stage_history': list(self.stage_history)
         }
 
     @classmethod
     def from_dict(cls, data: dict):
         return cls(
+            card_id=data.get('card_id', ''),
             question=data.get('question', ''),
             chunks=list(data.get('chunks', [])),
             meaning=data.get('meaning', ''),
-            lesson_name=data.get('lesson_name', '')
+            lesson_name=data.get('lesson_name', ''),
+            ladder_stage=data.get('ladder_stage', 1),
+            stage_history=list(data.get('stage_history', []))
+        )
+
+@dataclasses.dataclass
+class ExamGoal:
+    id: str
+    title: str
+    target_date: str  # YYYY-MM-DD
+    target_stage: int = 6
+    deck_ids: List[str] = dataclasses.field(default_factory=list)
+    daily_max_cap: int = 15
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'target_date': self.target_date,
+            'target_stage': self.target_stage,
+            'deck_ids': list(self.deck_ids),
+            'daily_max_cap': self.daily_max_cap
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            id=data.get('id', str(uuid.uuid4())[:8]),
+            title=data.get('title', 'Upcoming Exam'),
+            target_date=data.get('target_date', ''),
+            target_stage=data.get('target_stage', 6),
+            deck_ids=list(data.get('deck_ids', [])),
+            daily_max_cap=data.get('daily_max_cap', 15)
         )

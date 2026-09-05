@@ -19,6 +19,7 @@ class ProgressTracker:
                 'listening_count': 0,
                 'voice_count': 0,
                 'speed_run_count': 0,
+                'writing_count': 0,
                 'last_practiced_ts': 0
             }
 
@@ -35,25 +36,29 @@ class ProgressTracker:
             rec['voice_count'] = rec.get('voice_count', 0) + 1
         elif mode == 'speed_run':
             rec['speed_run_count'] = rec.get('speed_run_count', 0) + 1
+        elif mode == 'writing':
+            rec['writing_count'] = rec.get('writing_count', 0) + 1
 
         return tracker_store
 
     @staticmethod
     def get_milestone_summary(tracker_store: dict, key: str) -> Dict[str, Any]:
-        """Returns the milestone status across all 5 dimensions for a sentence."""
+        """Returns the milestone status across all 6 dimensions for a sentence."""
         rec = tracker_store.get(key, {})
         m_count = rec.get('mastery_count', 0)
         b_count = rec.get('blanks_count', 0)
         l_count = rec.get('listening_count', 0)
         v_count = rec.get('voice_count', 0)
         s_count = rec.get('speed_run_count', 0)
+        w_count = rec.get('writing_count', 0)
 
-        # Learning Step calculation (1 to 5)
+        # Learning Step calculation (1 to 6)
         # Step 1: 🌱 Guided Assembly
         # Step 2: 🧩 Blanks Recall
         # Step 3: 🎧 Auditory Training
         # Step 4: 🎙️ Speaking Practice
-        # Step 5: 🎓 Full Mastery
+        # Step 5: 🎓 Voice Mastery
+        # Step 6: ✍️ Written Mastery
         step = 1
         step_label = "🌱 Step 1: Assembly"
         if m_count >= 1 and b_count == 0:
@@ -65,9 +70,12 @@ class ProgressTracker:
         elif l_count >= 1 and v_count == 0:
             step = 4
             step_label = "🎙️ Step 4: Voice"
-        elif v_count >= 1:
+        elif v_count >= 1 and w_count == 0:
             step = 5
             step_label = "🎓 Step 5: Mastered"
+        elif w_count >= 1:
+            step = 6
+            step_label = "✍️ Step 6: Written Mastered"
 
         return {
             'has_mastery': m_count > 0,
@@ -75,6 +83,7 @@ class ProgressTracker:
             'has_listening': l_count > 0,
             'has_voice': v_count > 0,
             'has_speed_run': s_count > 0,
+            'has_writing': w_count > 0,
             'step': step,
             'step_label': step_label,
             'last_practiced_ts': rec.get('last_practiced_ts', 0)

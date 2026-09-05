@@ -23,6 +23,8 @@ class VoiceRecorder:
     _temp_wav = os.path.join(tempfile.gettempdir(), 'sentence_jigsaw_student_recording_0.wav')
     _alias = 'student_audio_capture'
 
+    _mac_process = None
+
     @classmethod
     def is_recording(cls) -> bool:
         return cls._is_recording
@@ -33,7 +35,8 @@ class VoiceRecorder:
 
     @classmethod
     def start_recording(cls) -> bool:
-        if platform.system() != 'Windows' or winmm is None:
+        sys_name = platform.system()
+        if sys_name != 'Windows' and sys_name != 'Darwin':
             return False
 
         try:
@@ -45,22 +48,33 @@ class VoiceRecorder:
                 except Exception:
                     pass
 
-            # Cycle temp wav path to completely prevent Windows file lock collisions
+            # Cycle temp wav path to prevent file lock collisions
             cls._record_count += 1
             cls._temp_wav = os.path.join(
                 tempfile.gettempdir(),
                 f'sentence_jigsaw_student_recording_{cls._record_count}.wav'
             )
 
-            # Stop any previous capture
-            winmm.mciSendStringA(f'close {cls._alias}'.encode(), None, 0, 0)
             if os.path.exists(cls._temp_wav):
                 try: os.remove(cls._temp_wav)
                 except Exception: pass
 
-            ret = winmm.mciSendStringA(f'open new type waveaudio alias {cls._alias}'.encode(), None, 0, 0)
-            if ret == 0:
-                winmm.mciSendStringA(f'record {cls._alias}'.encode(), None, 0, 0)
+            if sys_name == 'Windows' and winmm is not None:
+                # Stop any previous capture
+                winmm.mciSendStringA(f'close {cls._alias}'.encode(), None, 0, 0)
+                ret = winmm.mciSendStringA(f'open new type waveaudio alias {cls._alias}'.encode(), None, 0, 0)
+                if ret == 0:
+                    winmm.mciSendStringA(f'record {cls._alias}'.encode(), None, 0, 0)
+                    cls._is_recording = True
+                    return True
+            elif sys_name == 'Darwin':
+                import subprocess
+                # afrecord is native to all macOS systems (CoreAudio command-line tool)
+                cls._mac_process = subprocess.Popen(
+                    ['/usr/bin/afrecord', '-f', 'WAVE', '-c', '1', '-r', '16000', cls._temp_wav],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL
+                )
                 cls._is_recording = True
                 return True
         except Exception:
@@ -70,13 +84,22 @@ class VoiceRecorder:
 
     @classmethod
     def stop_recording(cls) -> bool:
-        if not cls._is_recording or winmm is None:
+        if not cls._is_recording:
             return False
 
+        sys_name = platform.system()
         try:
-            winmm.mciSendStringA(f'stop {cls._alias}'.encode(), None, 0, 0)
-            winmm.mciSendStringA(f'save {cls._alias} "{cls._temp_wav}"'.encode(), None, 0, 0)
-            winmm.mciSendStringA(f'close {cls._alias}'.encode(), None, 0, 0)
+            if sys_name == 'Windows' and winmm is not None:
+                winmm.mciSendStringA(f'stop {cls._alias}'.encode(), None, 0, 0)
+                winmm.mciSendStringA(f'save {cls._alias} "{cls._temp_wav}"'.encode(), None, 0, 0)
+                winmm.mciSendStringA(f'close {cls._alias}'.encode(), None, 0, 0)
+            elif sys_name == 'Darwin' and cls._mac_process is not None:
+                try:
+                    cls._mac_process.terminate()
+                    cls._mac_process.wait(timeout=2)
+                except Exception:
+                    pass
+                cls._mac_process = None
         except Exception:
             pass
         finally:

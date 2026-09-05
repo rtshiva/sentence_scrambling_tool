@@ -936,6 +936,7 @@ class LessonEditor(tk.Toplevel):
         except Exception as e:
             messagebox.showerror('Error', f'Failed to save:\n{str(e)}')
 
+LessonEditorDialog = LessonEditor
 
 class ProgressDashboardDialog(tk.Toplevel):
     """Visual Dashboard showing multi-mode learning path, milestones, and daily review status."""
