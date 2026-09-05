@@ -1,11 +1,15 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog, simpledialog
 import random
+import threading
 from core.profile_manager import ProfileManager
 from core.text_parser import TextParser
 from core.dictionary_cache import DictionaryManager
+from core.ai_evaluator import AIEvaluator
+from core.voice_recorder import VoiceRecorder
+from core.speech_transcriber import SpeechTranscriber
 from ui.theme import AVATAR_OPTIONS, THEMES
-from ui.widgets import ScrollableFrame, FlowFrame
+from ui.widgets import ScrollableFrame, FlowFrame, ScrollableTextBox
 
 class ProfileManagementDialog(tk.Toplevel):
     """Modal dialog to add, switch, or remove user profiles."""
@@ -26,8 +30,13 @@ class ProfileManagementDialog(tk.Toplevel):
         
         ttk.Label(frame, text='User Accounts / Students:', font=('', 11, 'bold')).pack(anchor=tk.W)
         
-        self.profile_listbox = tk.Listbox(frame, font=('', 12), height=8)
-        self.profile_listbox.pack(fill=tk.BOTH, expand=True, pady=8)
+        list_container = ttk.Frame(frame)
+        list_container.pack(fill=tk.BOTH, expand=True, pady=8)
+        self.profile_listbox = tk.Listbox(list_container, font=('', 12), height=8)
+        self.profile_scroll = ttk.Scrollbar(list_container, orient=tk.VERTICAL, command=self.profile_listbox.yview)
+        self.profile_listbox.config(yscrollcommand=self.profile_scroll.set)
+        self.profile_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.profile_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.refresh_list()
         
         btn_box = ttk.Frame(frame)
@@ -102,8 +111,13 @@ class BulkStoryImporter(tk.Toplevel):
         ttk.Label(frame, text='Paste Story / Text Below (Hindi, Japanese, English, etc.):', font=('', 11, 'bold')).pack(anchor=tk.W)
         ttk.Label(frame, text='Sentences will automatically be detected by punctuation (। . ? ! or newline).', font=('', 10), foreground='gray').pack(anchor=tk.W, pady=(0, 8))
         
-        self.text_entry = tk.Text(frame, font=('', 12), height=12, wrap=tk.WORD)
-        self.text_entry.pack(fill=tk.BOTH, expand=True, pady=(0, 12))
+        text_container = ttk.Frame(frame)
+        text_container.pack(fill=tk.BOTH, expand=True, pady=(0, 12))
+        self.text_entry = tk.Text(text_container, font=('', 12), height=12, wrap=tk.WORD)
+        self.text_scroll = ttk.Scrollbar(text_container, orient=tk.VERTICAL, command=self.text_entry.yview)
+        self.text_entry.config(yscrollcommand=self.text_scroll.set)
+        self.text_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.text_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         options_frame = ttk.Frame(frame)
         options_frame.pack(fill=tk.X, pady=(0, 15))
@@ -275,6 +289,43 @@ class SettingsDialog(tk.Toplevel):
         )
         self.sound_check.pack(anchor=tk.W, pady=(4, 0))
 
+        # --- AI Voice Coach & Ollama Section ---
+        ai_group = ttk.LabelFrame(main_frame, text='🤖 AI Voice Coach & Ollama', padding=10)
+        ai_group.pack(fill=tk.X, pady=(0, 10))
+
+        self.ai_enabled_var = tk.BooleanVar(value=self.current_settings.get('ai_coach_enabled', True))
+        ttk.Checkbutton(
+            ai_group,
+            text='Enable AI Voice Coach (Evaluates student pronunciation and explains accuracy)',
+            variable=self.ai_enabled_var
+        ).pack(anchor=tk.W, pady=(0, 6))
+
+        model_row = ttk.Frame(ai_group)
+        model_row.pack(fill=tk.X, pady=(2, 4))
+        ttk.Label(model_row, text='Ollama Model:').pack(side=tk.LEFT)
+
+        # Detect local models or provide defaults including gemma4 and 9b models
+        detected_models = AIEvaluator.get_available_models()
+        model_options = detected_models if detected_models else ['gemma4:12b', 'gemma4:26b', 'qwen3.5:9b', 'ornith-1.5:9b']
+        current_model = self.current_settings.get('ollama_model', 'gemma4:12b')
+        if current_model not in model_options:
+            model_options.insert(0, current_model)
+
+        self.ai_model_var = tk.StringVar(value=current_model)
+        self.ai_model_cb = ttk.Combobox(
+            model_row,
+            textvariable=self.ai_model_var,
+            values=model_options,
+            state='readonly',
+            width=24
+        )
+        self.ai_model_cb.pack(side=tk.LEFT, padx=(8, 8))
+
+        self.conn_status_label = ttk.Label(model_row, text='', font=('', 9, 'bold'))
+        self.conn_status_label.pack(side=tk.LEFT, padx=4)
+
+        ttk.Button(model_row, text='🔌 Test Ollama', command=self.test_ollama_conn).pack(side=tk.RIGHT)
+
         # --- Long-Term Memory Section ---
         active_name = ProfileManager.get_active_profile_name()
         mem_group = ttk.LabelFrame(main_frame, text=f'🧠 Memory for "{active_name}"', padding=10)
@@ -287,6 +338,18 @@ class SettingsDialog(tk.Toplevel):
         
         ttk.Button(btn_frame, text='💾 Save Settings', command=self.save).pack(side=tk.RIGHT, padx=5)
         ttk.Button(btn_frame, text='Cancel', command=self.destroy).pack(side=tk.RIGHT)
+
+    def test_ollama_conn(self):
+        self.conn_status_label.config(text='Testing... ⏳', foreground='#e67e22')
+        def check():
+            connected = AIEvaluator.check_connection()
+            if self.winfo_exists():
+                if connected:
+                    self.conn_status_label.config(text='🟢 Connected', foreground='#27ae60')
+                else:
+                    self.conn_status_label.config(text='🔴 Offline (Start Ollama)', foreground='#e74c3c')
+        import threading
+        threading.Thread(target=check, daemon=True).start()
 
     def reset_memory(self):
         active_name = ProfileManager.get_active_profile_name()
@@ -340,7 +403,10 @@ class SettingsDialog(tk.Toplevel):
             'tts_speed_rate': rate_val,
             'tts_voice_override': 'auto',
             'theme': th_val,
-            'show_hover_meanings': self.hover_var.get()
+            'show_hover_meanings': self.hover_var.get(),
+            'ai_coach_enabled': self.ai_enabled_var.get(),
+            'ollama_model': self.ai_model_var.get().strip() or 'gemma4:12b',
+            'ollama_url': self.current_settings.get('ollama_url', 'http://127.0.0.1:11434')
         }
         
         ProfileManager.save_settings(new_settings)
@@ -365,6 +431,7 @@ class LessonEditor(tk.Toplevel):
             d['chunks'] = list(d['chunks'])
             
         self.current_selected_index = 0 if self.edit_data else None
+        self._recording_target = None  # 'question' or 'answer'
         
         self.setup_ui()
         self.refresh_listbox()
@@ -376,8 +443,13 @@ class LessonEditor(tk.Toplevel):
         left_frame.pack(side=tk.LEFT, fill=tk.Y)
         
         ttk.Label(left_frame, text='Questions in Lesson:').pack(anchor=tk.W)
-        self.listbox = tk.Listbox(left_frame, width=35, font=('', 11))
-        self.listbox.pack(fill=tk.Y, expand=True, pady=5)
+        list_container = ttk.Frame(left_frame)
+        list_container.pack(fill=tk.BOTH, expand=True, pady=5)
+        self.listbox = tk.Listbox(list_container, width=35, font=('', 11))
+        self.listbox_scroll = ttk.Scrollbar(list_container, orient=tk.VERTICAL, command=self.listbox.yview)
+        self.listbox.config(yscrollcommand=self.listbox_scroll.set)
+        self.listbox_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        self.listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         self.listbox.bind('<<ListboxSelect>>', self.on_select)
         
         btn_frame = ttk.Frame(left_frame)
@@ -409,50 +481,82 @@ class LessonEditor(tk.Toplevel):
         self.right_frame = self.right_scroll.scrollable_frame
         
         ttk.Label(self.right_frame, text='Lesson / Level Name (e.g. "Lesson 1: Basics"):').pack(anchor=tk.W)
-        self.lvl_entry = ttk.Entry(self.right_frame, font=('', 11))
+        self.lvl_entry = ScrollableTextBox(self.right_frame, height=2, font=('', 11))
         self.lvl_entry.pack(fill=tk.X, pady=(2, 8))
         self.lvl_entry.bind('<KeyRelease>', self.on_field_change)
 
-        ttk.Label(self.right_frame, text='Question (Clean text shown to student):').pack(anchor=tk.W)
-        self.q_entry = ttk.Entry(self.right_frame, font=('', 12))
-        self.q_entry.pack(fill=tk.X, pady=5)
+        # Question Header with Voice Dictation Button
+        q_hdr = ttk.Frame(self.right_frame)
+        q_hdr.pack(fill=tk.X, pady=(4, 2))
+        ttk.Label(q_hdr, text='Question (Clean text shown to student):', font=('', 10, 'bold')).pack(side=tk.LEFT)
+        self.record_q_btn = tk.Button(
+            q_hdr,
+            text='🎙️ Speak Question',
+            font=('', 9, 'bold'),
+            bg='#0284c7',
+            fg='#ffffff',
+            activebackground='#0369a1',
+            activeforeground='#ffffff',
+            relief=tk.FLAT,
+            padx=8,
+            pady=2,
+            cursor='hand2',
+            command=self.toggle_record_question
+        )
+        self.record_q_btn.pack(side=tk.RIGHT)
+
+        self.q_entry = ScrollableTextBox(self.right_frame, height=3, font=('', 12))
+        self.q_entry.pack(fill=tk.X, pady=(0, 5))
         self.q_entry.bind('<KeyRelease>', self.on_field_change)
         
-        meaning_hdr = ttk.Frame(self.right_frame)
+        # Translation Frame (conditionally shown only for non-English questions)
+        self.meaning_container = ttk.Frame(self.right_frame)
+        meaning_hdr = ttk.Frame(self.meaning_container)
         meaning_hdr.pack(fill=tk.X, pady=(10, 0))
-        ttk.Label(meaning_hdr, text='Meaning / Translation (Auto-translates if empty):').pack(side=tk.LEFT)
+        ttk.Label(meaning_hdr, text='Meaning / English Translation (Auto-translates if empty):').pack(side=tk.LEFT)
         self.trans_btn = ttk.Button(meaning_hdr, text='🌐 Auto-Translate', command=self.auto_translate_current_meaning)
         self.trans_btn.pack(side=tk.RIGHT)
 
-        self.m_entry = ttk.Entry(self.right_frame, font=('', 12))
+        self.m_entry = ScrollableTextBox(self.meaning_container, height=2, font=('', 12))
         self.m_entry.pack(fill=tk.X, pady=5)
         self.m_entry.bind('<KeyRelease>', self.on_field_change)
         
-        text_frame = ttk.Frame(self.right_frame)
-        text_frame.pack(fill=tk.X, pady=(15, 5))
+        self.ans_text_frame = ttk.Frame(self.right_frame)
+        self.ans_text_frame.pack(fill=tk.X, pady=(15, 5))
         
-        header_frame = ttk.Frame(text_frame)
+        header_frame = ttk.Frame(self.ans_text_frame)
         header_frame.pack(fill=tk.X)
-        ttk.Label(header_frame, text='Sentence with Delimiters (The puzzle answer):').pack(side=tk.LEFT)
+        ttk.Label(header_frame, text='Sentence with Delimiters (The puzzle answer):', font=('', 10, 'bold')).pack(side=tk.LEFT)
         
+        self.record_ans_btn = tk.Button(
+            header_frame,
+            text='🎙️ Speak Answer',
+            font=('', 9, 'bold'),
+            bg='#0284c7',
+            fg='#ffffff',
+            activebackground='#0369a1',
+            activeforeground='#ffffff',
+            relief=tk.FLAT,
+            padx=8,
+            pady=2,
+            cursor='hand2',
+            command=self.toggle_record_answer
+        )
+        self.record_ans_btn.pack(side=tk.RIGHT, padx=(6, 0))
+
         self.delimiter_var = tk.StringVar(value='| (Pipe)')
         self.delimiter_cb = ttk.Combobox(header_frame, textvariable=self.delimiter_var, values=['Space', ',', '| (Pipe)', '-', ';'], width=10, state='readonly')
         self.delimiter_cb.pack(side=tk.RIGHT)
         ttk.Label(header_frame, text='Split by:').pack(side=tk.RIGHT, padx=5)
         self.delimiter_cb.bind('<<ComboboxSelected>>', self.on_delimiter_change)
         
-        text_scroll_frame = ttk.Frame(text_frame)
-        text_scroll_frame.pack(fill=tk.BOTH, expand=True, pady=5)
-        
-        self.split_source_entry = tk.Text(text_scroll_frame, font=('', 12), height=4, wrap=tk.WORD)
-        self.split_source_scroll = ttk.Scrollbar(text_scroll_frame, command=self.split_source_entry.yview)
-        self.split_source_entry.config(yscrollcommand=self.split_source_scroll.set)
-        
-        self.split_source_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        self.split_source_entry.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.split_source_box = ScrollableTextBox(self.ans_text_frame, height=4, font=('', 12))
+        self.split_source_box.pack(fill=tk.BOTH, expand=True, pady=5)
+        self.split_source_entry = self.split_source_box.text_widget
+        self.split_source_scroll = self.split_source_box.scrollbar
         self.split_source_entry.bind('<KeyRelease>', self.on_field_change)
         
-        tools_frame = ttk.Frame(text_frame)
+        tools_frame = ttk.Frame(self.ans_text_frame)
         tools_frame.pack(fill=tk.X, pady=(0, 5))
         ttk.Label(tools_frame, text='Format Current Question:').pack(side=tk.LEFT, padx=(0, 10))
         ttk.Button(tools_frame, text='2 Words/Block', command=lambda: self.auto_group_words(2)).pack(side=tk.LEFT, padx=2)
@@ -542,7 +646,23 @@ class LessonEditor(tk.Toplevel):
         self.current_selected_index = sel[0]
         self.load_form()
 
+    def update_translation_visibility(self):
+        q_text = self.q_entry.get().strip()
+        lang = DictionaryManager.detect_language(q_text)
+        is_non_english = (lang != 'en') and bool(q_text)
+
+        if is_non_english:
+            if self.meaning_container.winfo_manager() != 'pack':
+                if hasattr(self, 'ans_text_frame') and self.ans_text_frame.winfo_manager() == 'pack':
+                    self.meaning_container.pack(fill=tk.X, pady=(10, 0), before=self.ans_text_frame)
+                else:
+                    self.meaning_container.pack(fill=tk.X, pady=(10, 0))
+        else:
+            if self.meaning_container.winfo_manager() == 'pack':
+                self.meaning_container.pack_forget()
+
     def on_field_change(self, event=None):
+        self.update_translation_visibility()
         self.save_current_form_to_data()
         if self.current_selected_index is not None:
             q = self.edit_data[self.current_selected_index]['question']
@@ -552,7 +672,7 @@ class LessonEditor(tk.Toplevel):
 
     def auto_translate_current_meaning(self):
         q_text = self.q_entry.get().strip()
-        if not q_text:
+        if not q_text or DictionaryManager.detect_language(q_text) == 'en':
             return
         cached = DictionaryManager.get_meaning(q_text)
         if cached:
@@ -576,6 +696,101 @@ class LessonEditor(tk.Toplevel):
             self.after(0, update_ui)
         DictionaryManager.translate_sentence_async(q_text, on_done)
 
+    def toggle_record_question(self):
+        if VoiceRecorder.is_recording():
+            if self._recording_target != 'question':
+                return
+            success = VoiceRecorder.stop_recording()
+            self._recording_target = None
+            self.record_q_btn.config(text='🎙️ Speak Question', bg='#0284c7')
+            self.record_ans_btn.config(state=tk.NORMAL)
+            if success:
+                self.record_q_btn.config(text='⏳ Transcribing...', state=tk.DISABLED)
+                def transcribe_worker():
+                    stt_res = SpeechTranscriber.transcribe(VoiceRecorder._temp_wav)
+                    text = stt_res.get('text', '').strip()
+                    def update():
+                        try:
+                            if self.winfo_exists():
+                                self.record_q_btn.config(text='🎙️ Speak Question', state=tk.NORMAL, bg='#0284c7')
+                                if text:
+                                    self.q_entry.delete(0, tk.END)
+                                    self.q_entry.insert(0, text)
+                                    self.on_field_change()
+                                    # Auto-translate meaning if non-english and empty
+                                    lang = DictionaryManager.detect_language(text)
+                                    if lang != 'en' and not self.m_entry.get().strip():
+                                        self.auto_translate_current_meaning()
+                                else:
+                                    messagebox.showinfo('No Speech', 'No words were detected. Please try speaking again.', parent=self)
+                        except Exception:
+                            pass
+                    try:
+                        self.after(0, update)
+                    except Exception:
+                        pass
+                threading.Thread(target=transcribe_worker, daemon=True).start()
+        else:
+            started = VoiceRecorder.start_recording()
+            if started:
+                self._recording_target = 'question'
+                self.record_q_btn.config(text='🔴 Stop & Transcribe', bg='#dc2626')
+                self.record_ans_btn.config(state=tk.DISABLED)
+            else:
+                messagebox.showwarning('Mic Unavailable', 'Microphone capture is only supported on Windows multimedia devices.', parent=self)
+
+    def toggle_record_answer(self):
+        if VoiceRecorder.is_recording():
+            if self._recording_target != 'answer':
+                return
+            success = VoiceRecorder.stop_recording()
+            self._recording_target = None
+            self.record_ans_btn.config(text='🎙️ Speak Answer', bg='#0284c7')
+            self.record_q_btn.config(state=tk.NORMAL)
+            if success:
+                self.record_ans_btn.config(text='⏳ Transcribing...', state=tk.DISABLED)
+                def transcribe_worker():
+                    # Pass the question as phonetic vocabulary prompt to aid Whisper decoding
+                    q_prompt = self.q_entry.get().strip()
+                    stt_res = SpeechTranscriber.transcribe(VoiceRecorder._temp_wav, initial_prompt=q_prompt)
+                    text = stt_res.get('text', '').strip()
+                    def update():
+                        try:
+                            if self.winfo_exists():
+                                self.record_ans_btn.config(text='🎙️ Speak Answer', state=tk.NORMAL, bg='#0284c7')
+                                if text:
+                                    # Format into chunk blocks according to current delimiter
+                                    delim_choice = self.delimiter_var.get()
+                                    chunks = TextParser.group_words_into_chunks(text, 3)
+                                    if not chunks:
+                                        chunks = text.split()
+                                    if delim_choice == 'Space':
+                                        joiner = ' '
+                                    elif delim_choice == '| (Pipe)':
+                                        joiner = ' | '
+                                    else:
+                                        joiner = f' {delim_choice} '
+                                    self.split_source_entry.delete('1.0', tk.END)
+                                    self.split_source_entry.insert(tk.END, joiner.join(chunks))
+                                    self.on_field_change()
+                                else:
+                                    messagebox.showinfo('No Speech', 'No words were detected. Please try speaking again.', parent=self)
+                        except Exception:
+                            pass
+                    try:
+                        self.after(0, update)
+                    except Exception:
+                        pass
+                threading.Thread(target=transcribe_worker, daemon=True).start()
+        else:
+            started = VoiceRecorder.start_recording()
+            if started:
+                self._recording_target = 'answer'
+                self.record_ans_btn.config(text='🔴 Stop & Transcribe', bg='#dc2626')
+                self.record_q_btn.config(state=tk.DISABLED)
+            else:
+                messagebox.showwarning('Mic Unavailable', 'Microphone capture is only supported on Windows multimedia devices.', parent=self)
+
     def load_form(self):
         if self.current_selected_index is None:
             return
@@ -585,22 +800,34 @@ class LessonEditor(tk.Toplevel):
         self.lvl_entry.delete(0, tk.END)
         self.lvl_entry.insert(0, data.get('lesson_name', ''))
 
+        q_val = data.get('question', '')
         self.q_entry.delete(0, tk.END)
-        self.q_entry.insert(0, data.get('question', ''))
+        self.q_entry.insert(0, q_val)
         
         self.m_entry.delete(0, tk.END)
         m_val = data.get('meaning', '').strip()
-        if not m_val and data.get('question', '').strip():
-            # Check cache or auto-translate
-            cached_trans = DictionaryManager.get_meaning(data['question'])
-            if cached_trans:
-                m_val = cached_trans
-                data['meaning'] = m_val
-            else:
-                self.auto_translate_current_meaning()
-
-        self.m_entry.insert(0, m_val)
         
+        lang = DictionaryManager.detect_language(q_val)
+        is_non_english = (lang != 'en') and bool(q_val.strip())
+        
+        if is_non_english:
+            if self.meaning_container.winfo_manager() != 'pack':
+                if hasattr(self, 'ans_text_frame') and self.ans_text_frame.winfo_manager() == 'pack':
+                    self.meaning_container.pack(fill=tk.X, pady=(10, 0), before=self.ans_text_frame)
+                else:
+                    self.meaning_container.pack(fill=tk.X, pady=(10, 0))
+            if not m_val and q_val.strip():
+                cached_trans = DictionaryManager.get_meaning(q_val)
+                if cached_trans:
+                    m_val = cached_trans
+                    data['meaning'] = m_val
+                else:
+                    self.auto_translate_current_meaning()
+            self.m_entry.insert(0, m_val)
+        else:
+            if self.meaning_container.winfo_manager() == 'pack':
+                self.meaning_container.pack_forget()
+
         self.split_source_entry.delete('1.0', tk.END)
         
         delim_choice = self.delimiter_var.get()
@@ -634,10 +861,15 @@ class LessonEditor(tk.Toplevel):
         else:
             chunks = [c.strip() for c in source_text.split(delim_choice) if c.strip()]
             
+        q_text = sanitize(self.q_entry.get())
+        lang = DictionaryManager.detect_language(q_text)
+        is_non_english = (lang != 'en') and bool(q_text.strip())
+        meaning_val = sanitize(self.m_entry.get()) if is_non_english else ''
+
         self.edit_data[self.current_selected_index] = {
             'lesson_name': sanitize(self.lvl_entry.get()),
-            'question': sanitize(self.q_entry.get()),
-            'meaning': sanitize(self.m_entry.get()),
+            'question': q_text,
+            'meaning': meaning_val,
             'chunks': [sanitize(c) for c in chunks if sanitize(c)]
         }
         self.render_preview()
@@ -679,6 +911,8 @@ class LessonEditor(tk.Toplevel):
              self.q_entry.delete(0, tk.END)
              self.m_entry.delete(0, tk.END)
              self.split_source_entry.delete('1.0', tk.END)
+             if self.meaning_container.winfo_manager() == 'pack':
+                 self.meaning_container.pack_forget()
              for widget in self.chunks_container.winfo_children():
                  widget.destroy()
              

@@ -26,6 +26,7 @@ from core.progress_tracker import ProgressTracker
 from ui.theme import get_theme, ENCOURAGEMENTS
 from ui.widgets import ScrollableFrame, FlowFrame, AnswerChip, DraggablePoolButton
 from ui.dialogs import ProfileManagementDialog, SettingsDialog, LessonEditor, ProgressDashboardDialog
+from ui.ai_coach_dialog import AICoachDialog
 
 class SentenceJigsawApp:
     def __init__(self, root):
@@ -107,7 +108,7 @@ class SentenceJigsawApp:
         self.mode_cb = ttk.Combobox(
             self.top_frame, 
             textvariable=self.mode_var, 
-            values=['🎯 Mastery', self.get_speed_run_mode_label(), '🧩 Fill in Blanks', '🎧 Listening Mode'], 
+            values=['🎯 Mastery', self.get_speed_run_mode_label(), '🧩 Fill in Blanks', '🎧 Listening Mode', '🎙️ Voice Mastery'], 
             width=16, 
             state='readonly', 
             font=('', 10)
@@ -188,6 +189,9 @@ class SentenceJigsawApp:
         self.listen_btn = ttk.Button(q_header, text='🔊 Teacher (Ctrl+L)', command=self.speak_current_question)
         self.listen_btn.pack(side=tk.RIGHT)
 
+        self.ai_eval_btn = ttk.Button(q_header, text='🤖 AI Coach', command=self.open_ai_coach, state=tk.DISABLED)
+        self.ai_eval_btn.pack(side=tk.RIGHT, padx=4)
+
         self.play_my_voice_btn = ttk.Button(q_header, text='▶️ Play Me (Ctrl+P)', command=self.play_my_recording, state=tk.DISABLED)
         self.play_my_voice_btn.pack(side=tk.RIGHT, padx=4)
 
@@ -204,14 +208,14 @@ class SentenceJigsawApp:
         self.meaning_display.config(state=tk.DISABLED)
 
         # --- Answer Board Header with Answer Listen Button ---
-        answer_header = ttk.Frame(content_frame)
-        answer_header.pack(fill=tk.X, pady=(5, 5))
-        ttk.Label(answer_header, text='Your Answer (Click block to remove • Drag to reorder):', font=('', 13, 'bold'), foreground='#64748b').pack(side=tk.LEFT)
+        self.answer_header = ttk.Frame(content_frame)
+        self.answer_header.pack(fill=tk.X, pady=(5, 5))
+        ttk.Label(self.answer_header, text='Your Answer (Click block to remove • Drag to reorder):', font=('', 13, 'bold'), foreground='#64748b').pack(side=tk.LEFT)
         
-        self.listen_answer_btn = ttk.Button(answer_header, text='🔊 Hear Answer (Ctrl+A)', command=self.speak_current_answer, state=tk.DISABLED)
+        self.listen_answer_btn = ttk.Button(self.answer_header, text='🔊 Hear Answer (Ctrl+A)', command=self.speak_current_answer, state=tk.DISABLED)
         self.listen_answer_btn.pack(side=tk.RIGHT, padx=(10, 0))
 
-        self.tip_label = ttk.Label(answer_header, text='💡 Hover for Meaning | Right-Click to pronounce', font=('', 11), foreground='#0284c7')
+        self.tip_label = ttk.Label(self.answer_header, text='💡 Hover for Meaning | Right-Click to pronounce', font=('', 11), foreground='#0284c7')
         self.tip_label.pack(side=tk.RIGHT)
         
         # Apple HIG: Clean flat card container with subtle 1px border
@@ -226,6 +230,98 @@ class SentenceJigsawApp:
         self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X)
         self.answer_meaning_display.config(state=tk.DISABLED)
 
+        # --- Voice Coach Mastery Studio Card (Used in Voice Mastery Mode) ---
+        self.voice_studio = tk.Frame(content_frame, bg='#ffffff', bd=1, relief=tk.SOLID, padx=20, pady=20)
+        # Managed dynamically via pack/pack_forget
+
+        self.voice_studio_title = ttk.Label(self.voice_studio, text='🎙️ Voice Practice Studio', font=('', 15, 'bold'), foreground='#0f172a')
+        self.voice_studio_title.pack(anchor=tk.W, pady=(0, 4))
+
+        self.voice_studio_instructions = ttk.Label(
+            self.voice_studio,
+            text='Read the question, press "🎙️ Speak Answer", and speak the full sentence aloud.\nOur local AI teacher will evaluate your sentence and coach your pronunciation!',
+            font=('', 11),
+            foreground='#475569',
+            justify=tk.LEFT
+        )
+        self.voice_studio_instructions.pack(anchor=tk.W, pady=(0, 14))
+
+        studio_btn_row = ttk.Frame(self.voice_studio)
+        studio_btn_row.pack(fill=tk.X, pady=(0, 12))
+
+        self.studio_record_btn = tk.Button(
+            studio_btn_row,
+            text='🎙️ Start Speaking (Ctrl+R)',
+            font=('', 14, 'bold'),
+            bg='#0284c7',
+            fg='#ffffff',
+            activebackground='#0369a1',
+            activeforeground='#ffffff',
+            relief=tk.FLAT,
+            padx=20,
+            pady=10,
+            cursor='hand2',
+            command=self.toggle_recording
+        )
+        self.studio_record_btn.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.studio_restart_btn = tk.Button(
+            studio_btn_row,
+            text='🔄 Retry from Start',
+            font=('', 12, 'bold'),
+            bg='#f1f5f9',
+            fg='#475569',
+            activebackground='#e2e8f0',
+            activeforeground='#1e293b',
+            relief=tk.FLAT,
+            padx=14,
+            pady=10,
+            cursor='hand2',
+            state=tk.DISABLED,
+            command=self.restart_voice_recording
+        )
+        self.studio_restart_btn.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.studio_play_btn = ttk.Button(
+            studio_btn_row,
+            text='▶️ Play Recording (Ctrl+P)',
+            command=self.play_my_recording,
+            state=tk.DISABLED
+        )
+        self.studio_play_btn.pack(side=tk.LEFT, padx=(0, 10))
+
+        self.studio_eval_btn = ttk.Button(
+            studio_btn_row,
+            text='🤖 Ask AI Coach',
+            command=self.open_ai_coach,
+            state=tk.DISABLED
+        )
+        self.studio_eval_btn.pack(side=tk.LEFT)
+
+        # Status & Transcribed card
+        self.studio_status_badge = tk.Label(
+            self.voice_studio,
+            text='Ready to record',
+            font=('', 10, 'bold'),
+            bg='#f1f5f9',
+            fg='#475569',
+            padx=10,
+            pady=4,
+            bd=1,
+            relief=tk.SOLID
+        )
+        self.studio_status_badge.pack(anchor=tk.W, pady=(4, 6))
+
+        self.studio_feedback_lbl = ttk.Label(
+            self.voice_studio,
+            text='',
+            font=('', 11, 'italic'),
+            foreground='#0369a1',
+            wraplength=850,
+            justify=tk.LEFT
+        )
+        self.studio_feedback_lbl.pack(anchor=tk.W, fill=tk.X)
+
         self.pool_label = ttk.Label(content_frame, text='Available Blocks (Click or drag to answer):', font=('', 13, 'bold'), foreground='#64748b')
         self.pool_label.pack(anchor=tk.W, pady=(12, 5))
         
@@ -236,8 +332,14 @@ class SentenceJigsawApp:
         if VoiceRecorder.is_recording():
             success = VoiceRecorder.stop_recording()
             self.record_btn.config(text='🎙️ Record (R)')
+            self.studio_record_btn.config(text='🎙️ Start Speaking (Ctrl+R)', bg='#0284c7')
+            self.studio_restart_btn.config(state=tk.DISABLED, bg='#f1f5f9', fg='#475569')
             if success:
                 self.play_my_voice_btn.config(state=tk.NORMAL)
+                self.studio_play_btn.config(state=tk.NORMAL)
+                self.ai_eval_btn.config(state=tk.NORMAL)
+                self.studio_eval_btn.config(state=tk.NORMAL)
+                self.studio_status_badge.config(text='🎙️ Recording ready for AI evaluation', bg='#dbeafe', fg='#1e40af')
                 SoundPlayer.play_click()
                 data = self.model.get_current_question()
                 if data:
@@ -245,14 +347,113 @@ class SentenceJigsawApp:
                     t_store = ProfileManager.get_active_tracker_store()
                     ProgressTracker.record_mode_activity(t_store, key, 'voice')
                     ProfileManager.save_active_tracker_store(t_store)
+                
+                # In Voice Mastery mode, or if AI Coach enabled, open feedback modal automatically
+                if self.game_mode == 'voice_mastery' or self.settings.get('ai_coach_enabled', True):
+                    self.open_ai_coach()
         else:
             started = VoiceRecorder.start_recording()
             if started:
                 self.record_btn.config(text='🔴 Recording... (Click to Stop)')
+                self.studio_record_btn.config(text='🔴 Stop Recording', bg='#dc2626')
+                self.studio_restart_btn.config(state=tk.NORMAL, bg='#fee2e2', fg='#991b1b')
+                self.studio_status_badge.config(text='🔴 Listening to microphone...', bg='#fee2e2', fg='#991b1b')
                 self.play_my_voice_btn.config(state=tk.DISABLED)
+                self.studio_play_btn.config(state=tk.DISABLED)
+                self.ai_eval_btn.config(state=tk.DISABLED)
+                self.studio_eval_btn.config(state=tk.DISABLED)
                 SoundPlayer.play_click()
             else:
                 messagebox.showwarning('Mic Unavailable', 'Microphone capture is only supported on Windows multimedia devices.')
+
+    def restart_voice_recording(self):
+        """Scraps current recording and immediately restarts capture from the beginning."""
+        if VoiceRecorder.is_recording():
+            VoiceRecorder.stop_recording()
+        
+        started = VoiceRecorder.start_recording()
+        if started:
+            self.record_btn.config(text='🔴 Recording... (Click to Stop)')
+            self.studio_record_btn.config(text='🔴 Stop Recording', bg='#dc2626')
+            self.studio_restart_btn.config(state=tk.NORMAL, bg='#fee2e2', fg='#991b1b')
+            self.studio_status_badge.config(text='🔄 Recording restarted! Speak now...', bg='#fef3c7', fg='#92400e')
+            self.play_my_voice_btn.config(state=tk.DISABLED)
+            self.studio_play_btn.config(state=tk.DISABLED)
+            self.ai_eval_btn.config(state=tk.DISABLED)
+            self.studio_eval_btn.config(state=tk.DISABLED)
+            SoundPlayer.play_click()
+        else:
+            messagebox.showwarning('Mic Unavailable', 'Microphone capture could not be restarted.')
+
+    def open_ai_coach(self):
+        if not VoiceRecorder.has_recording():
+            messagebox.showinfo('No Recording', 'Please record your voice answer first using the "🎙️ Record" button!')
+            return
+
+        data = self.model.get_current_question()
+        if not data:
+            return
+
+        expected = ' '.join(data.chunks).strip()
+        meaning = data.meaning or DictionaryManager.get_meaning(data.question) or ""
+        model = self.settings.get('ollama_model', 'gemma4:12b')
+
+        def on_accept(eval_res=None):
+            if self.game_mode == 'voice_mastery':
+                score = 100
+                feedback_text = 'Accepted!'
+                if isinstance(eval_res, dict):
+                    score = eval_res.get('accuracy_score', 100)
+                    feedback_text = eval_res.get('feedback', 'Well done!')
+                self.handle_voice_mastery_evaluation(score, feedback_text)
+            else:
+                # In jigsaw modes: automatically populate user answer with correct chunks and validate
+                self.user_selected_chunks = list(self.original_chunks)
+                self.render_answer_chips()
+                self.check_answer()
+
+        def on_retry():
+            self.toggle_recording()
+
+        AICoachDialog(
+            self.root,
+            question=data.question,
+            expected_answer=expected,
+            audio_filepath=VoiceRecorder._temp_wav,
+            meaning=meaning,
+            model=model,
+            on_accept_callback=on_accept,
+            on_retry_callback=on_retry
+        )
+
+    def handle_voice_mastery_evaluation(self, score: int, feedback_text: str = ''):
+        """Processes voice evaluation score under the mastery game mode."""
+        is_pass = (score >= 80)
+        self.studio_feedback_lbl.config(text=f'AI Coach: {feedback_text}')
+
+        if is_pass:
+            self.flawless_attempt = True
+            SoundPlayer.play_success()
+            self.studio_status_badge.config(
+                text=f'🌟 Passed ({score}% Match) • Mastered Step!',
+                bg='#d1fae5',
+                fg='#065f46'
+            )
+            praise = random.choice(ENCOURAGEMENTS)
+            self.score_label.config(text=f'{praise} ⭐⭐⭐ ({score}% Match)')
+            self.next_btn.config(state=tk.NORMAL)
+            self.skip_btn.config(state=tk.DISABLED)
+            self.hint_btn.config(state=tk.DISABLED)
+        else:
+            self.flawless_attempt = False
+            SoundPlayer.play_error()
+            self.studio_status_badge.config(
+                text=f'🔄 Practice Needed ({score}% Match) • Re-queued for review',
+                bg='#ffe4e6',
+                fg='#9f1239'
+            )
+            self.score_label.config(text='Keep practicing! We\'ll try this sentence again soon. 🔄')
+            self.next_btn.config(state=tk.NORMAL)
 
     def play_my_recording(self):
         self.play_my_voice_btn.config(text='▶️ Playing...', state=tk.DISABLED)
@@ -507,6 +708,8 @@ class SentenceJigsawApp:
             self.mode_var.set('🧩 Fill in Blanks')
         elif mode_name == 'listening':
             self.mode_var.set('🎧 Listening Mode')
+        elif mode_name in ('voice', 'voice_mastery'):
+            self.mode_var.set('🎙️ Voice Mastery')
         elif mode_name == 'speed_run':
             self.mode_var.set(self.get_speed_run_mode_label())
         else:
@@ -524,7 +727,7 @@ class SentenceJigsawApp:
         
         curr_val = self.mode_var.get()
         new_speed_lbl = self.get_speed_run_mode_label()
-        self.mode_cb['values'] = ['🎯 Mastery', new_speed_lbl, '🧩 Fill in Blanks', '🎧 Listening Mode']
+        self.mode_cb['values'] = ['🎯 Mastery', new_speed_lbl, '🧩 Fill in Blanks', '🎧 Listening Mode', '🎙️ Voice Mastery']
         
         if 'Speed Run' in curr_val:
             self.mode_var.set(new_speed_lbl)
@@ -545,6 +748,11 @@ class SentenceJigsawApp:
             self.load_current_question()
         elif 'Listening' in mode_str:
             self.game_mode = 'listening'
+            self.stop_timer()
+            self.model.reset_deck()
+            self.load_current_question()
+        elif 'Voice' in mode_str:
+            self.game_mode = 'voice_mastery'
             self.stop_timer()
             self.model.reset_deck()
             self.load_current_question()
@@ -692,17 +900,18 @@ class SentenceJigsawApp:
                 self.set_meaning_text(f"Meaning: {cached_translation}")
             else:
                 self.set_meaning_text('')
-                # Fetch translation asynchronously so app remains responsive
-                curr_q = data.question
-                def on_translation_done(translated_text):
-                    try:
-                        if self.root.winfo_exists():
-                            current_now = self.model.get_current_question()
-                            if current_now and current_now.question == curr_q:
-                                self.root.after(0, lambda: self.set_meaning_text(f"Meaning: {translated_text}"))
-                    except Exception:
-                        pass
-                DictionaryManager.translate_sentence_async(curr_q, on_translation_done)
+                if DictionaryManager.detect_language(data.question) != 'en':
+                    # Fetch translation asynchronously so app remains responsive
+                    curr_q = data.question
+                    def on_translation_done(translated_text):
+                        try:
+                            if self.root.winfo_exists():
+                                current_now = self.model.get_current_question()
+                                if current_now and current_now.question == curr_q:
+                                    self.root.after(0, lambda: self.set_meaning_text(f"Meaning: {translated_text}"))
+                        except Exception:
+                            pass
+                    DictionaryManager.translate_sentence_async(curr_q, on_translation_done)
 
         # Update answer translation window
         self.update_answer_translation()
@@ -715,14 +924,15 @@ class SentenceJigsawApp:
         self.listen_answer_btn.config(state=tk.DISABLED)
         self.play_my_voice_btn.config(state=tk.NORMAL if VoiceRecorder.has_recording() else tk.DISABLED)
 
-        if self.game_mode == 'mastery':
+        if self.game_mode in ('mastery', 'voice_mastery'):
             stage = self.model.get_current_stage() if hasattr(self.model, 'get_current_stage') else 1
-            stage_info = " (Stage 2: 2 Words/Block 🔥)" if stage == 2 else " (Stage 1: 4 Words/Block 🧩)"
+            stage_info = " (Stage 2: 2 Words/Block 🔥)" if (stage == 2 and self.game_mode == 'mastery') else ""
             comp = self.model.completed_steps() if hasattr(self.model, 'completed_steps') else self.model.mastered_questions()
             tot = self.model.total_steps() if hasattr(self.model, 'total_steps') else self.model.total_questions()
-            self.progress_label.config(text=f'Mastery: {comp}/{tot} steps{stage_info}')
-            self.progress_bar['maximum'] = tot
-            self.progress_bar['value'] = comp
+            mode_tag = "Voice Mastery" if self.game_mode == 'voice_mastery' else "Mastery"
+            self.progress_label.config(text=f'{mode_tag}: {self.model.mastered_questions()}/{self.model.total_questions()} mastered')
+            self.progress_bar['maximum'] = self.model.total_questions()
+            self.progress_bar['value'] = self.model.mastered_questions()
         elif self.game_mode in ('fill_blanks', 'listening'):
             self.progress_label.config(text=f'Progress: {self.model.mastered_questions()} / {self.model.total_questions()}')
             self.progress_bar['maximum'] = self.model.total_questions()
@@ -732,7 +942,9 @@ class SentenceJigsawApp:
         self.chunk_buttons.clear()
         self.answer_flow.clear_widgets()
 
-        if self.game_mode == 'fill_blanks':
+        if self.game_mode == 'voice_mastery':
+            self.setup_voice_mastery_round()
+        elif self.game_mode == 'fill_blanks':
             self.setup_fill_in_blanks_round()
         else:
             self.setup_standard_round()
@@ -747,7 +959,30 @@ class SentenceJigsawApp:
         except Exception:
             pass
 
+    def setup_voice_mastery_round(self):
+        # Hide Jigsaw pool and answer board in Voice Mastery mode
+        self.answer_header.pack_forget()
+        self.answer_board.pack_forget()
+        self.answer_meaning_display.pack_forget()
+        self.pool_label.pack_forget()
+        self.buttons_frame.pack_forget()
+
+        # Display Voice Practice Studio card prominently
+        self.voice_studio.pack(fill=tk.X, pady=(10, 10))
+        self.studio_feedback_lbl.config(text='')
+        self.studio_status_badge.config(text='Ready to record answer', bg='#f1f5f9', fg='#475569')
+        self.studio_play_btn.config(state=tk.NORMAL if VoiceRecorder.has_recording() else tk.DISABLED)
+        self.studio_eval_btn.config(state=tk.NORMAL if VoiceRecorder.has_recording() else tk.DISABLED)
+
     def setup_standard_round(self):
+        # Restore jigsaw elements if coming from voice mastery
+        self.voice_studio.pack_forget()
+        self.answer_header.pack(fill=tk.X, pady=(5, 5))
+        self.answer_board.pack(pady=5, fill=tk.X)
+        self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X)
+        self.pool_label.pack(anchor=tk.W, pady=(12, 5))
+        self.buttons_frame.pack(fill=tk.X, pady=5, expand=True)
+
         scrambled = GameEngine.scramble_chunks(self.original_chunks)
         tile_colors = self.theme.get('tile_colors', ['#bae1ff']).copy()
         random.shuffle(tile_colors)
@@ -874,28 +1109,52 @@ class SentenceJigsawApp:
             self.meaning_display.delete('1.0', tk.END)
             self.meaning_display.insert(tk.END, text.strip())
             self.meaning_display.config(state=tk.DISABLED)
-            if not self.meaning_display.winfo_ismapped():
-                self.meaning_display.pack(pady=(0, 12), fill=tk.X, before=self.answer_board.master.winfo_children()[2] if len(self.answer_board.master.winfo_children()) > 2 else None)
+            if self.meaning_display.winfo_manager() != 'pack':
+                try:
+                    if hasattr(self, 'question_label') and self.question_label.winfo_manager() == 'pack':
+                        self.meaning_display.pack(pady=(0, 12), fill=tk.X, after=self.question_label)
+                    elif hasattr(self, 'answer_header') and self.answer_header.winfo_manager() == 'pack':
+                        self.meaning_display.pack(pady=(0, 12), fill=tk.X, before=self.answer_header)
+                    elif hasattr(self, 'voice_studio') and self.voice_studio.winfo_manager() == 'pack':
+                        self.meaning_display.pack(pady=(0, 12), fill=tk.X, before=self.voice_studio)
+                    else:
+                        self.meaning_display.pack(pady=(0, 12), fill=tk.X)
+                except Exception:
+                    try:
+                        self.meaning_display.pack(pady=(0, 12), fill=tk.X)
+                    except Exception:
+                        pass
         else:
             self.meaning_display.config(state=tk.NORMAL)
             self.meaning_display.delete('1.0', tk.END)
             self.meaning_display.config(state=tk.DISABLED)
-            if self.meaning_display.winfo_ismapped():
+            if self.meaning_display.winfo_manager() == 'pack':
                 self.meaning_display.pack_forget()
 
     def set_answer_meaning_text(self, text):
-        if text and text.strip():
+        if text and text.strip() and self.game_mode != 'voice_mastery':
             self.answer_meaning_display.config(state=tk.NORMAL)
             self.answer_meaning_display.delete('1.0', tk.END)
             self.answer_meaning_display.insert(tk.END, text.strip())
             self.answer_meaning_display.config(state=tk.DISABLED)
-            if not self.answer_meaning_display.winfo_ismapped():
-                self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X, before=self.pool_label)
+            if self.answer_meaning_display.winfo_manager() != 'pack':
+                try:
+                    if hasattr(self, 'pool_label') and self.pool_label.winfo_manager() == 'pack':
+                        self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X, before=self.pool_label)
+                    elif hasattr(self, 'answer_board') and self.answer_board.winfo_manager() == 'pack':
+                        self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X, after=self.answer_board)
+                    else:
+                        self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X)
+                except Exception:
+                    try:
+                        self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X)
+                    except Exception:
+                        pass
         else:
             self.answer_meaning_display.config(state=tk.NORMAL)
             self.answer_meaning_display.delete('1.0', tk.END)
             self.answer_meaning_display.config(state=tk.DISABLED)
-            if self.answer_meaning_display.winfo_ismapped():
+            if self.answer_meaning_display.winfo_manager() == 'pack':
                 self.answer_meaning_display.pack_forget()
 
     def update_answer_translation(self):
@@ -1200,7 +1459,7 @@ class SentenceJigsawApp:
             ProgressTracker.record_mode_activity(t_store, key, self.game_mode)
             ProfileManager.save_active_tracker_store(t_store)
 
-        repeat = (self.game_mode in ('mastery', 'listening'))
+        repeat = (self.game_mode in ('mastery', 'listening', 'voice_mastery'))
         self.model.process_result(flawless=self.flawless_attempt, repeat_on_error=repeat)
         
         if not self.model.is_finished():

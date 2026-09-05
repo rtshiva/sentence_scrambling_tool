@@ -8,7 +8,10 @@ DEFAULT_SETTINGS = {
     'tts_speed_rate': '+0%',            # '-25%' (Slow), '+0%' (Normal), '+20%' (Fast)
     'tts_voice_override': 'auto',
     'theme': 'pastel',                  # 'pastel', 'dark', 'space'
-    'show_hover_meanings': True         # Hover popup dictionary
+    'show_hover_meanings': True,        # Hover popup dictionary
+    'ai_coach_enabled': True,           # AI Voice Evaluation Coach via Ollama
+    'ollama_model': 'gemma4:12b',       # Default model (qwen3.5:9b, gemma4:12b, etc.)
+    'ollama_url': 'http://127.0.0.1:11434' # Local Ollama REST URL
 }
 
 @dataclasses.dataclass

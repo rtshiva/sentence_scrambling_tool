@@ -64,10 +64,14 @@ class DictionaryManager:
 
     @classmethod
     def detect_language(cls, text: str) -> str:
+        if not text or not text.strip():
+            return 'en'
         if re.search(r'[\u0900-\u097F]', text):
             return 'hi'
         if re.search(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]', text):
             return 'ja'
+        if re.search(r'[\u0980-\u0D7F\u0E00-\u0E7F\u0600-\u06FF\u0400-\u04FF]', text):
+            return 'non_en'
         return 'en'
 
     @classmethod
@@ -78,6 +82,9 @@ class DictionaryManager:
             
         if lang is None:
             lang = cls.detect_language(cleaned)
+
+        if lang == 'en':
+            return None
 
         try:
             url = f"https://api.mymemory.translated.net/get?q={urllib.parse.quote(cleaned)}&langpair={lang}|en"

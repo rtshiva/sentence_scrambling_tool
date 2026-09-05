@@ -90,10 +90,30 @@ class TTSManager:
         threading.Thread(target=run, daemon=True).start()
 
     @classmethod
+    def clean_for_speech(cls, text: str) -> str:
+        """Strips emojis, markdown syntax, and diff markup so TTS speaks cleanly."""
+        if not text:
+            return ""
+        # Remove markdown bold/italic/code markers: **, __, *, _, `
+        cleaned = re.sub(r'[*_`#~]', '', text)
+        # Remove arrows and special symbol markers like ➔
+        cleaned = re.sub(r'[➔→←⇒•\-\[\]\(\)]', ' ', cleaned)
+        # Remove common emojis
+        cleaned = re.sub(r'[\U00010000-\U0010ffff]', '', cleaned)
+        cleaned = re.sub(r'[\u2600-\u27BF]', '', cleaned)
+        # Normalize excessive whitespace
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+        return cleaned
+
+    @classmethod
     def stop(cls):
         if HAS_TTS:
             try:
                 pygame.mixer.music.stop()
+                try:
+                    pygame.mixer.music.unload()
+                except Exception:
+                    pass
             except Exception:
                 pass
             cls._is_playing = False

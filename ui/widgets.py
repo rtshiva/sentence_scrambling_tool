@@ -515,3 +515,62 @@ class DraggablePoolButton(tk.Frame):
             self.on_drop_callback(self.chunk, target, event.x_root, event.y_root, mode=mode)
         else:
             self.on_click_callback(self.chunk)
+
+
+class ScrollableTextBox(ttk.Frame):
+    """A composite widget providing a multiline Text area paired with a vertical Scrollbar.
+    Acts as a drop-in replacement for Entry or Text with backward-compatible get/insert/delete methods."""
+    def __init__(self, master, height=3, font=('', 11), wrap=tk.WORD, **kwargs):
+        super().__init__(master)
+        self.text_widget = tk.Text(self, height=height, font=font, wrap=wrap, bd=1, relief=tk.SOLID, padx=6, pady=4, **kwargs)
+        self.scrollbar = ttk.Scrollbar(self, orient=tk.VERTICAL, command=self.text_widget.yview)
+        self.text_widget.config(yscrollcommand=self.scrollbar.set)
+        
+        self.scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self.text_widget.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+    def get(self, index1=None, index2=None):
+        if index1 is None and index2 is None:
+            return self.text_widget.get('1.0', tk.END).rstrip('\r\n')
+        if index1 == 0 or index1 == '0':
+            index1 = '1.0'
+        if index2 is None or index2 == tk.END:
+            index2 = tk.END
+        return self.text_widget.get(index1, index2).rstrip('\r\n')
+
+    def delete(self, index1='1.0', index2=None):
+        if index1 == 0 or index1 == '0':
+            index1 = '1.0'
+        if index2 is None or index2 == tk.END:
+            index2 = tk.END
+        self.text_widget.delete(index1, index2)
+
+    def insert(self, index, chars, *args):
+        if index == 0 or index == '0':
+            index = '1.0'
+        self.text_widget.insert(index, chars, *args)
+
+    def bind(self, sequence=None, func=None, add=None):
+        return self.text_widget.bind(sequence, func, add)
+
+    def focus(self):
+        return self.text_widget.focus()
+
+    def focus_set(self):
+        return self.text_widget.focus_set()
+
+    def config(self, **cnf):
+        return self.text_widget.config(**cnf)
+
+    def configure(self, **cnf):
+        return self.text_widget.configure(**cnf)
+
+    def see(self, index):
+        return self.text_widget.see(index)
+
+    def __getitem__(self, key):
+        return self.text_widget[key]
+
+    def __setitem__(self, key, value):
+        self.text_widget[key] = value
+

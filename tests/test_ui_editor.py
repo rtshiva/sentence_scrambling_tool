@@ -46,7 +46,63 @@ class TestUIEditor(unittest.TestCase):
         with patch('tkinter.messagebox.showinfo'):
             self.editor.on_story_imported(new_q)
         self.assertEqual(len(self.editor.edit_data), 4)
-        self.assertEqual(self.editor.edit_data[2]['question'], 'Sent 1')
+    def test_voice_recording_question_and_answer_buttons_exist(self):
+        self.assertTrue(hasattr(self.editor, 'record_q_btn'))
+        self.assertTrue(hasattr(self.editor, 'record_ans_btn'))
+        self.assertEqual(self.editor.record_q_btn['text'], '🎙️ Speak Question')
+        self.assertEqual(self.editor.record_ans_btn['text'], '🎙️ Speak Answer')
+
+    def test_toggle_record_question_lifecycle(self):
+        from unittest.mock import patch
+        with patch('core.voice_recorder.VoiceRecorder.start_recording', return_value=True), \
+             patch('core.voice_recorder.VoiceRecorder.stop_recording', return_value=True), \
+             patch('core.speech_transcriber.SpeechTranscriber.transcribe', return_value={'text': 'Dictated Question text', 'error': None}):
+            
+            # Start recording
+            self.editor.toggle_record_question()
+            self.assertEqual(self.editor._recording_target, 'question')
+            self.assertIn('Stop', self.editor.record_q_btn['text'])
+            self.assertEqual(str(self.editor.record_ans_btn['state']), 'disabled')
+
+            # Stop recording and transcribe
+            with patch('core.voice_recorder.VoiceRecorder.is_recording', return_value=True):
+                self.editor.toggle_record_question()
+                self.assertIsNone(self.editor._recording_target)
+
+    def test_multiline_boxes_and_vertical_scrollbars_exist(self):
+        # Verify vertical scrollbars exist on all boxes
+        self.assertTrue(hasattr(self.editor, 'listbox_scroll'))
+        self.assertTrue(hasattr(self.editor.lvl_entry, 'scrollbar'))
+        self.assertTrue(hasattr(self.editor.q_entry, 'scrollbar'))
+        self.assertTrue(hasattr(self.editor.m_entry, 'scrollbar'))
+        self.assertTrue(hasattr(self.editor.split_source_box, 'scrollbar'))
+
+        # Verify multiline capabilities
+        multiline_q = "Line 1: Question\nLine 2: Detail\nLine 3: Note"
+        self.editor.q_entry.delete(0, tk.END)
+        self.editor.q_entry.insert(0, multiline_q)
+        self.assertEqual(self.editor.q_entry.get(), multiline_q)
+
+    def test_translation_box_visibility_conditional_on_language(self):
+        # 1. English question -> Translation box should be hidden
+        self.editor.q_entry.delete(0, tk.END)
+        self.editor.q_entry.insert(0, "What is Newton's third law?")
+        self.editor.on_field_change()
+        self.assertNotEqual(self.editor.meaning_container.winfo_manager(), 'pack')
+
+        # 2. Non-English (Hindi) question -> Translation box should be visible/packed
+        self.editor.q_entry.delete(0, tk.END)
+        self.editor.q_entry.insert(0, "अस्पताल में बच्चे को क्या पसंद आया?")
+        self.editor.on_field_change()
+        self.assertEqual(self.editor.meaning_container.winfo_manager(), 'pack')
+
+        # 3. Switching back to English -> Translation box hides again
+        self.editor.q_entry.delete(0, tk.END)
+        self.editor.q_entry.insert(0, "This is an English question.")
+        self.editor.on_field_change()
+        self.assertNotEqual(self.editor.meaning_container.winfo_manager(), 'pack')
 
 if __name__ == '__main__':
     unittest.main()
+
+

@@ -31,7 +31,7 @@ class ProgressTracker:
             rec['blanks_count'] = rec.get('blanks_count', 0) + 1
         elif mode == 'listening':
             rec['listening_count'] = rec.get('listening_count', 0) + 1
-        elif mode == 'voice':
+        elif mode in ('voice', 'voice_mastery'):
             rec['voice_count'] = rec.get('voice_count', 0) + 1
         elif mode == 'speed_run':
             rec['speed_run_count'] = rec.get('speed_run_count', 0) + 1

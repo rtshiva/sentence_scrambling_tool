@@ -59,5 +59,46 @@ class TestUIModes(unittest.TestCase):
         self.assertEqual(self.app.game_mode, 'listening')
         self.assertIn("🎧", self.app.question_label['text'])
 
+    def test_voice_mastery_mode_layout_and_progression(self):
+        self.app.mode_var.set('🎙️ Voice Mastery')
+        self.app.on_mode_change()
+        self.assertEqual(self.app.game_mode, 'voice_mastery')
+        # Voice studio should be visible and jigsaw pool hidden
+        self.assertTrue(self.app.voice_studio.winfo_ismapped() or self.app.voice_studio.winfo_manager() == 'pack')
+        self.assertEqual(self.app.buttons_frame.winfo_manager(), '')
+        self.assertTrue(hasattr(self.app, 'studio_restart_btn'))
+        self.assertEqual(self.app.studio_restart_btn['text'], '🔄 Retry from Start')
+
+        # Test restart_voice_recording lifecycle
+        from unittest.mock import patch
+        with patch('core.voice_recorder.VoiceRecorder.start_recording', return_value=True):
+            self.app.restart_voice_recording()
+            self.assertEqual(str(self.app.studio_restart_btn['state']), 'normal')
+            self.assertIn('restarted', self.app.studio_status_badge['text'].lower())
+
+        # Simulate low score (<80) -> question should be re-queued
+        self.app.handle_voice_mastery_evaluation(score=50, feedback_text="Let's try that again!")
+        self.assertFalse(self.app.flawless_attempt)
+        self.app.next_sentence()
+        self.assertEqual(len(self.app.model.deck), 2)
+
+        # Simulate passing score (>=80) -> advances question from Stage 1 to Stage 2 (re-queued for stage 2)
+        self.app.handle_voice_mastery_evaluation(score=95, feedback_text="Perfect sentence!")
+        self.assertTrue(self.app.flawless_attempt)
+        self.app.next_sentence()
+        self.assertEqual(len(self.app.model.deck), 2)
+        self.assertEqual(self.app.model.completed_steps(), 1)
+
+        # Complete second question stage 1
+        self.app.handle_voice_mastery_evaluation(score=95, feedback_text="Awesome!")
+        self.app.next_sentence()
+        self.assertEqual(self.app.model.completed_steps(), 2)
+
+        # Complete stage 2 for first question -> now 1 item left in deck
+        self.app.handle_voice_mastery_evaluation(score=98, feedback_text="Flawless!")
+        self.app.next_sentence()
+        self.assertEqual(len(self.app.model.deck), 1)
+
 if __name__ == '__main__':
     unittest.main()
+

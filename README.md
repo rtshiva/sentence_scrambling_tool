@@ -18,6 +18,9 @@ Built with **Apple Human Interface Guidelines (HIG)** aesthetics, modern flat pi
    - Masks select slots in the sentence (1 blank, 2 blanks, or auto 30%) with amber slot placeholders (`____`).
 4. **🎧 Listening Comprehension Mode**:
    - Conceals the question text; students listen to the neural speech audio and reconstruct the sentence purely by ear.
+5. **🎙️ Voice Coach Mastery Mode**:
+   - Instead of assembling jigsaw puzzle tiles, the student reads or listens to the sentence and speaks their complete answer aloud into the microphone.
+   - Evaluated by local Ollama AI models (Gemma 4 / Qwen 3.5 / Ornith 9B) with the exact same spaced-repetition mastery mechanics: accurate answers ($\ge 80\%$) advance the queue, while inaccurate answers are gently explained and re-queued for practice.
 
 ---
 
@@ -32,9 +35,10 @@ Built with **Apple Human Interface Guidelines (HIG)** aesthetics, modern flat pi
 
 ---
 
-### 🔊 Neural Speech & Voice Recording
+### 🔊 Neural Speech, Voice Recording & AI Coach
 - **Natural Multilingual TTS**: Uses Microsoft Edge Neural Text-to-Speech (`Swara` for Hindi, `Nanami` for Japanese, `Neerja` for English) with adjustable playback rates (0.50x to 1.25x).
 - **Voice Recorder & Playback**: Students can record their own pronunciation and compare side-by-side with the teacher's neural audio.
+- **🤖 AI Voice Coach (Powered by Ollama)**: Evaluates the student's spoken voice answer using local models like **Gemma 4 (`gemma4:12b`, `gemma4:26b`)**, **Qwen 3.5 (`qwen3.5:9b`)**, or **Ornith (`ornith-1.5:9b`)**. It calculates semantic accuracy and provides encouraging, gentle feedback pointing out missing or substituted words.
 - **Dictionary Cache & Instant Translation**: Automatically fetches, caches, and translates full sentences and words offline with auto-collapsing disclosure callouts.
 
 ---

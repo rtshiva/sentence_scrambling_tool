@@ -19,7 +19,8 @@ else:
 class VoiceRecorder:
     """Manages recording student audio via native winmm on Windows and playback with pygame."""
     _is_recording = False
-    _temp_wav = os.path.join(tempfile.gettempdir(), 'sentence_jigsaw_student_recording.wav')
+    _record_count = 0
+    _temp_wav = os.path.join(tempfile.gettempdir(), 'sentence_jigsaw_student_recording_0.wav')
     _alias = 'student_audio_capture'
 
     @classmethod
@@ -36,6 +37,21 @@ class VoiceRecorder:
             return False
 
         try:
+            # Unload any playing audio in pygame to release file locks
+            if HAS_PYGAME:
+                try:
+                    pygame.mixer.music.stop()
+                    pygame.mixer.music.unload()
+                except Exception:
+                    pass
+
+            # Cycle temp wav path to completely prevent Windows file lock collisions
+            cls._record_count += 1
+            cls._temp_wav = os.path.join(
+                tempfile.gettempdir(),
+                f'sentence_jigsaw_student_recording_{cls._record_count}.wav'
+            )
+
             # Stop any previous capture
             winmm.mciSendStringA(f'close {cls._alias}'.encode(), None, 0, 0)
             if os.path.exists(cls._temp_wav):
@@ -83,6 +99,10 @@ class VoiceRecorder:
             except Exception:
                 pass
             finally:
+                try:
+                    pygame.mixer.music.unload()
+                except Exception:
+                    pass
                 if on_finish_callback:
                     on_finish_callback()
 
