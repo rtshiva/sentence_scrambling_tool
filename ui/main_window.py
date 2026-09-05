@@ -87,6 +87,20 @@ class SentenceJigsawApp:
         self.setup_bindings()
         self.check_initial_file()
 
+    @property
+    def effective_game_mode(self) -> str:
+        if self.game_mode == 'guided_mission':
+            curr_q = self.model.get_current_question()
+            if curr_q:
+                st = getattr(curr_q, 'ladder_stage', 1)
+                return MissionEngine.get_mode_for_stage(st)
+            return 'fill_blanks'
+        return self.game_mode
+
+    @property
+    def is_fill_blanks_mode(self) -> bool:
+        return self.effective_game_mode == 'fill_blanks'
+
     def apply_ttk_theme(self):
         th_name = self.settings.get('theme', 'pastel')
         if HAS_SV_TTK:
@@ -264,7 +278,8 @@ class SentenceJigsawApp:
         # --- Answer Board Header with Answer Listen Button ---
         self.answer_header = ttk.Frame(content_frame)
         self.answer_header.pack(fill=tk.X, pady=(5, 5))
-        ttk.Label(self.answer_header, text='Your Answer (Click block to remove • Drag to reorder):', font=('', 13, 'bold'), foreground='#64748b').pack(side=tk.LEFT)
+        self.answer_header_label = ttk.Label(self.answer_header, text='Your Answer (Click block to remove • Drag to reorder):', font=('', 13, 'bold'), foreground='#64748b')
+        self.answer_header_label.pack(side=tk.LEFT)
         
         self.listen_answer_btn = ttk.Button(self.answer_header, text='🔊 Hear Answer (Ctrl+A)', command=self.speak_current_answer, state=tk.DISABLED)
         self.listen_answer_btn.pack(side=tk.RIGHT, padx=(10, 0))
@@ -541,7 +556,7 @@ class SentenceJigsawApp:
         model = self.settings.get('ollama_model', 'gemma4:12b')
 
         def on_accept(eval_res=None):
-            if self.game_mode == 'voice_mastery':
+            if self.effective_game_mode == 'voice_mastery':
                 score = 100
                 feedback_text = 'Accepted!'
                 if isinstance(eval_res, dict):
@@ -766,7 +781,7 @@ class SentenceJigsawApp:
         action_callable()
 
     def _handle_gameplay_shortcut(self, index: int):
-        if self._is_focus_in_text_or_modal() or self.game_mode in ('voice_mastery', 'writing'):
+        if self._is_focus_in_text_or_modal() or self.effective_game_mode in ('voice_mastery', 'writing'):
             return
         self.trigger_chunk_by_index(index)
 
@@ -820,7 +835,7 @@ class SentenceJigsawApp:
         if not self.user_selected_chunks:
             return
             
-        if self.game_mode == 'fill_blanks':
+        if self.effective_game_mode == 'fill_blanks':
             full_sentence_chunks = []
             fill_iter = iter(self.user_selected_chunks)
             for i, chunk in enumerate(self.original_chunks):
@@ -971,6 +986,12 @@ class SentenceJigsawApp:
             except Exception:
                 pass
             self._listening_after_id = None
+        if hasattr(self, '_flash_after_id') and self._flash_after_id:
+            try:
+                self.root.after_cancel(self._flash_after_id)
+            except Exception:
+                pass
+            self._flash_after_id = None
 
     def end_speed_run(self):
         SoundPlayer.play_success()
@@ -1055,7 +1076,7 @@ class SentenceJigsawApp:
         if not data:
             return
             
-        if self.game_mode == 'listening':
+        if self.effective_game_mode == 'listening':
             self.question_label.config(text='🎧 [ Click "Teacher (L)" to hear the sentence ]', foreground='#2980b9')
         else:
             self.question_label.config(text=data.question, foreground=self.theme.get('text_primary', '#000000'))
@@ -1105,16 +1126,22 @@ class SentenceJigsawApp:
         self.listen_answer_btn.config(state=tk.DISABLED)
         self.play_my_voice_btn.config(state=tk.NORMAL if VoiceRecorder.has_recording() else tk.DISABLED)
 
-        if self.game_mode in ('mastery', 'voice_mastery'):
+        if self.game_mode == 'guided_mission':
+            tot = self.model.total_questions()
+            curr_idx = getattr(self.model, 'current_index', 0) + 1
+            self.progress_label.config(text=f'Mission: Card {curr_idx} of {tot}')
+            self.progress_bar['maximum'] = tot
+            self.progress_bar['value'] = max(0, curr_idx - 1)
+        elif self.effective_game_mode in ('mastery', 'voice_mastery'):
             stage = self.model.get_current_stage() if hasattr(self.model, 'get_current_stage') else 1
-            stage_info = " (Stage 2: 2 Words/Block 🔥)" if (stage == 2 and self.game_mode == 'mastery') else ""
+            stage_info = " (Stage 2: 2 Words/Block 🔥)" if (stage == 2 and self.effective_game_mode == 'mastery') else ""
             comp = self.model.completed_steps() if hasattr(self.model, 'completed_steps') else self.model.mastered_questions()
             tot = self.model.total_steps() if hasattr(self.model, 'total_steps') else self.model.total_questions()
-            mode_tag = "Voice Mastery" if self.game_mode == 'voice_mastery' else "Mastery"
+            mode_tag = "Voice Mastery" if self.effective_game_mode == 'voice_mastery' else "Mastery"
             self.progress_label.config(text=f'{mode_tag}: {self.model.mastered_questions()}/{self.model.total_questions()} mastered')
             self.progress_bar['maximum'] = self.model.total_questions()
             self.progress_bar['value'] = self.model.mastered_questions()
-        elif self.game_mode in ('fill_blanks', 'listening'):
+        elif self.effective_game_mode in ('fill_blanks', 'listening'):
             self.progress_label.config(text=f'Progress: {self.model.mastered_questions()} / {self.model.total_questions()}')
             self.progress_bar['maximum'] = self.model.total_questions()
             self.progress_bar['value'] = self.model.mastered_questions()
@@ -1148,7 +1175,7 @@ class SentenceJigsawApp:
         else:
             self.setup_standard_round()
 
-        if self.game_mode == 'listening':
+        if self.effective_game_mode == 'listening':
             if hasattr(self, '_listening_after_id') and self._listening_after_id:
                 try:
                     self.root.after_cancel(self._listening_after_id)
@@ -1265,6 +1292,9 @@ class SentenceJigsawApp:
             {'flawless': flawless, 'score': score}
         )
         data.ladder_stage = next_st
+        if self.model and hasattr(self.model, 'current_question_idx') and self.model.current_question_idx is not None:
+            if 0 <= self.model.current_question_idx < len(self.model.qa_data):
+                self.model.qa_data[self.model.current_question_idx].ladder_stage = next_st
         if passed and self.active_deck_id:
             DeckManager.update_card_stage(self.active_deck_id, getattr(data, 'card_id', ''), next_st, passed)
         self.score_label.config(text=msg)
@@ -1394,6 +1424,7 @@ class SentenceJigsawApp:
         random.shuffle(tile_colors)
         show_hover = self.settings.get('show_hover_meanings', True)
         
+        self.answer_header_label.config(text='Your Answer (Click block to remove • Drag to reorder):')
         self.pool_label.config(text='Click, drag, or Hover for meaning:')
         for idx, chunk in enumerate(scrambled):
             bg_color = tile_colors[idx % len(tile_colors)]
@@ -1447,7 +1478,8 @@ class SentenceJigsawApp:
         blank_chunks = [self.original_chunks[i] for i in self.hidden_chunk_indices]
         random.shuffle(blank_chunks)
 
-        self.pool_label.config(text=f'Pick, drag, or Hover for meaning:')
+        self.answer_header_label.config(text='Complete the Sentence (Fill in the blanks):')
+        self.pool_label.config(text='Pick missing words to fill the blanks:')
         tile_colors = self.theme.get('tile_colors', ['#bae1ff']).copy()
         random.shuffle(tile_colors)
         show_hover = self.settings.get('show_hover_meanings', True)
@@ -1507,7 +1539,7 @@ class SentenceJigsawApp:
                     if item['text'] == old_chunk and item['btn'].state == tk.DISABLED:
                         item['btn'].set_state(tk.NORMAL, bg=item['color'])
                         break
-                expected_len = len(self.hidden_chunk_indices) if self.game_mode == 'fill_blanks' else len(self.original_chunks)
+                expected_len = len(self.hidden_chunk_indices) if self.effective_game_mode == 'fill_blanks' else len(self.original_chunks)
                 if len(self.user_selected_chunks) == expected_len:
                     self.check_answer()
                 return
@@ -1563,7 +1595,7 @@ class SentenceJigsawApp:
                 self.meaning_display.pack_forget()
 
     def set_answer_meaning_text(self, text):
-        if text and text.strip() and self.game_mode != 'voice_mastery':
+        if text and text.strip() and self.effective_game_mode not in ('voice_mastery', 'writing'):
             self.answer_meaning_display.config(state=tk.NORMAL)
             self.answer_meaning_display.delete('1.0', tk.END)
             self.answer_meaning_display.insert(tk.END, text.strip())
@@ -1620,7 +1652,7 @@ class SentenceJigsawApp:
         else:
             self.listen_answer_btn.config(state=tk.DISABLED)
 
-        if self.game_mode == 'fill_blanks':
+        if self.effective_game_mode == 'fill_blanks':
             blank_fill_iter = iter(self.user_selected_chunks)
             for i, chunk in enumerate(self.original_chunks):
                 if i in self.hidden_chunk_indices:
@@ -1641,8 +1673,8 @@ class SentenceJigsawApp:
                     else:
                         chip = AnswerChip(
                             self.answer_flow, 
-                            text='____', 
-                            color=self.theme['blank_bg'], 
+                            text='  ____  ', 
+                            color=self.theme.get('blank_bg', '#fef3c7'), 
                             on_remove_callback=lambda c: None,
                             on_swap_callback=lambda c1, c2, m='swap': None,
                             on_drag_status_callback=None,
@@ -1653,7 +1685,11 @@ class SentenceJigsawApp:
                         )
                     self.answer_flow.add_widget(chip)
                 else:
-                    lbl = tk.Label(self.answer_flow, text=chunk, font=self.answer_font, bg='#e8ecef', padx=12, pady=6, relief=tk.GROOVE)
+                    lbl = tk.Label(self.answer_flow, text=chunk, font=self.answer_font, bg='#e2e8f0', fg='#1e293b', padx=12, pady=6, relief=tk.SOLID, bd=1)
+                    if show_hover:
+                        lbl.bind('<Enter>', lambda e, c=chunk: HoverMeaningTooltip.show(c, e.x_root, e.y_root))
+                        lbl.bind('<Leave>', lambda e: HoverMeaningTooltip.hide())
+                    lbl.bind('<Button-3>', lambda e, c=chunk: self.speak_chunk(c))
                     self.answer_flow.add_widget(lbl)
         else:
             if not self.user_selected_chunks:
@@ -1694,7 +1730,7 @@ class SentenceJigsawApp:
                 item['btn'].set_state(tk.DISABLED, bg=self.theme['button_disabled'])
                 break
         
-        expected_len = len(self.hidden_chunk_indices) if self.game_mode == 'fill_blanks' else len(self.original_chunks)
+        expected_len = len(self.hidden_chunk_indices) if self.effective_game_mode == 'fill_blanks' else len(self.original_chunks)
         if len(self.user_selected_chunks) == expected_len:
             self.check_answer()
 
@@ -1737,7 +1773,7 @@ class SentenceJigsawApp:
                 SoundPlayer.play_click()
                 self.render_answer_chips()
                 
-                expected_len = len(self.hidden_chunk_indices) if self.game_mode == 'fill_blanks' else len(self.original_chunks)
+                expected_len = len(self.hidden_chunk_indices) if self.effective_game_mode == 'fill_blanks' else len(self.original_chunks)
                 if len(self.user_selected_chunks) == expected_len:
                     self.check_answer()
         except ValueError:
@@ -1747,7 +1783,7 @@ class SentenceJigsawApp:
         self.hints_used += 1
         self.flawless_attempt = False
         
-        if self.game_mode == 'fill_blanks':
+        if self.effective_game_mode == 'fill_blanks':
             current_len = len(self.user_selected_chunks)
             if current_len < len(self.hidden_chunk_indices):
                 correct_idx = self.hidden_chunk_indices[current_len]
@@ -1779,14 +1815,14 @@ class SentenceJigsawApp:
         self.buttons_frame.clear_widgets()
         self.chunk_buttons.clear()
 
-        if self.game_mode == 'fill_blanks':
+        if self.effective_game_mode == 'fill_blanks':
             self.setup_fill_in_blanks_round()
         else:
             self.setup_standard_round()
 
     def check_answer(self):
         is_correct = False
-        if self.game_mode == 'fill_blanks':
+        if self.effective_game_mode == 'fill_blanks':
             expected_chunks = [self.original_chunks[i] for i in self.hidden_chunk_indices]
             is_correct = (self.user_selected_chunks == expected_chunks)
         else:
@@ -1796,12 +1832,14 @@ class SentenceJigsawApp:
             SoundPlayer.play_success()
             self.update_board_visuals(self.theme['board_bg_correct'])
             
-            # Set all answer chips to green validation status
+            # Set all answer chips and fixed labels to green validation status
             for child in self.answer_flow.winfo_children():
                 if isinstance(child, AnswerChip):
                     child.set_validation_status('correct')
+                elif isinstance(child, tk.Label):
+                    child.config(bg='#dcfce7', fg='#14532d')
 
-            if self.game_mode == 'listening':
+            if self.effective_game_mode == 'listening':
                 data = self.model.get_current_question()
                 self.question_label.config(text=data.question, foreground='#1e8449')
                 
@@ -1825,7 +1863,7 @@ class SentenceJigsawApp:
                 points = GameEngine.calculate_speed_run_points(self.speed_run_streak)
                 self.speed_run_score += points
                 self.score_label.config(text=f'+{points} pts! 🔥 Streak {self.speed_run_streak}')
-            elif not self.flawless_attempt and self.game_mode in ('mastery', 'listening'):
+            elif not self.flawless_attempt and self.effective_game_mode in ('mastery', 'listening'):
                 self.score_label.config(text=f'{praise} ' + '⭐' * stars + ' (We\'ll review this soon!)')
             else:
                 self.score_label.config(text=f'{praise} ' + '⭐' * stars)
@@ -1847,7 +1885,7 @@ class SentenceJigsawApp:
             self.update_board_visuals(self.theme['board_bg_incorrect'])
             
             # Calculate granular phrase-level alignment feedback
-            if self.game_mode == 'fill_blanks':
+            if self.effective_game_mode == 'fill_blanks':
                 expected = [self.original_chunks[i] for i in self.hidden_chunk_indices]
             else:
                 expected = self.original_chunks
@@ -1863,11 +1901,24 @@ class SentenceJigsawApp:
                     user_chip_idx += 1
 
             def reset_flash():
-                self.update_board_visuals(self.theme['board_bg_default'])
-                for c in self.answer_flow.winfo_children():
-                    if isinstance(c, AnswerChip):
-                        c.set_validation_status(None)
-            self.root.after(1400, reset_flash) 
+                try:
+                    if not (hasattr(self, 'root') and self.root.winfo_exists()):
+                        return
+                    self.update_board_visuals(self.theme['board_bg_default'])
+                    for c in self.answer_flow.winfo_children():
+                        if isinstance(c, AnswerChip):
+                            c.set_validation_status(None)
+                        elif isinstance(c, tk.Label):
+                            c.config(bg='#e2e8f0', fg='#1e293b')
+                except Exception:
+                    pass
+
+            if hasattr(self, '_flash_after_id') and self._flash_after_id:
+                try:
+                    self.root.after_cancel(self._flash_after_id)
+                except Exception:
+                    pass
+            self._flash_after_id = self.root.after(1400, reset_flash) 
 
     def restart_lesson(self):
         if not self.model.qa_data:

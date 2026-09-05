@@ -143,7 +143,10 @@ class LessonDeck:
             question=base_item.question,
             chunks=dynamic_chunks,
             meaning=base_item.meaning,
-            lesson_name=base_item.lesson_name
+            lesson_name=base_item.lesson_name,
+            card_id=base_item.card_id,
+            ladder_stage=base_item.ladder_stage,
+            stage_history=base_item.stage_history
         )
 
     def process_result(self, flawless: bool, repeat_on_error: bool = True, memory_store: dict = None, now_ts: float = None):
@@ -203,3 +206,12 @@ class LessonDeck:
 
     def mastered_questions(self) -> int:
         return len(self.get_active_question_indices()) - len(self.deck)
+
+    @property
+    def current_index(self) -> int:
+        if self.current_question_idx is None:
+            return 0
+        active = self.get_active_question_indices()
+        if self.current_question_idx in active:
+            return active.index(self.current_question_idx)
+        return self.current_question_idx

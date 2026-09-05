@@ -183,8 +183,8 @@ class AnswerChip(tk.Frame):
         self.font = font
         self.show_hover_meanings = show_hover_meanings
 
-        label_text = ' • • • ' if is_blank else text
-        self.lbl = tk.Label(self, text=label_text, font=self.font, bg=color, fg='#1c1c1e', cursor='hand2', padx=4, pady=2)
+        label_text = text if text else ('  ____  ' if is_blank else '')
+        self.lbl = tk.Label(self, text=label_text, font=self.font, bg=color, fg='#92400e' if is_blank else '#1c1c1e', cursor='arrow' if is_blank else 'hand2', padx=4, pady=2)
         self.lbl.pack(fill=tk.BOTH, expand=True)
 
         if not is_blank:

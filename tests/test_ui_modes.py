@@ -147,9 +147,12 @@ class TestUIModes(unittest.TestCase):
         self.assertIn('Flawless', self.app.writing_status_badge['text'])
 
     def test_guided_mission_mode_flow(self):
+        from ui.widgets import AnswerChip
         self.app.mode_var.set('🧭 Guided Mission')
         self.app.on_mode_change()
         self.assertEqual(self.app.game_mode, 'guided_mission')
+        self.assertEqual(self.app.effective_game_mode, 'fill_blanks')
+        self.assertTrue(self.app.is_fill_blanks_mode)
 
         curr_q = self.app.model.get_current_question()
         self.assertIsNotNone(curr_q)
@@ -157,9 +160,37 @@ class TestUIModes(unittest.TestCase):
         self.assertEqual(getattr(curr_q, 'ladder_stage', 1), 1)
         self.assertEqual(self.app.writing_studio.winfo_manager(), '')
 
-        # Advance current card stage through evaluation
-        self.app.handle_guided_mission_completion(curr_q, flawless=True, score=100)
-        self.assertEqual(curr_q.ladder_stage, 2)
+        # Verify Answer Board contains full sentence structure (fixed labels + blank chip slots)
+        answer_widgets = self.app.answer_flow.winfo_children()
+        self.assertEqual(len(answer_widgets), len(curr_q.chunks))
+        self.assertIn('Complete the Sentence', self.app.answer_header_label['text'])
+        self.assertIn('Pick missing words', self.app.pool_label['text'])
+
+        # Check blank chips vs fixed labels
+        for idx in range(len(curr_q.chunks)):
+            w = answer_widgets[idx]
+            if idx in self.app.hidden_chunk_indices:
+                self.assertIsInstance(w, AnswerChip)
+                self.assertTrue(w.is_blank)
+                self.assertEqual(w.lbl['text'], '  ____  ')
+            else:
+                self.assertIsInstance(w, tk.Label)
+                self.assertEqual(w['text'], curr_q.chunks[idx])
+
+        # Solve by selecting missing chunks in order
+        missing_chunks = [curr_q.chunks[i] for i in self.app.hidden_chunk_indices]
+        for mc in missing_chunks:
+            self.app.select_chunk(mc)
+
+        # Answer should be validated and accepted
+        self.assertEqual(str(self.app.next_btn['state']), 'normal')
+        self.assertEqual(self.app.model.get_current_question().ladder_stage, 2)
+
+        # Verify chips status turned to correct
+        for w in self.app.answer_flow.winfo_children():
+            if isinstance(w, AnswerChip):
+                self.assertFalse(w.is_blank)
+                self.assertEqual(w.lbl['fg'], '#065f46')
 
     def test_dialogs_instantiation(self):
         from ui.deck_dialog import DeckLibraryDialog
