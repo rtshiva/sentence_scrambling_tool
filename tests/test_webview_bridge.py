@@ -115,5 +115,110 @@ class TestWebBridgeAPI(unittest.TestCase):
         self.assertEqual(details['id'], saved_exam['id'])
         self.assertEqual(details['exam_name'], "History Mid-Term")
 
+    def test_multi_exam_switching_and_deletion_bridge(self):
+        deck = self.api.save_deck({
+            'title': 'Maths Deck',
+            'cards': [
+                {'question': '2+2=4', 'chunks': ['2+2', '=4'], 'lesson_name': 'Addition', 'ladder_stage': 6}
+            ]
+        })
+        d_id = deck['id']
+
+        # 1. Create Exam 1
+        exam1 = self.api.save_exam_goal(
+            name="Quarterly Exam",
+            target_date_str="2026-10-01",
+            target_cards=1,
+            deck_ids=[d_id],
+            selected_scope={d_id: ["Addition"]}
+        )
+        e1_id = exam1['id']
+
+        # 2. Create Exam 2 - automatically active
+        exam2 = self.api.save_exam_goal(
+            name="Final Assessment",
+            target_date_str="2026-11-01",
+            target_cards=1,
+            deck_ids=[d_id],
+            selected_scope={d_id: ["Addition"]}
+        )
+        e2_id = exam2['id']
+
+        metrics = self.api.get_exam_metrics()
+        self.assertEqual(metrics['selected_exam_id'], e2_id)
+        self.assertEqual(metrics['exam_title'], "Final Assessment")
+        self.assertEqual(len(metrics['all_exams']), 2)
+
+        # 3. Switch back to Exam 1
+        switch_res = self.api.switch_exam(e1_id)
+        self.assertTrue(switch_res['success'])
+        metrics_after_switch = self.api.get_exam_metrics()
+        self.assertEqual(metrics_after_switch['selected_exam_id'], e1_id)
+        self.assertEqual(metrics_after_switch['exam_title'], "Quarterly Exam")
+
+        # 4. Delete active Exam 1 -> falls back to Exam 2
+        del1_res = self.api.delete_exam(e1_id)
+        self.assertTrue(del1_res['success'])
+        metrics_after_del1 = self.api.get_exam_metrics()
+        self.assertEqual(metrics_after_del1['selected_exam_id'], e2_id)
+        self.assertEqual(metrics_after_del1['exam_title'], "Final Assessment")
+        self.assertEqual(len(metrics_after_del1['all_exams']), 1)
+
+        # 5. Delete Exam 2 -> no exams remain
+        del2_res = self.api.delete_exam(e2_id)
+        self.assertTrue(del2_res['success'])
+        metrics_after_del2 = self.api.get_exam_metrics()
+        self.assertIsNone(metrics_after_del2['selected_exam_id'])
+        self.assertEqual(len(metrics_after_del2['all_exams']), 0)
+
+    def test_chapter_addition_and_removal_bridge(self):
+        deck = self.api.save_deck({
+            'title': 'Geography Deck',
+            'cards': [
+                {'question': 'G1', 'chunks': ['A'], 'lesson_name': 'Rivers', 'ladder_stage': 6},
+                {'question': 'G2', 'chunks': ['B'], 'lesson_name': 'Mountains', 'ladder_stage': 6},
+            ]
+        })
+        d_id = deck['id']
+
+        # Create exam with only Rivers
+        exam = self.api.save_exam_goal(
+            name="Geo Exam",
+            target_date_str="2026-10-15",
+            target_cards=1,
+            deck_ids=[d_id],
+            selected_scope={d_id: ["Rivers"]}
+        )
+        exam_id = exam['id']
+        self.assertEqual(exam['total_cards'], 1)
+
+        # Add Mountains to exam
+        updated_exam = self.api.save_exam_goal(
+            name="Geo Exam",
+            target_date_str="2026-10-15",
+            target_cards=2,
+            deck_ids=[d_id],
+            selected_scope={d_id: ["Rivers", "Mountains"]},
+            exam_id=exam_id
+        )
+        self.assertEqual(updated_exam['id'], exam_id)
+        self.assertEqual(updated_exam['total_cards'], 2)
+        ch_names = [c['chapter_name'] for c in updated_exam['chapters_breakdown']]
+        self.assertIn("Rivers", ch_names)
+        self.assertIn("Mountains", ch_names)
+
+        # Remove Rivers, leaving only Mountains
+        updated_exam2 = self.api.save_exam_goal(
+            name="Geo Exam",
+            target_date_str="2026-10-15",
+            target_cards=1,
+            deck_ids=[d_id],
+            selected_scope={d_id: ["Mountains"]},
+            exam_id=exam_id
+        )
+        self.assertEqual(updated_exam2['total_cards'], 1)
+        self.assertEqual(updated_exam2['chapters_breakdown'][0]['chapter_name'], "Mountains")
+
 if __name__ == '__main__':
     unittest.main()
+

@@ -83,24 +83,38 @@ class WebBridgeAPI:
             print(f'Error exporting deck: {e}')
         return False
 
-    def get_exam_metrics(self) -> Dict[str, Any]:
+    def get_exam_metrics(self, exam_id: Optional[str] = None) -> Dict[str, Any]:
+        if exam_id:
+            DeckManager.set_selected_exam(exam_id)
+        selected_id = DeckManager.get_selected_exam_id()
         exams = DeckManager.list_exams()
-        if exams:
-            res = DeckManager.calculate_exam_metrics(exams[0]['id'])
-            res['exam_name'] = exams[0].get('title', 'Target Exam')
+
+        if selected_id:
+            res = DeckManager.calculate_exam_metrics(selected_id)
+            title = res.get('title', 'Target Exam')
+            res['exam_name'] = title
+            res['exam_title'] = title
             res['all_exams'] = exams
+            res['selected_exam_id'] = selected_id
+            res['success'] = True
             return res
         return {
-            'exam_name': 'Class 4 Mid-Term Exam',
-            'days_left': 14,
+            'id': None,
+            'title': 'No Exam Configured',
+            'exam_title': 'No Exam Configured',
+            'exam_name': 'No Exam Configured',
+            'target_date': '',
+            'days_left': 0,
             'total_cards': 0,
             'mastered_cards': 0,
             'daily_quota': 0,
             'readiness_percent': 0,
-            'status_tag': 'On Track',
-            'all_exams': [],
+            'status_tag': 'No Exam',
+            'all_exams': exams,
+            'selected_exam_id': None,
             'selected_scope': {},
-            'chapters_breakdown': []
+            'chapters_breakdown': [],
+            'success': True
         }
 
     def get_deck_chapters(self, deck_id: str) -> List[Dict[str, Any]]:
@@ -110,15 +124,18 @@ class WebBridgeAPI:
         return DeckManager.get_all_decks_with_chapters()
 
     def get_exam_details(self, exam_id: Optional[str] = None) -> Dict[str, Any]:
-        exams = DeckManager.list_exams()
-        if not exam_id and exams:
-            exam_id = exams[0]['id']
-        if exam_id:
-            res = DeckManager.calculate_exam_metrics(exam_id)
-            res['all_exams'] = exams
-            res['exam_name'] = res.get('title', 'Target Exam')
-            return res
-        return self.get_exam_metrics()
+        return self.get_exam_metrics(exam_id)
+
+    def switch_exam(self, exam_id: str) -> Dict[str, Any]:
+        res = self.get_exam_metrics(exam_id)
+        res['success'] = True
+        return res
+
+    def delete_exam(self, exam_id: str) -> Dict[str, Any]:
+        DeckManager.delete_exam(exam_id)
+        res = self.get_exam_metrics()
+        res['success'] = True
+        return res
 
     def save_exam_config(self, exam_data: Dict[str, Any]) -> Dict[str, Any]:
         return self.save_exam_goal(
@@ -149,10 +166,8 @@ class WebBridgeAPI:
         if exam_id:
             goal['id'] = exam_id
         saved_id = DeckManager.save_exam(goal)
-        res = DeckManager.calculate_exam_metrics(saved_id)
-        res['exam_name'] = name
-        res['all_exams'] = DeckManager.list_exams()
-        return res
+        DeckManager.set_selected_exam(saved_id)
+        return self.get_exam_metrics(saved_id)
 
     def evaluate_spelling(self, expected: str, typed: str) -> Dict[str, Any]:
         res = SpellingEvaluator.evaluate(typed, expected)
@@ -198,9 +213,8 @@ class WebBridgeAPI:
         return self._start_gameplay_thread(cards, mode_name=mode_name, deck_id=deck_id)
 
     def launch_exam_mission(self, exam_id: Optional[str] = None) -> bool:
-        exams = DeckManager.list_exams()
-        if not exam_id and exams:
-            exam_id = exams[0]['id']
+        if not exam_id:
+            exam_id = DeckManager.get_selected_exam_id()
         if not exam_id:
             return False
 

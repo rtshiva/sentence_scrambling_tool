@@ -88,18 +88,15 @@ class HomeDashboardView(ttk.Frame):
         self.tab_decks = ttk.Frame(self.notebook, padding=14)
         self.tab_mission = ttk.Frame(self.notebook, padding=14)
         self.tab_exam = ttk.Frame(self.notebook, padding=14)
-        self.tab_writing = ttk.Frame(self.notebook, padding=14)
 
-        # Notice: Deck Library is Tab 1 as requested!
+        # Tabs: Decks, Guided Mission, Exam Readiness
         self.notebook.add(self.tab_decks, text='  📁 1. Student Deck Repository  ')
         self.notebook.add(self.tab_mission, text='  🧭 2. Guided Mission Mode & Ladder  ')
         self.notebook.add(self.tab_exam, text='  🎯 3. Exam Readiness & Daily Pacing  ')
-        self.notebook.add(self.tab_writing, text='  ✍️ 4. Writing & Spelling Sandbox  ')
 
         self.setup_tab_decks()
         self.setup_tab_mission()
         self.setup_tab_exam()
-        self.setup_tab_writing()
 
     # =========================================================================
     # TAB 1: STUDENT DECK REPOSITORY (CARD GRID)
@@ -601,6 +598,63 @@ class HomeDashboardView(ttk.Frame):
     def setup_tab_exam(self):
         parent = self.tab_exam
 
+        # Top Exam Bar: Selector, New Exam, Delete Exam
+        top_bar = tk.Frame(parent, bg='#ffffff', bd=1, relief=tk.SOLID, padx=12, pady=10)
+        top_bar.pack(fill=tk.X, pady=(0, 10))
+
+        lbl_select = ttk.Label(top_bar, text='🎯 Active Target Exam:', font=('', 10, 'bold'))
+        lbl_select.pack(side=tk.LEFT, padx=(0, 8))
+
+        self.exam_selector_cb = ttk.Combobox(top_bar, state='readonly', width=36, font=('', 10))
+        self.exam_selector_cb.pack(side=tk.LEFT, padx=(0, 10))
+        self.exam_selector_cb.bind('<<ComboboxSelected>>', self.on_exam_selected)
+
+        btn_new_exam = tk.Button(
+            top_bar,
+            text='➕ New Exam',
+            font=('', 9, 'bold'),
+            bg='#4f46e5',
+            fg='#ffffff',
+            activebackground='#4338ca',
+            activeforeground='#ffffff',
+            relief=tk.FLAT,
+            padx=10,
+            pady=4,
+            cursor='hand2',
+            command=self.open_new_exam_dialog
+        )
+        btn_new_exam.pack(side=tk.LEFT, padx=4)
+
+        btn_edit_exam = tk.Button(
+            top_bar,
+            text='✏️ Edit Scope & Chapters',
+            font=('', 9, 'bold'),
+            bg='#f1f5f9',
+            fg='#1e293b',
+            relief=tk.SOLID,
+            bd=1,
+            padx=10,
+            pady=4,
+            cursor='hand2',
+            command=self.open_exam_goal_dialog
+        )
+        btn_edit_exam.pack(side=tk.LEFT, padx=4)
+
+        btn_del_exam = tk.Button(
+            top_bar,
+            text='🗑️ Delete Exam',
+            font=('', 9),
+            bg='#fef2f2',
+            fg='#dc2626',
+            relief=tk.SOLID,
+            bd=1,
+            padx=10,
+            pady=4,
+            cursor='hand2',
+            command=self.delete_current_exam
+        )
+        btn_del_exam.pack(side=tk.RIGHT, padx=4)
+
         # 1. Readiness Metric Card
         self.exam_card = tk.Frame(parent, bg='#f8fafc', bd=1, relief=tk.SOLID, padx=16, pady=12)
         self.exam_card.pack(fill=tk.X, pady=(0, 10))
@@ -622,7 +676,7 @@ class HomeDashboardView(ttk.Frame):
 
         config_btn = tk.Button(
             inner,
-            text='✏️ Configure Exam & Scope',
+            text='✏️ Edit Exam & Scope',
             font=('', 10, 'bold'),
             bg='#4f46e5',
             fg='#ffffff',
@@ -706,12 +760,45 @@ class HomeDashboardView(ttk.Frame):
             command=self.open_exam_goal_dialog
         ).pack(side=tk.RIGHT)
 
-    def open_exam_goal_dialog(self):
-        exams = DeckManager.list_exams()
-        current_exam = exams[0] if exams else None
-        dlg = ExamGoalDialog(self, current_exam=current_exam, on_start_exam_mission_callback=self.on_start_session)
+    def open_new_exam_dialog(self):
+        dlg = ExamGoalDialog(self, current_exam=None, on_start_exam_mission_callback=self.on_start_session, is_new=True)
         self.wait_window(dlg)
         self.refresh_data()
+
+    def open_exam_goal_dialog(self):
+        selected_id = DeckManager.get_selected_exam_id()
+        current_exam = DeckManager.get_exam(selected_id)
+        if not current_exam:
+            exams = DeckManager.list_exams()
+            current_exam = exams[0] if exams else None
+        if not current_exam:
+            self.open_new_exam_dialog()
+            return
+        dlg = ExamGoalDialog(self, current_exam=current_exam, on_start_exam_mission_callback=self.on_start_session, is_new=False)
+        self.wait_window(dlg)
+        self.refresh_data()
+
+    def delete_current_exam(self):
+        selected_id = DeckManager.get_selected_exam_id()
+        if not selected_id:
+            exams = DeckManager.list_exams()
+            if not exams:
+                messagebox.showinfo('No Exam', 'There is no exam to delete.', parent=self)
+                return
+            selected_id = exams[0]['id']
+        exam = DeckManager.get_exam(selected_id)
+        if not exam:
+            return
+        if messagebox.askyesno('Delete Exam', f'Are you sure you want to permanently delete exam "{exam.get("title", "Exam")}"?', parent=self):
+            DeckManager.delete_exam(selected_id)
+            self.refresh_data()
+
+    def on_exam_selected(self, event=None):
+        idx = self.exam_selector_cb.current()
+        exams = DeckManager.list_exams()
+        if 0 <= idx < len(exams):
+            DeckManager.set_selected_exam(exams[idx]['id'])
+            self.refresh_data()
 
     def render_chapters_breakdown(self):
         self.chapters_tree.delete(*self.chapters_tree.get_children())
@@ -736,14 +823,30 @@ class HomeDashboardView(ttk.Frame):
     def recalculate_exam_preview(self):
         exams = DeckManager.list_exams()
         if not exams:
+            self.exam_selector_cb['values'] = ['(No exams created)']
+            self.exam_selector_cb.current(0)
             self.exam_gauge.config(text='0%')
             self.exam_status_lbl.config(text='No Exam Configured')
-            self.exam_details_lbl.config(text='Click "Configure Exam & Scope" to select chapters.')
+            self.exam_details_lbl.config(text='Click "➕ New Exam" above to create an exam and select chapters.')
             self.cached_chapters_breakdown = []
             self.render_chapters_breakdown()
             return
 
-        active_exam = exams[0]
+        selected_id = DeckManager.get_selected_exam_id()
+        active_exam = DeckManager.get_exam(selected_id)
+        if not active_exam:
+            active_exam = exams[0]
+            DeckManager.set_selected_exam(active_exam['id'])
+
+        # Populate exam combobox
+        titles = [f"{e.get('title', 'Exam')} (Due {e.get('target_date', 'N/A')})" for e in exams]
+        self.exam_selector_cb['values'] = titles
+        try:
+            active_idx = [e['id'] for e in exams].index(active_exam['id'])
+            self.exam_selector_cb.current(active_idx)
+        except ValueError:
+            self.exam_selector_cb.current(0)
+
         metrics = DeckManager.calculate_exam_metrics(active_exam['id'])
         pct = metrics.get('readiness_percent', 0)
         days_left = metrics.get('days_left', 14)
@@ -763,103 +866,27 @@ class HomeDashboardView(ttk.Frame):
         self.exam_details_lbl.config(text=details)
 
     def start_daily_exam_mission(self):
-        exams = DeckManager.list_exams()
-        if not exams:
-            messagebox.showinfo('No Exam Configured', 'Please configure an exam and tag chapters first.', parent=self)
-            self.open_exam_goal_dialog()
-            return
+        selected_id = DeckManager.get_selected_exam_id()
+        active_exam = DeckManager.get_exam(selected_id)
+        if not active_exam:
+            exams = DeckManager.list_exams()
+            if not exams:
+                messagebox.showinfo('No Exam Configured', 'Please configure an exam and tag chapters first.', parent=self)
+                self.open_new_exam_dialog()
+                return
+            active_exam = exams[0]
 
-        exam_id = exams[0]['id']
-        exam_cards = DeckManager.get_exam_cards(exam_id)
+        exam_cards = DeckManager.get_exam_cards(active_exam['id'])
         if not exam_cards:
             messagebox.showinfo('Empty Scope', 'No cards found in the tagged chapters for this exam.', parent=self)
             return
 
         # Sort by ladder stage (cards needing the most practice first)
         exam_cards.sort(key=lambda x: getattr(x, 'ladder_stage', 1))
-        cap = exams[0].get('daily_max_cap', 15)
+        cap = active_exam.get('daily_max_cap', 15)
         session_cards = exam_cards[:cap] if len(exam_cards) > cap else exam_cards
 
         self.on_start_session(session_cards, 'guided_mission', None)
-
-    # =========================================================================
-    # TAB 4: WRITING MODE SANDBOX
-    # =========================================================================
-    def setup_tab_writing(self):
-        parent = self.tab_writing
-
-        ttk.Label(parent, text='✍️ Active Writing & Spelling Evaluator Sandbox', font=('', 14, 'bold')).pack(anchor=tk.W)
-        ttk.Label(
-            parent,
-            text='Type full sentences from memory. The evaluator detects typos, misspellings, and missing words in real-time.',
-            font=('', 9),
-            foreground='#64748b'
-        ).pack(anchor=tk.W, pady=(2, 10))
-
-        # Sample Reference Sentence Box
-        ref_frame = ttk.LabelFrame(parent, text='Target Reference Sentence', padding=8)
-        ref_frame.pack(fill=tk.X, pady=(0, 10))
-
-        self.sandbox_ref_var = tk.StringVar(value='The quick brown fox jumps over the lazy dog')
-        ttk.Entry(ref_frame, textvariable=self.sandbox_ref_var, font=('', 11)).pack(fill=tk.X)
-
-        # Student Input Box
-        input_frame = ttk.LabelFrame(parent, text='Your Written Answer (Type below & test spelling)', padding=8)
-        input_frame.pack(fill=tk.X, pady=(0, 10))
-
-        self.sandbox_input = tk.Text(input_frame, height=3, font=('', 12))
-        self.sandbox_input.pack(fill=tk.X)
-        self.sandbox_input.insert('1.0', 'The quik brown fox jump over lazy dog')
-
-        # Evaluation Row
-        eval_row = ttk.Frame(parent)
-        eval_row.pack(fill=tk.X, pady=(0, 8))
-
-        ttk.Button(eval_row, text='🔍 Evaluate Spelling & Diffs', command=self.test_sandbox_writing).pack(side=tk.LEFT)
-        self.sandbox_badge = tk.Label(eval_row, text='', font=('', 10, 'bold'), padx=8, pady=3)
-        self.sandbox_badge.pack(side=tk.LEFT, padx=10)
-
-        # Visual Diff Output
-        diff_frame = ttk.LabelFrame(parent, text='Visual Word-by-Word Spelling Markup', padding=8)
-        diff_frame.pack(fill=tk.BOTH, expand=True)
-
-        self.sandbox_diff_display = tk.Text(diff_frame, height=4, font=('', 12), wrap=tk.WORD, bd=0)
-        self.sandbox_diff_display.pack(fill=tk.BOTH, expand=True)
-        self.sandbox_diff_display.tag_configure('correct', foreground='#16a34a', font=('', 12, 'bold'))
-        self.sandbox_diff_display.tag_configure('typo', foreground='#ca8a04', underline=True, font=('', 12, 'bold'))
-        self.sandbox_diff_display.tag_configure('wrong', foreground='#dc2626', underline=True, font=('', 12, 'bold'))
-        self.sandbox_diff_display.tag_configure('missing', foreground='#7c3aed', font=('', 12, 'italic'))
-        self.sandbox_diff_display.tag_configure('extra', foreground='#e11d48', font=('', 12, 'italic'))
-
-        ttk.Label(
-            parent,
-            text='Legend: 🟢 Correct  |  🟡 Typo (≤1 letter difference)  |  🔴 Wrong  |  🟣 Missing Word  |  🟠 Extra Word',
-            font=('', 9),
-            foreground='#64748b'
-        ).pack(anchor=tk.W, pady=(6, 0))
-
-    def test_sandbox_writing(self):
-        ref = self.sandbox_ref_var.get().strip()
-        user_input = self.sandbox_input.get('1.0', tk.END).strip()
-        if not ref or not user_input:
-            messagebox.showinfo('Input Required', 'Please provide both reference and typed sentences.', parent=self)
-            return
-
-        res = SpellingEvaluator.evaluate(user_input, ref)
-        score = res['score']
-
-        if res['is_perfect'] or score >= 90:
-            self.sandbox_badge.config(text=f"⭐ Flawless Match ({score}%)", bg='#dcfce7', fg='#166534')
-        else:
-            self.sandbox_badge.config(text=f"🔄 Review Needed ({score}%)", bg='#ffe4e6', fg='#9f1239')
-
-        self.sandbox_diff_display.config(state=tk.NORMAL)
-        self.sandbox_diff_display.delete('1.0', tk.END)
-        for token in res['tokens']:
-            status = token['status']
-            text = token['text'] + ' '
-            self.sandbox_diff_display.insert(tk.END, text, status)
-        self.sandbox_diff_display.config(state=tk.DISABLED)
 
     # =========================================================================
     # REFRESH ALL DATA & SYNCHRONIZE
@@ -868,15 +895,19 @@ class HomeDashboardView(ttk.Frame):
         active_name = ProfileManager.get_active_profile_name()
         avatar = ProfileManager.get_active_profile().get('avatar', '👤')
 
-        exams = DeckManager.list_exams()
-        if exams:
-            first_exam = exams[0]
-            t_str = first_exam.get('target_date', '')
+        selected_id = DeckManager.get_selected_exam_id()
+        active_exam = DeckManager.get_exam(selected_id)
+        if not active_exam:
+            exams = DeckManager.list_exams()
+            active_exam = exams[0] if exams else None
+
+        if active_exam:
+            t_str = active_exam.get('target_date', '')
             try:
                 days_left = max(0, (datetime.strptime(t_str, '%Y-%m-%d').date() - date.today()).days)
             except Exception:
                 days_left = 14
-            exam_text = f"🎯 Target Exam: {first_exam.get('title', 'Exam')} ({days_left} Days)"
+            exam_text = f"🎯 Target Exam: {active_exam.get('title', 'Exam')} ({days_left} Days)"
         else:
             exam_text = "🎯 Target Exam: Planning"
 

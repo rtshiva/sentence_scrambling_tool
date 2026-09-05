@@ -134,7 +134,19 @@ class DeckManager:
         return result
 
     @classmethod
-    def get_exam(cls, exam_id: str) -> Optional[Dict[str, Any]]:
+    def get_selected_exam_id(cls) -> Optional[str]:
+        return ProfileManager.get_selected_exam_id()
+
+    @classmethod
+    def set_selected_exam(cls, exam_id: str) -> bool:
+        return ProfileManager.set_selected_exam_id(exam_id)
+
+    @classmethod
+    def get_exam(cls, exam_id: Optional[str] = None) -> Optional[Dict[str, Any]]:
+        if not exam_id:
+            exam_id = cls.get_selected_exam_id()
+        if not exam_id:
+            return None
         return ProfileManager.get_active_exams().get(exam_id)
 
     @classmethod
@@ -196,7 +208,7 @@ class DeckManager:
         return result
 
     @classmethod
-    def get_exam_cards(cls, exam_id: str) -> List[QuestionItem]:
+    def get_exam_cards(cls, exam_id: Optional[str] = None) -> List[QuestionItem]:
         """Returns only the cards in the tagged chapters of the exam."""
         exam = cls.get_exam(exam_id)
         if not exam:
@@ -219,12 +231,20 @@ class DeckManager:
         return cards
 
     @classmethod
-    def calculate_exam_metrics(cls, exam_id: str, now_date: Optional[date] = None) -> Dict[str, Any]:
-        exam = cls.get_exam(exam_id)
+    def calculate_exam_metrics(cls, exam_or_id: Any = None, now_date: Optional[date] = None) -> Dict[str, Any]:
+        if isinstance(exam_or_id, dict):
+            exam = exam_or_id
+            exam_id = exam.get('id', 'preview')
+        else:
+            exam_id = exam_or_id or cls.get_selected_exam_id()
+            exam = cls.get_exam(exam_id) if exam_id else None
+
         if not exam:
             return {
-                'id': exam_id,
+                'id': exam_id or '',
                 'title': 'Unknown Exam',
+                'exam_title': 'Unknown Exam',
+                'exam_name': 'Unknown Exam',
                 'target_date': '',
                 'days_left': 0,
                 'total_cards': 0,
@@ -302,6 +322,8 @@ class DeckManager:
             return {
                 'id': exam_id,
                 'title': exam.get('title', 'Exam'),
+                'exam_title': exam.get('title', 'Exam'),
+                'exam_name': exam.get('title', 'Exam'),
                 'target_date': target_date_str,
                 'days_left': days_left,
                 'total_cards': 0,
@@ -337,6 +359,8 @@ class DeckManager:
         return {
             'id': exam_id,
             'title': exam.get('title', 'Exam'),
+            'exam_title': exam.get('title', 'Exam'),
+            'exam_name': exam.get('title', 'Exam'),
             'target_date': target_date_str,
             'days_left': days_left,
             'total_cards': total_cards,

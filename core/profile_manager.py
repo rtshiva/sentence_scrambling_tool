@@ -283,11 +283,38 @@ class ProfileManager:
         return profile.setdefault('exams', {})
 
     @classmethod
+    def get_selected_exam_id(cls) -> Optional[str]:
+        cls._load()
+        profile = cls.get_active_profile()
+        active_id = profile.get('active_exam_id')
+        exams = profile.setdefault('exams', {})
+        if active_id and active_id in exams:
+            return active_id
+        if exams:
+            # Fall back to first exam
+            first_id = next(iter(exams.keys()))
+            profile['active_exam_id'] = first_id
+            return first_id
+        return None
+
+    @classmethod
+    def set_selected_exam_id(cls, exam_id: str) -> bool:
+        cls._load()
+        profile = cls.get_active_profile()
+        exams = profile.setdefault('exams', {})
+        if exam_id in exams:
+            profile['active_exam_id'] = exam_id
+            cls._save()
+            return True
+        return False
+
+    @classmethod
     def save_active_exam(cls, exam_id: str, exam_data: dict):
         cls._load()
         profile = cls.get_active_profile()
         profile.setdefault('exams', {})
         profile['exams'][exam_id] = exam_data
+        profile['active_exam_id'] = exam_id
         cls._save()
 
     @classmethod
@@ -297,6 +324,8 @@ class ProfileManager:
         exams = profile.setdefault('exams', {})
         if exam_id in exams:
             del exams[exam_id]
+            if profile.get('active_exam_id') == exam_id:
+                profile['active_exam_id'] = next(iter(exams.keys())) if exams else None
             cls._save()
             return True
         return False

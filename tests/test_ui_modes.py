@@ -176,7 +176,7 @@ class TestUIModes(unittest.TestCase):
 
         hub_dlg = MissionHubDialog(self.root)
         self.assertTrue(hub_dlg.winfo_exists())
-        self.assertEqual(len(hub_dlg.notebook.tabs()), 4)
+        self.assertEqual(len(hub_dlg.notebook.tabs()), 3)
     def test_home_dashboard_landing_and_transitions(self):
         # 1. On launch, HomeDashboardView must be packed by default
         self.assertEqual(self.app.home_view.winfo_manager(), 'pack')
@@ -184,7 +184,7 @@ class TestUIModes(unittest.TestCase):
 
         # 2. Deck Repository is Tab 1 (index 0) of notebook
         tabs = self.app.home_view.notebook.tabs()
-        self.assertEqual(len(tabs), 4)
+        self.assertEqual(len(tabs), 3)
         tab1_text = self.app.home_view.notebook.tab(0, 'text')
         self.assertIn('Deck Repository', tab1_text)
 

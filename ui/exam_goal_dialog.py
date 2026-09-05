@@ -8,19 +8,25 @@ from core.models import ExamGoal
 class ExamGoalDialog(tk.Toplevel):
     """Modal dialog to configure an upcoming exam target and view daily study pacing."""
 
-    def __init__(self, parent, on_start_exam_mission_callback: Optional[Callable[[list], None]] = None):
+    def __init__(
+        self, 
+        parent, 
+        current_exam: Optional[dict] = None, 
+        on_start_exam_mission_callback: Optional[Callable[[list], None]] = None,
+        is_new: bool = False
+    ):
         super().__init__(parent)
         self.on_start_exam_mission_callback = on_start_exam_mission_callback
+        self.is_new = is_new
+        self.current_exam = None if is_new else (current_exam or DeckManager.get_exam())
 
-        self.title('🎯 Upcoming Exam & Daily Pacing')
-        self.geometry('580x560')
+        self.title('🎯 Create New Exam' if is_new else '🎯 Edit Exam & Chapter Scope')
+        self.geometry('600x580')
         self.minsize(520, 500)
         self.grab_set()
 
         self.deck_vars = {}
         self.chapter_vars = {}
-        self.exams = DeckManager.list_exams()
-        self.current_exam = self.exams[0] if self.exams else None
 
         self.setup_ui()
         self.load_exam_data()
@@ -30,13 +36,14 @@ class ExamGoalDialog(tk.Toplevel):
         container.pack(fill=tk.BOTH, expand=True)
 
         # Header
-        ttk.Label(container, text='🎯 Exam Goal & Chapter Scope Pacing', font=('', 14, 'bold')).pack(anchor=tk.W)
+        header_text = '🎯 Create New Exam Goal' if self.is_new else '🎯 Exam Goal & Chapter Scope Pacing'
+        ttk.Label(container, text=header_text, font=('', 14, 'bold')).pack(anchor=tk.W)
         ttk.Label(
             container, 
-            text='Configure your upcoming exam date and select which specific chapters/lessons are included in the exam scope.',
+            text='Configure your target date and select which specific chapters/lessons are included in this exam scope.',
             font=('', 9),
             foreground='#64748b',
-            wraplength=520
+            wraplength=540
         ).pack(anchor=tk.W, pady=(2, 10))
 
         # Metrics Card (Readiness Banner)
@@ -64,42 +71,52 @@ class ExamGoalDialog(tk.Toplevel):
 
         # Title
         ttk.Label(form_frame, text='Exam Name:').grid(row=0, column=0, sticky=tk.W, pady=3)
-        self.title_var = tk.StringVar(value='Mid-Term Assessment')
+        self.title_var = tk.StringVar(value='' if self.is_new else 'Mid-Term Assessment')
+        self.title_var.trace_add('write', lambda *a: self.recalculate_preview())
         ttk.Entry(form_frame, textvariable=self.title_var, width=30).grid(row=0, column=1, sticky=tk.W, pady=3, padx=6)
 
         # Target Date
-        ttk.Label(form_frame, text='Target Date (YYYY-MM-DD):').grid(row=1, column=0, sticky=tk.W, pady=3)
+        ttk.Label(form_frame, text='Target Date:').grid(row=0, column=2, sticky=tk.W, pady=3, padx=(10, 0))
         default_target = (date.today() + timedelta(days=14)).strftime('%Y-%m-%d')
         self.date_var = tk.StringVar(value=default_target)
-        self.date_var.trace_add('write', lambda *args: self.recalculate_preview())
-        ttk.Entry(form_frame, textvariable=self.date_var, width=16).grid(row=1, column=1, sticky=tk.W, pady=3, padx=6)
-
-        # Daily Cap
-        ttk.Label(form_frame, text='Max Cards Per Day:').grid(row=2, column=0, sticky=tk.W, pady=3)
-        self.cap_var = tk.IntVar(value=15)
-        ttk.Spinbox(form_frame, from_=5, to=40, textvariable=self.cap_var, width=6).grid(row=2, column=1, sticky=tk.W, pady=3, padx=6)
+        self.date_var.trace_add('write', lambda *a: self.recalculate_preview())
+        ttk.Entry(form_frame, textvariable=self.date_var, width=12).grid(row=0, column=3, sticky=tk.W, pady=3, padx=6)
 
         # Target Stage
-        ttk.Label(form_frame, text='Target Mastery Level:').grid(row=3, column=0, sticky=tk.W, pady=3)
-        self.stage_var = tk.StringVar(value='Stage 6: Written Typing ✍️')
-        ttk.Combobox(
+        ttk.Label(form_frame, text='Mastery Stage:').grid(row=1, column=0, sticky=tk.W, pady=3)
+        self.stage_var = tk.StringVar(value='Stage 6 (Writing Mastery)')
+        stage_cb = ttk.Combobox(
             form_frame, 
             textvariable=self.stage_var, 
-            values=['Stage 4: Voice Mastery 🎙️', 'Stage 5: Speed Run ⏱️', 'Stage 6: Written Typing ✍️'],
+            values=['Stage 4 (Voice Fluency)', 'Stage 5 (Speed Recall)', 'Stage 6 (Writing Mastery)'],
             state='readonly',
-            width=24
-        ).grid(row=3, column=1, sticky=tk.W, pady=3, padx=6)
+            width=26
+        )
+        stage_cb.grid(row=1, column=1, sticky=tk.W, pady=3, padx=6)
+        stage_cb.bind('<<ComboboxSelected>>', lambda e: self.recalculate_preview())
 
-        # Decks & Chapters Selection Frame
-        decks_frame = ttk.LabelFrame(container, text='Tag Chapters Included in Exam', padding=8)
+        # Daily Cap
+        ttk.Label(form_frame, text='Daily Max Cap:').grid(row=1, column=2, sticky=tk.W, pady=3, padx=(10, 0))
+        self.cap_var = tk.IntVar(value=15)
+        self.cap_var.trace_add('write', lambda *a: self.recalculate_preview())
+        ttk.Spinbox(form_frame, from_=5, to=40, textvariable=self.cap_var, width=6).grid(row=1, column=3, sticky=tk.W, pady=3, padx=6)
+
+        # Decks and Chapters Tree Checklist
+        decks_frame = ttk.LabelFrame(container, text='Select Chapters Included in Exam Scope', padding=8)
         decks_frame.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
-        canvas = tk.Canvas(decks_frame, borderwidth=0, highlightthickness=0, height=130)
+        # Quick select buttons
+        quick_row = ttk.Frame(decks_frame)
+        quick_row.pack(fill=tk.X, pady=(0, 4))
+        ttk.Button(quick_row, text='Select All Chapters', command=lambda: self.select_all_chapters(True)).pack(side=tk.LEFT, padx=(0, 4))
+        ttk.Button(quick_row, text='Clear All', command=lambda: self.select_all_chapters(False)).pack(side=tk.LEFT)
+
+        canvas = tk.Canvas(decks_frame, borderwidth=0, highlightthickness=0)
         scrollbar = ttk.Scrollbar(decks_frame, orient=tk.VERTICAL, command=canvas.yview)
         scroll_content = ttk.Frame(canvas)
 
-        scroll_content.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-        canvas.create_window((0, 0), window=scroll_content, anchor="nw")
+        scroll_content.bind('<Configure>', lambda e: canvas.configure(scrollregion=canvas.bbox('all')))
+        canvas.create_window((0, 0), window=scroll_content, anchor=tk.NW)
         canvas.configure(yscrollcommand=scrollbar.set)
 
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
@@ -111,7 +128,7 @@ class ExamGoalDialog(tk.Toplevel):
 
         for d in all_decks:
             d_id = d['id']
-            d_var = tk.BooleanVar(value=True)
+            d_var = tk.BooleanVar(value=not self.is_new)
             self.deck_vars[d_id] = d_var
 
             d_box = ttk.Frame(scroll_content, padding=(4, 2))
@@ -129,7 +146,7 @@ class ExamGoalDialog(tk.Toplevel):
             for ch in chaps:
                 ch_name = ch['chapter_name']
                 ch_key = f"{d_id}:::{ch_name}"
-                ch_var = tk.BooleanVar(value=True)
+                ch_var = tk.BooleanVar(value=not self.is_new)
                 self.chapter_vars[ch_key] = ch_var
 
                 ch_frame = ttk.Frame(d_box, padding=(24, 1, 0, 1))
@@ -148,13 +165,24 @@ class ExamGoalDialog(tk.Toplevel):
 
         self.start_btn = ttk.Button(
             btn_bar, 
-            text='🚀 Start Exam Mission (Tagged Chapters)', 
+            text='🚀 Start Exam Mission', 
             command=self.start_exam_mission
         )
         self.start_btn.pack(side=tk.LEFT, padx=(0, 6))
 
-        ttk.Button(btn_bar, text='💾 Save Goal', command=self.save_exam_goal).pack(side=tk.LEFT, padx=4)
+        ttk.Button(btn_bar, text='💾 Save Exam Goal', command=self.save_exam_goal).pack(side=tk.LEFT, padx=4)
+
+        if self.current_exam and not self.is_new:
+            ttk.Button(btn_bar, text='🗑️ Delete Exam', command=self.delete_exam).pack(side=tk.LEFT, padx=4)
+
         ttk.Button(btn_bar, text='Close', command=self.destroy).pack(side=tk.RIGHT)
+
+    def select_all_chapters(self, checked: bool):
+        for var in self.deck_vars.values():
+            var.set(checked)
+        for var in self.chapter_vars.values():
+            var.set(checked)
+        self.recalculate_preview()
 
     def toggle_deck_chapters(self, deck_id: str):
         deck_checked = self.deck_vars[deck_id].get()
@@ -165,7 +193,7 @@ class ExamGoalDialog(tk.Toplevel):
         self.recalculate_preview()
 
     def load_exam_data(self):
-        if self.current_exam:
+        if self.current_exam and not self.is_new:
             self.title_var.set(self.current_exam.get('title', 'Exam'))
             self.date_var.set(self.current_exam.get('target_date', ''))
             self.cap_var.set(self.current_exam.get('daily_max_cap', 15))
@@ -184,6 +212,14 @@ class ExamGoalDialog(tk.Toplevel):
                             ch_var.set(is_linked)
                         else:
                             ch_var.set(ch_name in allowed)
+        elif self.is_new:
+            self.title_var.set('New Exam Assessment')
+            self.date_var.set((date.today() + timedelta(days=14)).strftime('%Y-%m-%d'))
+            for var in self.deck_vars.values():
+                var.set(False)
+            for var in self.chapter_vars.values():
+                var.set(False)
+
         self.recalculate_preview()
 
     def _get_current_selected_scope(self):
@@ -208,7 +244,7 @@ class ExamGoalDialog(tk.Toplevel):
             target_stage = 5
 
         included_deck_ids, selected_scope = self._get_current_selected_scope()
-        exam_id = self.current_exam.get('id') if self.current_exam else 'temp_preview'
+        exam_id = self.current_exam.get('id') if self.current_exam else 'preview'
 
         dummy_exam = {
             'id': exam_id,
@@ -219,8 +255,7 @@ class ExamGoalDialog(tk.Toplevel):
             'deck_ids': included_deck_ids,
             'selected_scope': selected_scope
         }
-        DeckManager.save_exam(dummy_exam)
-        metrics = DeckManager.calculate_exam_metrics(exam_id)
+        metrics = DeckManager.calculate_exam_metrics(dummy_exam)
 
         pct = metrics['readiness_percent']
         self.gauge_lbl.config(text=f"{pct}%")
@@ -250,7 +285,7 @@ class ExamGoalDialog(tk.Toplevel):
             target_stage = 5
 
         exam_data = {
-            'id': self.current_exam.get('id') if self.current_exam else None,
+            'id': self.current_exam.get('id') if (self.current_exam and not self.is_new) else None,
             'title': self.title_var.get().strip() or "Upcoming Exam",
             'target_date': self.date_var.get().strip(),
             'target_stage': target_stage,
@@ -259,11 +294,23 @@ class ExamGoalDialog(tk.Toplevel):
             'selected_scope': selected_scope
         }
         saved_id = DeckManager.save_exam(exam_data)
+        DeckManager.set_selected_exam(saved_id)
+        self.current_exam = DeckManager.get_exam(saved_id)
+        self.is_new = False
         messagebox.showinfo('Saved', 'Exam goal and tagged chapters saved successfully!', parent=self)
+        self.destroy()
+
+    def delete_exam(self):
+        if not self.current_exam or not self.current_exam.get('id'):
+            return
+        exam_title = self.current_exam.get('title', 'this exam')
+        if messagebox.askyesno('Confirm Delete', f'Are you sure you want to delete exam "{exam_title}"?', parent=self):
+            DeckManager.delete_exam(self.current_exam['id'])
+            self.destroy()
 
     def start_exam_mission(self):
         self.save_exam_goal()
-        exam_id = self.current_exam.get('id') if self.current_exam else 'main_exam'
+        exam_id = self.current_exam.get('id') if self.current_exam else None
         combined_cards = DeckManager.get_exam_cards(exam_id)
 
         if not combined_cards:

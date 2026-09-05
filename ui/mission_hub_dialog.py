@@ -99,17 +99,14 @@ class MissionHubDialog(tk.Toplevel):
         self.tab_mission = ttk.Frame(self.notebook, padding=12)
         self.tab_decks = ttk.Frame(self.notebook, padding=12)
         self.tab_exam = ttk.Frame(self.notebook, padding=12)
-        self.tab_writing = ttk.Frame(self.notebook, padding=12)
 
         self.notebook.add(self.tab_mission, text='  🧭 1. Guided Mission  ')
         self.notebook.add(self.tab_decks, text='  🗂️ 2. Deck Library  ')
         self.notebook.add(self.tab_exam, text='  🎯 3. Exam Readiness  ')
-        self.notebook.add(self.tab_writing, text='  ✍️ 4. Writing Studio  ')
 
         self.setup_tab_mission()
         self.setup_tab_decks()
         self.setup_tab_exam()
-        self.setup_tab_writing()
 
     # =========================================================================
     # TAB 1: GUIDED MISSION & 6-STAGE LADDER
@@ -380,93 +377,6 @@ class MissionHubDialog(tk.Toplevel):
         self.start_exam_btn.pack(side=tk.LEFT)
 
         ttk.Button(exam_actions, text='💾 Save Exam Goal', command=self.save_exam_settings).pack(side=tk.RIGHT)
-
-    # =========================================================================
-    # TAB 4: WRITING MODE SANDBOX
-    # =========================================================================
-    def setup_tab_writing(self):
-        parent = self.tab_writing
-
-        ttk.Label(parent, text='✍️ Active Writing & Spelling Evaluator Sandbox', font=('', 13, 'bold')).pack(anchor=tk.W)
-        ttk.Label(
-            parent,
-            text='Type full sentences from memory. The evaluator detects typos, misspellings, and missing words in real-time.',
-            font=('', 9),
-            foreground='#64748b'
-        ).pack(anchor=tk.W, pady=(2, 10))
-
-        # Sample Reference Sentence Box
-        ref_frame = ttk.LabelFrame(parent, text='Target Reference Sentence', padding=8)
-        ref_frame.pack(fill=tk.X, pady=(0, 10))
-
-        self.sandbox_ref_var = tk.StringVar(value='The quick brown fox jumps over the lazy dog')
-        ttk.Entry(ref_frame, textvariable=self.sandbox_ref_var, font=('', 11)).pack(fill=tk.X)
-
-        # Student Input Box
-        input_frame = ttk.LabelFrame(parent, text='Your Written Answer (Type below & test spelling)', padding=8)
-        input_frame.pack(fill=tk.X, pady=(0, 10))
-
-        self.sandbox_input = tk.Text(input_frame, height=3, font=('', 12))
-        self.sandbox_input.pack(fill=tk.X)
-        self.sandbox_input.insert('1.0', 'The quik brown fox jump over lazy dog')
-
-        # Evaluation Row
-        eval_row = ttk.Frame(parent)
-        eval_row.pack(fill=tk.X, pady=(0, 8))
-
-        ttk.Button(eval_row, text='🔍 Evaluate Spelling & Diffs', command=self.test_sandbox_writing).pack(side=tk.LEFT)
-        self.sandbox_badge = tk.Label(eval_row, text='', font=('', 10, 'bold'), padx=8, pady=3)
-        self.sandbox_badge.pack(side=tk.LEFT, padx=10)
-
-        # Visual Diff Output
-        diff_frame = ttk.LabelFrame(parent, text='Visual Word-by-Word Spelling Markup', padding=8)
-        diff_frame.pack(fill=tk.BOTH, expand=True)
-
-        self.sandbox_diff_display = tk.Text(diff_frame, height=4, font=('', 12), wrap=tk.WORD, bd=0)
-        self.sandbox_diff_display.pack(fill=tk.BOTH, expand=True)
-        self.sandbox_diff_display.tag_configure('correct', foreground='#16a34a', font=('', 12, 'bold'))
-        self.sandbox_diff_display.tag_configure('typo', foreground='#ca8a04', underline=True, font=('', 12, 'bold'))
-        self.sandbox_diff_display.tag_configure('wrong', foreground='#dc2626', underline=True, font=('', 12, 'bold'))
-        self.sandbox_diff_display.tag_configure('missing', foreground='#7c3aed', font=('', 12, 'italic'))
-        self.sandbox_diff_display.tag_configure('extra', foreground='#e11d48', font=('', 12, 'italic'))
-
-        ttk.Label(
-            parent,
-            text='Legend: 🟢 Correct  |  🟡 Typo (≤1 letter difference)  |  🔴 Wrong  |  🟣 Missing Word  |  🟠 Extra Word',
-            font=('', 9),
-            foreground='#64748b'
-        ).pack(anchor=tk.W, pady=(6, 0))
-
-    def test_sandbox_writing(self):
-        ref = self.sandbox_ref_var.get().strip()
-        user_input = self.sandbox_input.get('1.0', tk.END).strip()
-        if not ref or not user_input:
-            messagebox.showinfo('Input Required', 'Please provide both reference and typed sentences.', parent=self)
-            return
-
-        res = SpellingEvaluator.evaluate(user_input, ref)
-        score = res['score']
-
-        if res['is_perfect'] or score >= 90:
-            self.sandbox_badge.config(
-                text=f"⭐ Flawless Match ({score}%)",
-                bg='#dcfce7',
-                fg='#166534'
-            )
-        else:
-            self.sandbox_badge.config(
-                text=f"🔄 Review Needed ({score}%)",
-                bg='#ffe4e6',
-                fg='#9f1239'
-            )
-
-        self.sandbox_diff_display.config(state=tk.NORMAL)
-        self.sandbox_diff_display.delete('1.0', tk.END)
-        for token in res['tokens']:
-            status = token['status']
-            text = token['text'] + ' '
-            self.sandbox_diff_display.insert(tk.END, text, status)
-        self.sandbox_diff_display.config(state=tk.DISABLED)
 
     # =========================================================================
     # REFRESH & DATA SYNC

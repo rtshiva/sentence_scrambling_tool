@@ -145,13 +145,13 @@ window.addEventListener('DOMContentLoaded', () => {
 function refreshUI() {
   document.getElementById('active-student-name').textContent = state.active_profile;
   
-  if (state.exam_metrics) {
+  populateExamSelector();
+
+  if (state.exam_metrics && state.exam_metrics.id) {
     const em = state.exam_metrics;
-    document.getElementById('target-exam-text').textContent = `${em.exam_name || 'Mid-Term Exam'} (${em.days_left || 14} Days)`;
+    document.getElementById('target-exam-text').textContent = `${em.exam_name || 'Target Exam'} (${em.days_left || 0} Days)`;
     
-    // Tab 3 elements
-    document.getElementById('exam-title').textContent = em.exam_name || 'Class 4 Mid-Term English Exam';
-    document.getElementById('exam-meta').textContent = `Target Date: In ${em.days_left || 14} Days • ${em.total_cards || 0} Cards in Scope across Tagged Chapters`;
+    document.getElementById('exam-meta').textContent = `Target Date: In ${em.days_left || 0} Days • ${em.total_cards || 0} Cards in Scope across Tagged Chapters`;
     document.getElementById('exam-readiness-val').textContent = `${em.readiness_percent || 0}% Complete`;
     document.getElementById('exam-progress-bar').style.width = `${em.readiness_percent || 0}%`;
     document.getElementById('stat-days-left').textContent = em.days_left || 0;
@@ -169,11 +169,110 @@ function refreshUI() {
     }
 
     renderChapterBreakdown();
+  } else {
+    document.getElementById('target-exam-text').textContent = 'No Exam Active';
+    document.getElementById('exam-meta').textContent = 'Click "+ New Exam" to create an exam goal and tag chapters.';
+    document.getElementById('exam-readiness-val').textContent = '0%';
+    document.getElementById('exam-progress-bar').style.width = '0%';
+    document.getElementById('stat-days-left').textContent = '0';
+    document.getElementById('stat-cards-count').textContent = '0 / 0';
+    document.getElementById('stat-daily-quota').textContent = '0 Cards/Day';
+    document.getElementById('exam-status-tag').textContent = 'No Exam';
+    document.getElementById('exam-status-tag').className = 'text-[11px] bg-slate-100 text-slate-600 font-bold px-2.5 py-0.5 rounded-full';
+    renderChapterBreakdown();
   }
 
   populateSubjectFilter();
   filterDecks();
   renderMissionQueue();
+}
+
+function populateExamSelector() {
+  const sel = document.getElementById('exam-selector');
+  if (!sel) return;
+  sel.innerHTML = '';
+
+  const em = state.exam_metrics || {};
+  const allExams = em.all_exams || [];
+  const currentId = em.id;
+
+  if (allExams.length === 0) {
+    const opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '➕ No Exams (Click "+ New Exam")';
+    sel.appendChild(opt);
+    return;
+  }
+
+  allExams.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.id;
+    opt.textContent = `🎯 ${e.title || 'Exam'} (${e.target_date || 'No Date'})`;
+    if (e.id === currentId) {
+      opt.selected = true;
+    }
+    sel.appendChild(opt);
+  });
+}
+
+async function switchExam(examId) {
+  if (!examId) return;
+  if (window.pywebview) {
+    try {
+      const refreshed = await window.pywebview.api.switch_exam(examId);
+      if (refreshed) {
+        state.exam_metrics = refreshed;
+      }
+    } catch (e) {
+      console.warn("Failed to switch exam:", e);
+    }
+  } else {
+    const em = state.exam_metrics || {};
+    const found = (em.all_exams || []).find(e => e.id === examId);
+    if (found) {
+      state.exam_metrics.id = found.id;
+      state.exam_metrics.exam_name = found.title;
+      state.exam_metrics.target_date = found.target_date;
+    }
+  }
+  refreshUI();
+}
+
+async function deleteCurrentExam() {
+  const em = state.exam_metrics;
+  if (!em || !em.id) {
+    alert("No active exam to delete.");
+    return;
+  }
+  const examName = em.exam_name || 'this exam';
+  if (!confirm(`Are you sure you want to delete "${examName}"?`)) {
+    return;
+  }
+
+  if (window.pywebview) {
+    try {
+      const refreshed = await window.pywebview.api.delete_exam(em.id);
+      if (refreshed) {
+        state.exam_metrics = refreshed;
+      }
+    } catch (e) {
+      console.warn("Failed to delete exam:", e);
+    }
+  } else {
+    if (state.exam_metrics.all_exams) {
+      state.exam_metrics.all_exams = state.exam_metrics.all_exams.filter(e => e.id !== em.id);
+      if (state.exam_metrics.all_exams.length > 0) {
+        const nextEx = state.exam_metrics.all_exams[0];
+        state.exam_metrics.id = nextEx.id;
+        state.exam_metrics.exam_name = nextEx.title;
+      } else {
+        state.exam_metrics = null;
+      }
+    }
+  }
+
+  await reloadState();
+  refreshUI();
 }
 
 // ----------------- Chapter Mastery Breakdown -----------------
@@ -261,7 +360,13 @@ async function openExamScopeModal(isNew = false) {
 
   const em = state.exam_metrics || {};
   modalScopeState.exam_id = isNew ? null : (em.id || null);
-  document.getElementById('modal-exam-name').value = isNew ? 'Final Term Exam' : (em.exam_name || 'Mid-Term Assessment');
+  document.getElementById('modal-exam-name').value = isNew ? '' : (em.exam_name || 'Mid-Term Assessment');
+  document.getElementById('modal-exam-name').placeholder = isNew ? 'e.g. Science Term 1 Exam' : 'Exam Title';
+  
+  const modalTitle = document.getElementById('exam-scope-modal-title');
+  if (modalTitle) {
+    modalTitle.textContent = isNew ? 'Create New Exam & Tag Chapters' : 'Configure Exam Scope & Tag Chapters';
+  }
   
   const defaultDate = new Date();
   defaultDate.setDate(defaultDate.getDate() + 14);
@@ -785,73 +890,6 @@ function setLadderStep(step) {
   const info = ladderStepsInfo[step] || ladderStepsInfo[4];
   document.getElementById('step-preview-title').textContent = info.title;
   document.getElementById('step-preview-desc').innerHTML = info.desc;
-}
-
-// ----------------- Writing Sandbox -----------------
-async function submitWriting() {
-  const target = document.getElementById('writing-target-sentence').textContent.trim();
-  const input = document.getElementById('writing-input').value.trim();
-  if (!input) return;
-
-  let evalResult = null;
-  if (window.pywebview) {
-    try {
-      evalResult = await window.pywebview.api.evaluate_spelling(target, input);
-    } catch (e) {
-      console.warn("Bridge evaluate_spelling failed:", e);
-    }
-  }
-
-  if (!evalResult) {
-    const cleanTarget = target.toLowerCase().replace(/[^a-z0-9 ]/g, '');
-    const cleanInput = input.toLowerCase().replace(/[^a-z0-9 ]/g, '');
-    const match = cleanTarget === cleanInput;
-    evalResult = {
-      overall_score: match ? 100 : 75,
-      flawless: match,
-      tokens: input.split(' ').map(w => ({ word: w, status: match ? 'correct' : 'typo' }))
-    };
-  }
-
-  const outputBox = document.getElementById('writing-eval-output');
-  outputBox.classList.remove('hidden');
-
-  const badge = document.getElementById('writing-score-badge');
-  badge.textContent = `Score: ${evalResult.overall_score}% Match`;
-  badge.className = evalResult.flawless 
-    ? 'text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800'
-    : 'text-xs font-bold px-3 py-1 rounded-full bg-rose-100 text-rose-800';
-
-  document.getElementById('writing-flawless-tag').textContent = evalResult.flawless 
-    ? '⭐ Flawless Orthography & Punctuation' 
-    : '🔄 Review Highlighted Tokens';
-
-  const tokensContainer = document.getElementById('writing-tokens-container');
-  tokensContainer.innerHTML = '';
-  (evalResult.tokens || []).forEach(t => {
-    const chip = document.createElement('span');
-    chip.textContent = t.word || '';
-    if (t.status === 'correct') {
-      chip.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300';
-    } else if (t.status === 'typo') {
-      chip.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 underline decoration-wavy';
-    } else if (t.status === 'missing') {
-      chip.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300 italic';
-    } else {
-      chip.className = 'px-2.5 py-1 rounded-lg text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300';
-    }
-    tokensContainer.appendChild(chip);
-  });
-}
-
-function speakCurrentTarget() {
-  const target = document.getElementById('writing-target-sentence').textContent.trim();
-  if (window.pywebview) {
-    window.pywebview.api.speak_text(target, 'en');
-  } else if ('speechSynthesis' in window) {
-    const u = new SpeechSynthesisUtterance(target);
-    window.speechSynthesis.speak(u);
-  }
 }
 
 // ----------------- Launch Actions -----------------

@@ -149,5 +149,129 @@ class TestDeckManager(unittest.TestCase):
         self.assertFalse(ch2_bd['is_mastered'])
         self.assertEqual(ch2_bd['status'], "🔄 In Progress")
 
+    def test_multi_exam_selection_and_switching(self):
+        # Create Exam 1
+        d1 = (date.today() + timedelta(days=10)).strftime('%Y-%m-%d')
+        exam1_id = DeckManager.save_exam({'title': 'Exam Alpha', 'target_date': d1})
+        self.assertEqual(DeckManager.get_selected_exam_id(), exam1_id)
+
+        # Create Exam 2 - should automatically become selected
+        d2 = (date.today() + timedelta(days=20)).strftime('%Y-%m-%d')
+        exam2_id = DeckManager.save_exam({'title': 'Exam Beta', 'target_date': d2})
+        self.assertEqual(DeckManager.get_selected_exam_id(), exam2_id)
+        self.assertEqual(DeckManager.get_exam()['title'], 'Exam Beta')
+
+        # Switch back to Exam 1
+        DeckManager.set_selected_exam(exam1_id)
+        self.assertEqual(DeckManager.get_selected_exam_id(), exam1_id)
+        self.assertEqual(DeckManager.get_exam()['title'], 'Exam Alpha')
+
+        # Verify listing
+        exams = DeckManager.list_exams()
+        self.assertEqual(len(exams), 2)
+        exam_ids = [e['id'] for e in exams]
+        self.assertIn(exam1_id, exam_ids)
+        self.assertIn(exam2_id, exam_ids)
+
+    def test_delete_exam_active_selection_fallback(self):
+        d1 = (date.today() + timedelta(days=5)).strftime('%Y-%m-%d')
+        d2 = (date.today() + timedelta(days=15)).strftime('%Y-%m-%d')
+        exam1_id = DeckManager.save_exam({'title': 'Exam To Keep', 'target_date': d1})
+        exam2_id = DeckManager.save_exam({'title': 'Exam To Delete', 'target_date': d2})
+
+        # Currently exam2 is selected
+        self.assertEqual(DeckManager.get_selected_exam_id(), exam2_id)
+
+        # Delete exam2
+        deleted = DeckManager.delete_exam(exam2_id)
+        self.assertTrue(deleted)
+
+        # Selected should fall back to exam1
+        self.assertEqual(DeckManager.get_selected_exam_id(), exam1_id)
+        self.assertEqual(len(DeckManager.list_exams()), 1)
+
+        # Delete exam1
+        DeckManager.delete_exam(exam1_id)
+        self.assertIsNone(DeckManager.get_selected_exam_id())
+        self.assertEqual(len(DeckManager.list_exams()), 0)
+
+    def test_dynamic_chapter_scope_modifications(self):
+        deck = DeckManager.create_deck(
+            title="Science Units",
+            items=[
+                QuestionItem("Q1", ["A"], lesson_name="Ch 1: Matter", ladder_stage=6),
+                QuestionItem("Q2", ["B"], lesson_name="Ch 2: Energy", ladder_stage=6),
+                QuestionItem("Q3", ["C"], lesson_name="Ch 3: Space", ladder_stage=2),
+            ]
+        )
+        d_id = deck['id']
+        target = (date.today() + timedelta(days=14)).strftime('%Y-%m-%d')
+
+        # 1. Initially scope only Ch 1
+        exam_id = DeckManager.save_exam({
+            'title': 'Unit Assessment',
+            'target_date': target,
+            'deck_ids': [d_id],
+            'selected_scope': {d_id: ["Ch 1: Matter"]}
+        })
+        cards1 = DeckManager.get_exam_cards(exam_id)
+        self.assertEqual(len(cards1), 1)
+        self.assertEqual(cards1[0].lesson_name, "Ch 1: Matter")
+
+        # 2. Add Ch 2 to scope
+        DeckManager.save_exam({
+            'id': exam_id,
+            'title': 'Unit Assessment',
+            'target_date': target,
+            'deck_ids': [d_id],
+            'selected_scope': {d_id: ["Ch 1: Matter", "Ch 2: Energy"]}
+        })
+        cards2 = DeckManager.get_exam_cards(exam_id)
+        self.assertEqual(len(cards2), 2)
+        names2 = [c.lesson_name for c in cards2]
+        self.assertIn("Ch 1: Matter", names2)
+        self.assertIn("Ch 2: Energy", names2)
+
+        # 3. Remove Ch 1 from scope (only Ch 2 remains)
+        DeckManager.save_exam({
+            'id': exam_id,
+            'title': 'Unit Assessment',
+            'target_date': target,
+            'deck_ids': [d_id],
+            'selected_scope': {d_id: ["Ch 2: Energy"]}
+        })
+        cards3 = DeckManager.get_exam_cards(exam_id)
+        self.assertEqual(len(cards3), 1)
+        self.assertEqual(cards3[0].lesson_name, "Ch 2: Energy")
+
+        # 4. Remove all chapters
+        DeckManager.save_exam({
+            'id': exam_id,
+            'title': 'Unit Assessment',
+            'target_date': target,
+            'deck_ids': [d_id],
+            'selected_scope': {d_id: []}
+        })
+        cards4 = DeckManager.get_exam_cards(exam_id)
+        self.assertEqual(len(cards4), 0)
+
+    def test_calculate_exam_metrics_with_dict_preview_without_disk_pollution(self):
+        initial_exams_count = len(DeckManager.list_exams())
+        preview_exam = {
+            'id': 'temp_preview_id',
+            'title': 'Live Preview Exam',
+            'target_date': (date.today() + timedelta(days=7)).strftime('%Y-%m-%d'),
+            'target_stage': 6,
+            'daily_max_cap': 10,
+            'deck_ids': [],
+            'selected_scope': {}
+        }
+        metrics = DeckManager.calculate_exam_metrics(preview_exam)
+        self.assertEqual(metrics['exam_title'], 'Live Preview Exam')
+        self.assertEqual(metrics['days_left'], 7)
+        # Verify no exam was saved or left on disk
+        self.assertEqual(len(DeckManager.list_exams()), initial_exams_count)
+
 if __name__ == '__main__':
     unittest.main()
+
