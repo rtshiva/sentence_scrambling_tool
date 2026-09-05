@@ -290,6 +290,57 @@ class TestUIModes(unittest.TestCase):
         self.assertEqual(self.app.home_view.winfo_manager(), 'pack')
         self.assertEqual(self.app.home_view.notebook.index(self.app.home_view.notebook.select()), 2)
 
+    def test_round_controller_instantiation_and_delegation(self):
+        from ui.modes import (
+            JigsawRoundController,
+            BlanksRoundController,
+            VoiceRoundController,
+            WritingRoundController,
+            SpeedRunRoundController,
+            ListeningRoundController,
+            create_round_controller
+        )
+
+        # Mastery -> JigsawRoundController
+        self.app.mode_var.set('🎯 Mastery')
+        self.app.on_mode_change()
+        self.assertIsInstance(self.app.active_controller, JigsawRoundController)
+        self.assertEqual(self.app.active_controller.mode_name, 'mastery')
+
+        # Fill in Blanks -> BlanksRoundController
+        self.app.mode_var.set('🧩 Fill in Blanks')
+        self.app.on_mode_change()
+        self.assertIsInstance(self.app.active_controller, BlanksRoundController)
+        self.assertEqual(self.app.active_controller.mode_name, 'fill_blanks')
+
+        # Voice Mastery -> VoiceRoundController
+        self.app.mode_var.set('🎙️ Voice Mastery')
+        self.app.on_mode_change()
+        self.assertIsInstance(self.app.active_controller, VoiceRoundController)
+        self.assertEqual(self.app.active_controller.mode_name, 'voice_mastery')
+
+        # Writing -> WritingRoundController
+        self.app.mode_var.set('✍️ Writing Mode')
+        self.app.on_mode_change()
+        self.assertIsInstance(self.app.active_controller, WritingRoundController)
+        self.assertEqual(self.app.active_controller.mode_name, 'writing')
+
+        # Listening -> ListeningRoundController
+        self.app.mode_var.set('🎧 Listening Mode')
+        self.app.on_mode_change()
+        self.assertIsInstance(self.app.active_controller, ListeningRoundController)
+        self.assertEqual(self.app.active_controller.mode_name, 'listening')
+
+        # Speed Run -> SpeedRunRoundController
+        self.app.mode_var.set(self.app.get_speed_run_mode_label())
+        self.app.on_mode_change()
+        self.assertIsInstance(self.app.active_controller, SpeedRunRoundController)
+        self.assertEqual(self.app.active_controller.mode_name, 'speed_run')
+
+        # Factory fallback
+        fallback = create_round_controller('unknown_mode_name', self.app)
+        self.assertIsInstance(fallback, JigsawRoundController)
+
 if __name__ == '__main__':
     unittest.main()
 

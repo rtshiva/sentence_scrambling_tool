@@ -35,6 +35,13 @@ from ui.deck_dialog import DeckLibraryDialog
 from ui.exam_goal_dialog import ExamGoalDialog
 from ui.mission_hub_dialog import MissionHubDialog
 from ui.home_dashboard import HomeDashboardView
+from ui.modes import (
+    create_round_controller,
+    BaseRoundController,
+    JigsawRoundController,
+    VoiceRoundController,
+    WritingRoundController
+)
 
 class SentenceJigsawApp:
     def __init__(self, root):
@@ -61,6 +68,7 @@ class SentenceJigsawApp:
         # Game State
         self.game_mode = 'mastery'
         self.current_round_mode = 'mastery'
+        self.active_controller: Optional[BaseRoundController] = None
         self.original_chunks = []
         self.user_selected_chunks = []
         self.chunk_buttons = []
@@ -588,37 +596,10 @@ class SentenceJigsawApp:
 
     def handle_voice_mastery_evaluation(self, score: int, feedback_text: str = ''):
         """Processes voice evaluation score under the mastery game mode."""
-        is_pass = (score >= 80)
-        self.studio_feedback_lbl.config(text=f'AI Coach: {feedback_text}')
-
-        if is_pass:
-            self.flawless_attempt = True
-            SoundPlayer.play_success()
-            self.studio_status_badge.config(
-                text=f'🌟 Passed ({score}% Match) • Mastered Step!',
-                bg='#d1fae5',
-                fg='#065f46'
-            )
-            praise = random.choice(ENCOURAGEMENTS)
-            self.score_label.config(text=f'{praise} ⭐⭐⭐ ({score}% Match)')
-            self.next_btn.config(state=tk.NORMAL)
-            self.skip_btn.config(state=tk.DISABLED)
-            self.hint_btn.config(state=tk.DISABLED)
+        if self.active_controller and hasattr(self.active_controller, 'handle_evaluation'):
+            self.active_controller.handle_evaluation(score, feedback_text)
         else:
-            self.flawless_attempt = False
-            SoundPlayer.play_error()
-            self.studio_status_badge.config(
-                text=f'🔄 Practice Needed ({score}% Match) • Re-queued for review',
-                bg='#ffe4e6',
-                fg='#9f1239'
-            )
-            self.score_label.config(text='Keep practicing! We\'ll try this sentence again soon. 🔄')
-            self.next_btn.config(state=tk.NORMAL)
-
-        if self.game_mode == 'guided_mission':
-            data = self.model.get_current_question()
-            if data:
-                self.handle_guided_mission_completion(data, flawless=is_pass, score=score)
+            VoiceRoundController(self).handle_evaluation(score, feedback_text)
 
     def play_my_recording(self):
         self.play_my_voice_btn.config(text='▶️ Playing...', state=tk.DISABLED)
@@ -1149,6 +1130,9 @@ class SentenceJigsawApp:
             self.progress_bar['maximum'] = self.model.total_questions()
             self.progress_bar['value'] = self.model.mastered_questions()
 
+        if self.active_controller:
+            self.active_controller.teardown()
+
         self.buttons_frame.clear_widgets()
         self.chunk_buttons.clear()
         self.answer_flow.clear_widgets()
@@ -1160,36 +1144,15 @@ class SentenceJigsawApp:
             self.memory_badge.config(text=f"{info['icon']} {info['short_name']} (Stage {st})", fg='#4338ca')
             mode = MissionEngine.get_mode_for_stage(st)
             self.current_round_mode = mode
-            if mode == 'fill_blanks':
-                self.setup_fill_in_blanks_round()
-            elif mode == 'voice_mastery':
-                self.setup_voice_mastery_round()
-            elif mode == 'writing':
-                self.setup_writing_round()
-            else:
-                self.setup_standard_round()
-                if mode == 'listening':
-                    self.root.after(300, self.speak_current_question)
-        elif self.game_mode == 'writing':
-            self.current_round_mode = 'writing'
-            self.setup_writing_round()
-        elif self.game_mode == 'voice_mastery':
-            self.current_round_mode = 'voice_mastery'
-            self.setup_voice_mastery_round()
-        elif self.game_mode == 'fill_blanks':
-            self.current_round_mode = 'fill_blanks'
-            self.setup_fill_in_blanks_round()
+        elif self.game_mode in ('writing', 'voice_mastery', 'fill_blanks', 'listening', 'speed_run'):
+            self.current_round_mode = self.game_mode
         else:
             self.current_round_mode = self.game_mode
-            self.setup_standard_round()
 
-        if self.effective_game_mode == 'listening':
-            if hasattr(self, '_listening_after_id') and self._listening_after_id:
-                try:
-                    self.root.after_cancel(self._listening_after_id)
-                except Exception:
-                    pass
-            self._listening_after_id = self.root.after(300, self.speak_current_question)
+        self.active_controller = create_round_controller(self.current_round_mode, self)
+        data = self.model.get_current_question()
+        if data:
+            self.active_controller.setup_round(data)
 
         self.root.update_idletasks()
         self.main_scroll.canvas.yview_moveto(0)
@@ -1199,99 +1162,22 @@ class SentenceJigsawApp:
             pass
 
     def setup_writing_round(self):
-        # Hide Jigsaw pool, answer board, and voice studio
-        self.answer_header.pack_forget()
-        self.answer_board.pack_forget()
-        self.answer_meaning_display.pack_forget()
-        self.pool_label.pack_forget()
-        self.buttons_frame.pack_forget()
-        self.voice_studio.pack_forget()
-
-        # Hide bottom action buttons not relevant in writing mode
-        self.hint_btn.pack_forget()
-        self.undo_btn.pack_forget()
-        self.clear_btn.pack_forget()
-
-        # Hide top duplicate voice controls
-        self.record_btn.pack_forget()
-        self.play_my_voice_btn.pack_forget()
-        self.ai_eval_btn.pack_forget()
-
-        # Display Writing Practice Studio card
-        self.writing_studio.pack(fill=tk.X, pady=(10, 10))
-        self.writing_input.delete('1.0', tk.END)
-        self.writing_diff_display.config(state=tk.NORMAL)
-        self.writing_diff_display.delete('1.0', tk.END)
-        self.writing_diff_display.config(state=tk.DISABLED)
-        self.writing_status_badge.config(
-            text='Type the complete answer above and press Enter',
-            bg='#f1f5f9',
-            fg='#475569'
-        )
-        try:
-            self.writing_input.focus_set()
-        except Exception:
-            pass
+        if self.active_controller:
+            self.active_controller.teardown()
+        self.active_controller = create_round_controller('writing', self)
+        data = self.model.get_current_question()
+        if data:
+            self.active_controller.setup_round(data)
 
     def _handle_writing_return(self, event=None):
         self.submit_writing_answer()
         return 'break'
 
     def submit_writing_answer(self):
-        user_text = self.writing_input.get('1.0', tk.END).strip()
-        if not user_text:
-            messagebox.showinfo('Empty Answer', 'Please type your answer before checking.', parent=self.root)
-            return
-
-        data = self.model.get_current_question()
-        if not data:
-            return
-
-        target_text = " ".join(self.original_chunks)
-        res = SpellingEvaluator.evaluate(user_text, target_text, ignore_case=True, ignore_punctuation=True)
-        score = res['score']
-
-        # Render diff display
-        self.writing_diff_display.config(state=tk.NORMAL)
-        self.writing_diff_display.delete('1.0', tk.END)
-
-        for token in res['tokens']:
-            status = token['status']
-            text = token['text'] + ' '
-            self.writing_diff_display.insert(tk.END, text, status)
-
-        self.writing_diff_display.config(state=tk.DISABLED)
-
-        # Track activity
-        key = MemoryManager.get_sentence_key(data.question, data.chunks)
-        t_store = ProfileManager.get_active_tracker_store()
-        ProgressTracker.record_mode_activity(t_store, key, 'writing')
-        ProfileManager.save_active_tracker_store(t_store)
-
-        if res['is_perfect'] or score >= 90:
-            SoundPlayer.play_success()
-            self.flawless_attempt = True
-            self.writing_status_badge.config(
-                text=f"⭐ Flawless! ({score}% Match) • Spelling & Syntax Verified",
-                bg='#dcfce7',
-                fg='#166534'
-            )
-            self.score_label.config(text=f"+100 pts! ⭐ Written Mastered")
-            self.next_btn.config(state=tk.NORMAL)
-            if self.game_mode == 'guided_mission':
-                self.handle_guided_mission_completion(data, flawless=True, score=score)
+        if self.active_controller and hasattr(self.active_controller, 'submit_writing_answer'):
+            self.active_controller.submit_writing_answer()
         else:
-            SoundPlayer.play_error()
-            self.flawless_attempt = False
-            self.writing_status_badge.config(
-                text=f"🔄 Review Needed ({score}% Match) • Notice highlighted words",
-                bg='#ffe4e6',
-                fg='#9f1239'
-            )
-            self.score_label.config(text="Check spelling of highlighted words 🔄")
-            self.next_btn.config(state=tk.NORMAL)
-            if self.game_mode == 'guided_mission':
-                self.handle_guided_mission_completion(data, flawless=False, score=score)
+            WritingRoundController(self).submit_writing_answer()
 
     def handle_guided_mission_completion(self, data, flawless: bool, score: int = 100):
         curr_st = getattr(data, 'ladder_stage', 1)
@@ -1378,189 +1264,35 @@ class SentenceJigsawApp:
         self.show_home_view(tab_index=2)
 
     def setup_voice_mastery_round(self):
-        # Hide Jigsaw pool and answer board in Voice Mastery mode
-        self.writing_studio.pack_forget()
-        self.answer_header.pack_forget()
-        self.answer_board.pack_forget()
-        self.answer_meaning_display.pack_forget()
-        self.pool_label.pack_forget()
-        self.buttons_frame.pack_forget()
-
-        # Hide bottom action buttons not relevant in Voice Mastery mode
-        self.hint_btn.pack_forget()
-        self.undo_btn.pack_forget()
-        self.clear_btn.pack_forget()
-
-        # Hide top duplicate voice controls in question header (studio has dedicated controls)
-        self.record_btn.pack_forget()
-        self.play_my_voice_btn.pack_forget()
-        self.ai_eval_btn.pack_forget()
-
-        # Display Voice Practice Studio card prominently
-        self.voice_studio.pack(fill=tk.X, pady=(10, 10))
-        self.studio_feedback_lbl.config(text='')
-        self.studio_status_badge.config(text='Ready to record answer', bg='#f1f5f9', fg='#475569')
-        self.studio_play_btn.config(state=tk.NORMAL if VoiceRecorder.has_recording() else tk.DISABLED)
-        self.studio_eval_btn.config(state=tk.NORMAL if VoiceRecorder.has_recording() else tk.DISABLED)
+        if self.active_controller:
+            self.active_controller.teardown()
+        self.active_controller = create_round_controller('voice_mastery', self)
+        data = self.model.get_current_question()
+        if data:
+            self.active_controller.setup_round(data)
 
     def setup_standard_round(self):
-        # Restore jigsaw elements if coming from voice or writing mastery
-        self.voice_studio.pack_forget()
-        self.writing_studio.pack_forget()
-        self.answer_header.pack(fill=tk.X, pady=(5, 5))
-        self.answer_board.pack(pady=5, fill=tk.X)
-        self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X)
-        self.pool_label.pack(anchor=tk.W, pady=(12, 5))
-        self.buttons_frame.pack(fill=tk.X, pady=5, expand=True)
-
-        # Restore top voice buttons if hidden
-        if self.ai_eval_btn.winfo_manager() != 'pack':
-            self.ai_eval_btn.pack(side=tk.RIGHT, padx=4)
-            self.play_my_voice_btn.pack(side=tk.RIGHT, padx=4)
-            self.record_btn.pack(side=tk.RIGHT, padx=4)
-
-        # Restore bottom dock buttons (hint, undo, clear) before skip_btn
-        if self.hint_btn.winfo_manager() != 'pack':
-            if hasattr(self, 'skip_btn') and self.skip_btn.winfo_manager() == 'pack':
-                self.hint_btn.pack(side=tk.LEFT, padx=6, before=self.skip_btn)
-                self.undo_btn.pack(side=tk.LEFT, padx=6, before=self.skip_btn)
-                self.clear_btn.pack(side=tk.LEFT, padx=6, before=self.skip_btn)
-            else:
-                self.hint_btn.pack(side=tk.LEFT, padx=6)
-                self.undo_btn.pack(side=tk.LEFT, padx=6)
-                self.clear_btn.pack(side=tk.LEFT, padx=6)
-
-        scrambled = GameEngine.scramble_chunks(self.original_chunks)
-        tile_colors = self.theme.get('tile_colors', ['#bae1ff']).copy()
-        random.shuffle(tile_colors)
-        show_hover = self.settings.get('show_hover_meanings', True)
-        
-        self.answer_header_label.config(text='Your Answer (Click block to remove • Drag to reorder):')
-        self.pool_label.config(text='Click, drag, or Hover for meaning:')
-        for idx, chunk in enumerate(scrambled):
-            bg_color = tile_colors[idx % len(tile_colors)]
-            badge_prefix = self.get_badge_for_index(idx)
-            badge_text = f'{badge_prefix} {chunk}' if badge_prefix else chunk
-            btn = DraggablePoolButton(
-                self.buttons_frame, 
-                chunk=chunk,
-                badge_text=badge_text,
-                bg_color=bg_color,
-                font=self.button_font,
-                on_click_callback=self.select_chunk,
-                on_drop_callback=self.handle_pool_drop,
-                on_drag_status_callback=self.set_board_drag_highlight,
-                on_pronounce_callback=self.speak_chunk,
-                show_hover_meanings=show_hover
-            )
-            self.buttons_frame.add_widget(btn)
-            self.chunk_buttons.append({'text': chunk, 'btn': btn, 'color': bg_color, 'badge': badge_text})
-        
-        self.render_answer_chips()
+        if self.active_controller:
+            self.active_controller.teardown()
+        mode = 'listening' if self.effective_game_mode == 'listening' else ('speed_run' if self.effective_game_mode == 'speed_run' else 'mastery')
+        self.active_controller = create_round_controller(mode, self)
+        data = self.model.get_current_question()
+        if data:
+            self.active_controller.setup_round(data)
 
     def setup_fill_in_blanks_round(self):
-        # Restore jigsaw elements if coming from voice or writing mastery
-        self.voice_studio.pack_forget()
-        self.writing_studio.pack_forget()
-        self.answer_header.pack(fill=tk.X, pady=(5, 5))
-        self.answer_board.pack(pady=5, fill=tk.X)
-        self.answer_meaning_display.pack(pady=(4, 10), fill=tk.X)
-        self.pool_label.pack(anchor=tk.W, pady=(12, 5))
-        self.buttons_frame.pack(fill=tk.X, pady=5, expand=True)
-
-        # Restore top voice buttons if hidden
-        if self.ai_eval_btn.winfo_manager() != 'pack':
-            self.ai_eval_btn.pack(side=tk.RIGHT, padx=4)
-            self.play_my_voice_btn.pack(side=tk.RIGHT, padx=4)
-            self.record_btn.pack(side=tk.RIGHT, padx=4)
-
-        # Restore bottom dock buttons (hint, undo, clear) before skip_btn
-        if self.hint_btn.winfo_manager() != 'pack':
-            if hasattr(self, 'skip_btn') and self.skip_btn.winfo_manager() == 'pack':
-                self.hint_btn.pack(side=tk.LEFT, padx=6, before=self.skip_btn)
-                self.undo_btn.pack(side=tk.LEFT, padx=6, before=self.skip_btn)
-                self.clear_btn.pack(side=tk.LEFT, padx=6, before=self.skip_btn)
-            else:
-                self.hint_btn.pack(side=tk.LEFT, padx=6)
-                self.undo_btn.pack(side=tk.LEFT, padx=6)
-                self.clear_btn.pack(side=tk.LEFT, padx=6)
-        mode = self.settings.get('fill_blanks_count_mode', 'auto')
-        self.hidden_chunk_indices = GameEngine.calculate_blank_indices(self.original_chunks, mode)
-        blank_chunks = [self.original_chunks[i] for i in self.hidden_chunk_indices]
-        random.shuffle(blank_chunks)
-
-        self.answer_header_label.config(text='Complete the Sentence (Fill in the blanks):')
-        self.pool_label.config(text='Pick missing words to fill the blanks:')
-        tile_colors = self.theme.get('tile_colors', ['#bae1ff']).copy()
-        random.shuffle(tile_colors)
-        show_hover = self.settings.get('show_hover_meanings', True)
-
-        for idx, chunk in enumerate(blank_chunks):
-            bg_color = tile_colors[idx % len(tile_colors)]
-            badge_prefix = self.get_badge_for_index(idx)
-            badge_text = f'{badge_prefix} {chunk}' if badge_prefix else chunk
-            btn = DraggablePoolButton(
-                self.buttons_frame, 
-                chunk=chunk,
-                badge_text=badge_text,
-                bg_color=bg_color,
-                font=self.button_font,
-                on_click_callback=self.select_chunk,
-                on_drop_callback=self.handle_pool_drop,
-                on_drag_status_callback=self.set_board_drag_highlight,
-                on_pronounce_callback=self.speak_chunk,
-                show_hover_meanings=show_hover
-            )
-            self.buttons_frame.add_widget(btn)
-            self.chunk_buttons.append({'text': chunk, 'btn': btn, 'color': bg_color, 'badge': badge_text})
-
-        self.render_answer_chips()
+        if self.active_controller:
+            self.active_controller.teardown()
+        self.active_controller = create_round_controller('fill_blanks', self)
+        data = self.model.get_current_question()
+        if data:
+            self.active_controller.setup_round(data)
 
     def handle_pool_drop(self, chunk, target_widget, x_root=0, y_root=0, mode='insert_left'):
-        is_inside_board = False
-        target_chip = None
-        curr = target_widget
-        while curr:
-            if isinstance(curr, AnswerChip) and not curr.is_blank:
-                target_chip = curr
-            if curr in (self.answer_board, self.answer_flow):
-                is_inside_board = True
-                break
-            curr = getattr(curr, 'master', None)
-
-        if not is_inside_board:
-            return
-
-        if target_chip and target_chip.text in self.user_selected_chunks:
-            idx = self.user_selected_chunks.index(target_chip.text)
-            if mode == 'swap':
-                # Replace the target chip with the new pool chunk (restore old chunk to pool)
-                old_chunk = self.user_selected_chunks[idx]
-                self.user_selected_chunks[idx] = chunk
-                SoundPlayer.play_click()
-                self.render_answer_chips()
-                self.undo_btn.config(state=tk.NORMAL)
-                # Disable newly placed pool button
-                for item in self.chunk_buttons:
-                    if item['text'] == chunk and item['btn'].state == tk.NORMAL:
-                        item['btn'].set_state(tk.DISABLED, bg=self.theme['button_disabled'])
-                        break
-                # Restore replaced chunk button to available state
-                for item in self.chunk_buttons:
-                    if item['text'] == old_chunk and item['btn'].state == tk.DISABLED:
-                        item['btn'].set_state(tk.NORMAL, bg=item['color'])
-                        break
-                expected_len = len(self.hidden_chunk_indices) if self.effective_game_mode == 'fill_blanks' else len(self.original_chunks)
-                if len(self.user_selected_chunks) == expected_len:
-                    self.check_answer()
-                return
-            elif mode == 'insert_right':
-                insert_idx = idx + 1
-            else:
-                insert_idx = idx
-            self.select_chunk(chunk, insert_index=insert_idx)
+        if self.active_controller:
+            self.active_controller.on_pool_drop(chunk, target_widget, x_root, y_root, mode)
         else:
-            self.select_chunk(chunk)
+            JigsawRoundController(self).on_pool_drop(chunk, target_widget, x_root, y_root, mode)
 
     def get_badge_for_index(self, index: int) -> str:
         """Returns clean Apple-style pill shortcut badge (1-9, 0, A-Z) for block index."""
@@ -1655,296 +1387,52 @@ class SentenceJigsawApp:
             DictionaryManager.translate_sentence_async(answer_sentence, on_ans_trans_done)
 
     def render_answer_chips(self):
-        self.answer_flow.clear_widgets()
-        show_hover = self.settings.get('show_hover_meanings', True)
-
-        if self.user_selected_chunks:
-            self.listen_answer_btn.config(state=tk.NORMAL)
+        if self.active_controller:
+            self.active_controller.render_answer_board()
         else:
-            self.listen_answer_btn.config(state=tk.DISABLED)
-
-        if self.effective_game_mode == 'fill_blanks':
-            blank_fill_iter = iter(self.user_selected_chunks)
-            for i, chunk in enumerate(self.original_chunks):
-                if i in self.hidden_chunk_indices:
-                    filled_val = next(blank_fill_iter, None)
-                    if filled_val is not None:
-                        chip = AnswerChip(
-                            self.answer_flow, 
-                            text=filled_val, 
-                            color=self.theme['chip_bg'], 
-                            on_remove_callback=lambda chip, c=filled_val: self.remove_chunk(c),
-                            on_swap_callback=lambda c1, c2, m='swap': self.swap_answer_chips(c1, c2, m),
-                            on_drag_status_callback=self.set_board_drag_highlight,
-                            on_pronounce_callback=self.speak_chunk,
-                            is_blank=False,
-                            font=self.answer_font,
-                            show_hover_meanings=show_hover
-                        )
-                    else:
-                        chip = AnswerChip(
-                            self.answer_flow, 
-                            text='  ____  ', 
-                            color=self.theme.get('blank_bg', '#fef3c7'), 
-                            on_remove_callback=lambda c: None,
-                            on_swap_callback=lambda c1, c2, m='swap': None,
-                            on_drag_status_callback=None,
-                            on_pronounce_callback=None,
-                            is_blank=True,
-                            font=self.answer_font,
-                            show_hover_meanings=False
-                        )
-                    self.answer_flow.add_widget(chip)
-                else:
-                    lbl = tk.Label(self.answer_flow, text=chunk, font=self.answer_font, bg='#e2e8f0', fg='#1e293b', padx=12, pady=6, relief=tk.SOLID, bd=1)
-                    if show_hover:
-                        lbl.bind('<Enter>', lambda e, c=chunk: HoverMeaningTooltip.show(c, e.x_root, e.y_root))
-                        lbl.bind('<Leave>', lambda e: HoverMeaningTooltip.hide())
-                    lbl.bind('<Button-3>', lambda e, c=chunk: self.speak_chunk(c))
-                    self.answer_flow.add_widget(lbl)
-        else:
-            if not self.user_selected_chunks:
-                placeholder = tk.Label(self.answer_flow, text='Click or drag blocks here / Press keys 1-9 to answer...', font=('', 14, 'italic'), fg='#888888', bg=self.theme['board_bg_default'])
-                self.answer_flow.add_widget(placeholder)
-            else:
-                for chunk in self.user_selected_chunks:
-                    color = self.theme['chip_bg']
-                    for item in self.chunk_buttons:
-                        if item['text'] == chunk:
-                            color = item['color']
-                            break
-                    chip = AnswerChip(
-                        self.answer_flow, 
-                        text=chunk, 
-                        color=color, 
-                        on_remove_callback=lambda chip, c=chunk: self.remove_chunk(c),
-                        on_swap_callback=lambda c1, c2, m='swap': self.swap_answer_chips(c1, c2, m),
-                        on_drag_status_callback=self.set_board_drag_highlight,
-                        on_pronounce_callback=self.speak_chunk,
-                        is_blank=False,
-                        font=self.answer_font,
-                        show_hover_meanings=show_hover
-                    )
-                    self.answer_flow.add_widget(chip)
+            JigsawRoundController(self).render_answer_board()
 
     def select_chunk(self, chunk, insert_index=None):
-        SoundPlayer.play_click()
-        if insert_index is not None and 0 <= insert_index <= len(self.user_selected_chunks):
-            self.user_selected_chunks.insert(insert_index, chunk)
+        if self.active_controller:
+            self.active_controller.on_chunk_selected(chunk, insert_index)
         else:
-            self.user_selected_chunks.append(chunk)
-        self.render_answer_chips()
-        self.undo_btn.config(state=tk.NORMAL)
-        self.clear_btn.config(state=tk.NORMAL)
-
-        for item in self.chunk_buttons:
-            if item['text'] == chunk and item['btn'].state == tk.NORMAL:
-                item['btn'].set_state(tk.DISABLED, bg=self.theme['button_disabled'])
-                break
-        
-        expected_len = len(self.hidden_chunk_indices) if self.effective_game_mode == 'fill_blanks' else len(self.original_chunks)
-        if len(self.user_selected_chunks) == expected_len:
-            self.check_answer()
+            JigsawRoundController(self).on_chunk_selected(chunk, insert_index)
 
     def remove_chunk(self, chunk):
-        if chunk in self.user_selected_chunks:
-            self.user_selected_chunks.remove(chunk)
-            self.render_answer_chips()
-            
-            for item in self.chunk_buttons:
-                if item['text'] == chunk and item['btn'].state == tk.DISABLED:
-                    item['btn'].set_state(tk.NORMAL, bg=item['color'])
-                    break
-                    
-            if not self.user_selected_chunks:
-                self.undo_btn.config(state=tk.DISABLED)
-                self.clear_btn.config(state=tk.DISABLED)
-                self.listen_answer_btn.config(state=tk.DISABLED)
-                
-            self.next_btn.config(state=tk.DISABLED)
-            self.hint_btn.config(state=tk.NORMAL)
-            self.update_board_visuals(self.theme['board_bg_default'])
+        if self.active_controller:
+            self.active_controller.on_chunk_removed(chunk)
+        else:
+            JigsawRoundController(self).on_chunk_removed(chunk)
 
     def swap_answer_chips(self, chip1, chip2, mode='swap'):
-        try:
-            if chip1.text in self.user_selected_chunks and chip2.text in self.user_selected_chunks:
-                orig_idx1 = self.user_selected_chunks.index(chip1.text)
-                orig_idx2 = self.user_selected_chunks.index(chip2.text)
-
-                if mode == 'swap' or mode is None:
-                    # Direct swap / replace positions of chip1 and chip2
-                    self.user_selected_chunks[orig_idx1], self.user_selected_chunks[orig_idx2] = (
-                        self.user_selected_chunks[orig_idx2], self.user_selected_chunks[orig_idx1]
-                    )
-                else:
-                    # Reorder / insert between
-                    self.user_selected_chunks.remove(chip1.text)
-                    target_idx = self.user_selected_chunks.index(chip2.text)
-                    insert_pos = (target_idx + 1) if mode == 'insert_right' else target_idx
-                    self.user_selected_chunks.insert(insert_pos, chip1.text)
-
-                SoundPlayer.play_click()
-                self.render_answer_chips()
-                
-                expected_len = len(self.hidden_chunk_indices) if self.effective_game_mode == 'fill_blanks' else len(self.original_chunks)
-                if len(self.user_selected_chunks) == expected_len:
-                    self.check_answer()
-        except ValueError:
-            pass
+        if self.active_controller:
+            self.active_controller.on_swap_chunks(chip1, chip2, mode)
+        else:
+            JigsawRoundController(self).on_swap_chunks(chip1, chip2, mode)
 
     def give_hint(self):
-        self.hints_used += 1
-        self.flawless_attempt = False
-        
-        if self.effective_game_mode == 'fill_blanks':
-            expected_blanks = [self.original_chunks[i] for i in self.hidden_chunk_indices]
-            first_wrong_idx = None
-            for idx, chunk in enumerate(self.user_selected_chunks):
-                if idx >= len(expected_blanks) or chunk != expected_blanks[idx]:
-                    first_wrong_idx = idx
-                    break
-            if first_wrong_idx is not None:
-                while len(self.user_selected_chunks) > first_wrong_idx:
-                    self.remove_chunk(self.user_selected_chunks[-1])
-
-            current_len = len(self.user_selected_chunks)
-            if current_len < len(expected_blanks):
-                target_chunk = expected_blanks[current_len]
-                self.select_chunk(target_chunk)
+        if self.active_controller:
+            self.active_controller.on_hint()
         else:
-            current_len = len(self.user_selected_chunks)
-            if current_len < len(self.original_chunks):
-                target_chunk = self.original_chunks[current_len]
-                self.select_chunk(target_chunk)
+            JigsawRoundController(self).on_hint()
 
     def undo_last(self):
-        if not self.user_selected_chunks:
-            return
-        last_chunk = self.user_selected_chunks[-1]
-        self.remove_chunk(last_chunk)
+        if self.active_controller:
+            self.active_controller.on_undo()
+        else:
+            JigsawRoundController(self).on_undo()
 
     def clear_selection(self):
-        self.user_selected_chunks.clear()
-        self.update_board_visuals(self.theme['board_bg_default'])
-        
-        self.undo_btn.config(state=tk.DISABLED)
-        self.next_btn.config(state=tk.DISABLED)
-        self.hint_btn.config(state=tk.NORMAL)
-        self.listen_answer_btn.config(state=tk.DISABLED)
-
-        if self.effective_game_mode == 'fill_blanks':
-            # In Blanks mode, keep all fixed phrases and sentence structure intact!
-            # Only reset filled blanks to empty slots and re-enable all pool choices.
-            self.render_answer_chips()
-            for item in self.chunk_buttons:
-                item['btn'].set_state(tk.NORMAL, bg=item['color'])
-            return
-
-        self.render_answer_chips()
-        # Re-shuffle pool blocks and re-assign shortcut badges on Clear
-        self.buttons_frame.clear_widgets()
-        self.chunk_buttons.clear()
-        self.setup_standard_round()
+        if self.active_controller:
+            self.active_controller.on_clear()
+        else:
+            JigsawRoundController(self).on_clear()
 
     def check_answer(self):
-        is_correct = False
-        if self.effective_game_mode == 'fill_blanks':
-            expected_chunks = [self.original_chunks[i] for i in self.hidden_chunk_indices]
-            is_correct = (self.user_selected_chunks == expected_chunks)
+        if self.active_controller:
+            self.active_controller.check_answer()
         else:
-            is_correct = (self.user_selected_chunks == self.original_chunks)
-
-        if is_correct:
-            SoundPlayer.play_success()
-            self.update_board_visuals(self.theme['board_bg_correct'])
-            
-            # Set all answer chips and fixed labels to green validation status
-            for child in self.answer_flow.winfo_children():
-                if isinstance(child, AnswerChip):
-                    child.set_validation_status('correct')
-                elif isinstance(child, tk.Label):
-                    child.config(bg='#dcfce7', fg='#14532d')
-
-            if self.effective_game_mode == 'listening':
-                data = self.model.get_current_question()
-                self.question_label.config(text=data.question, foreground='#1e8449')
-                
-            data = self.model.get_current_question()
-            if data:
-                meaning = data.meaning or DictionaryManager.get_meaning(data.question)
-                if meaning:
-                    self.set_meaning_text(f'Meaning: {meaning}')
-            
-            stars = 3
-            if self.hints_used == 1:
-                stars = 2
-            elif self.hints_used >= 2:
-                stars = 1
-                
-            praise = random.choice(ENCOURAGEMENTS)
-            
-            if self.game_mode == 'speed_run':
-                self.speed_run_streak += 1
-                self.speed_run_total_solved += 1
-                points = GameEngine.calculate_speed_run_points(self.speed_run_streak)
-                self.speed_run_score += points
-                self.score_label.config(text=f'+{points} pts! 🔥 Streak {self.speed_run_streak}')
-            elif not self.flawless_attempt and self.effective_game_mode in ('mastery', 'listening'):
-                self.score_label.config(text=f'{praise} ' + '⭐' * stars + ' (We\'ll review this soon!)')
-            else:
-                self.score_label.config(text=f'{praise} ' + '⭐' * stars)
-            
-            self.next_btn.config(state=tk.NORMAL)
-            self.skip_btn.config(state=tk.DISABLED)
-            self.undo_btn.config(state=tk.DISABLED) 
-            self.hint_btn.config(state=tk.DISABLED)
-
-            if self.game_mode == 'guided_mission':
-                data = self.model.get_current_question()
-                if data:
-                    self.handle_guided_mission_completion(data, flawless=self.flawless_attempt, score=100)
-        else:
-            SoundPlayer.play_error()
-            self.flawless_attempt = False
-            if self.game_mode == 'speed_run':
-                self.speed_run_streak = 0
-            self.update_board_visuals(self.theme['board_bg_incorrect'])
-            
-            # Calculate granular phrase-level alignment feedback
-            if self.effective_game_mode == 'fill_blanks':
-                expected = [self.original_chunks[i] for i in self.hidden_chunk_indices]
-            else:
-                expected = self.original_chunks
-
-            alignments = GameEngine.diff_align_chunks(self.user_selected_chunks, expected)
-            
-            # Apply color cues directly to the interactive user answer chips
-            user_chip_widgets = [c for c in self.answer_flow.winfo_children() if isinstance(c, AnswerChip) and not c.is_blank]
-            user_chip_idx = 0
-            for text, status, role in alignments:
-                if role == 'user' and user_chip_idx < len(user_chip_widgets):
-                    user_chip_widgets[user_chip_idx].set_validation_status(status)
-                    user_chip_idx += 1
-
-            def reset_flash():
-                try:
-                    if not (hasattr(self, 'root') and self.root.winfo_exists()):
-                        return
-                    self.update_board_visuals(self.theme['board_bg_default'])
-                    for c in self.answer_flow.winfo_children():
-                        if isinstance(c, AnswerChip):
-                            c.set_validation_status(None)
-                        elif isinstance(c, tk.Label):
-                            c.config(bg='#e2e8f0', fg='#1e293b')
-                except Exception:
-                    pass
-
-            if hasattr(self, '_flash_after_id') and self._flash_after_id:
-                try:
-                    self.root.after_cancel(self._flash_after_id)
-                except Exception:
-                    pass
-            self._flash_after_id = self.root.after(1400, reset_flash) 
+            JigsawRoundController(self).check_answer() 
 
     def restart_lesson(self):
         if not self.model.qa_data:
