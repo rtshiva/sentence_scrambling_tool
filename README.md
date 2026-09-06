@@ -84,20 +84,25 @@ cd sentence_scrambling_tool
 pip install -r requirements.txt
 
 # 3. Launch the application
-python jigsaw.py
-```
+# Windows (1-Click):
+scripts\run_windows.bat
 
-### Running the Autonomous Visual Demo Bot
-```bash
-python bot.py
+# macOS (1-Click):
+./scripts/run_mac.sh
+
+# Linux (1-Click):
+./scripts/run_linux.sh
+
+# Or cross-platform launcher:
+python run_app.py
 ```
 
 ---
 
 ## 🧪 Testing & Validation
-The project includes a comprehensive test suite covering game engines, SM-2 memory intervals, UI event routing, TTS rate bounds, and profile persistence:
+The project includes a comprehensive test suite (124 tests) covering game engines, SM-2 memory intervals, UI event routing, TTS rate bounds, and profile persistence:
 ```bash
-python -m unittest discover tests -v
+pytest
 ```
 
 ---

@@ -896,9 +896,9 @@
             <!-- Mock Header -->
             <div class="mock-header">
               <div class="mock-profile">
-                <div class="avatar-circle">👤</div>
+                <div class="avatar-circle" title="Student Avatar">🐺</div>
                 <div>
-                  <strong style="color:#0f172a; font-size:15px;">Student: Arya Sharma</strong>
+                  <strong style="color:#0f172a; font-size:15px;">Student: Arya Stark</strong>
                   <div style="font-size:12px; color:#64748b;">Deck: General Science & Nature • Card #3 of 12</div>
                 </div>
               </div>
@@ -1498,11 +1498,22 @@
     <section id="quickstart">
       <div class="launch-box">
         <h3 style="font-size:24px; font-weight:800; color:white;">🚀 Ready to Master Sentences?</h3>
-        <p style="color:#94a3b8; font-size:15px;">Launch the full interactive desktop app now with one simple terminal command:</p>
-        <div class="launch-cmd">
-          <span>python jigsaw.py</span>
-          <span style="color:#64748b; font-size:12px;"># or: py jigsaw.py (Windows)</span>
+        <p style="color:#94a3b8; font-size:15px;">Launch the full interactive desktop app with automatic dependency checks using your OS launcher:</p>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 8px;">
+          <div class="launch-cmd">
+            <span>scripts\run_windows.bat</span>
+            <span style="color:#94a3b8; font-size:12px;">🪟 Windows (1-Click)</span>
+          </div>
+          <div class="launch-cmd">
+            <span>./scripts/run_mac.sh</span>
+            <span style="color:#94a3b8; font-size:12px;">🍎 macOS (1-Click)</span>
+          </div>
+          <div class="launch-cmd">
+            <span>./scripts/run_linux.sh</span>
+            <span style="color:#94a3b8; font-size:12px;">🐧 Linux (1-Click)</span>
+          </div>
         </div>
+        <p style="color:#94a3b8; font-size:13px; margin-top:6px;">Or run the cross-platform launcher directly via terminal: <code style="color:#38bdf8; background:#1e293b; padding:2px 8px; border-radius:4px; font-family:'JetBrains Mono', monospace;">python run_app.py</code> (or <code style="color:#38bdf8; background:#1e293b; padding:2px 8px; border-radius:4px; font-family:'JetBrains Mono', monospace;">py run_app.py</code>)</p>
       </div>
     </section>
 
