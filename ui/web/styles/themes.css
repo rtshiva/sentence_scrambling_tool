@@ -1,0 +1,2011 @@
+/* ============================================================ */
+/* THEMES ENGINE (Pastel, Cozy Dark Mode, Space Explorer)       */
+/* ============================================================ */
+
+/* 1. Pastel Theme (Default Clean Classroom) */
+[data-theme="pastel"], body:not([data-theme]) {
+  --bg-main: #f8fafc;
+  --text-main: #0f172a;
+}
+
+/* 2. Dark Mode */
+[data-theme="dark"] body {
+  background-color: #0f172a !important;
+  color: #f1f5f9 !important;
+}
+[data-theme="dark"] .bg-white {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+}
+[data-theme="dark"] .bg-slate-50 {
+  background-color: #0f172a !important;
+}
+[data-theme="dark"] .bg-slate-100 {
+  background-color: #334155 !important;
+  color: #f8fafc !important;
+}
+[data-theme="dark"] .text-slate-900, [data-theme="dark"] .text-slate-800, [data-theme="dark"] .text-slate-700 {
+  color: #f8fafc !important;
+}
+[data-theme="dark"] .text-slate-500, [data-theme="dark"] .text-slate-600 {
+  color: #94a3b8 !important;
+}
+[data-theme="dark"] .text-indigo-950 {
+  color: #f8fafc !important;
+}
+[data-theme="dark"] .border-slate-200, [data-theme="dark"] .border-slate-100 {
+  border-color: #334155 !important;
+}
+
+/* Dark Mode Chip Slots */
+[data-theme="dark"] .chip-slot {
+  background-color: #1e293b !important;
+  border-color: #475569 !important;
+  color: #94a3b8 !important;
+}
+
+/* Filled Blank Slot in Dark Mode - High Contrast Vivid Text */
+[data-theme="dark"] .chip-slot.chip-slot-filled,
+[data-theme="dark"] .chip-slot.border-indigo-500 {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%) !important;
+  border: 2px solid #818cf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35) !important;
+}
+
+[data-theme="dark"] .chip-slot.chip-slot-filled *,
+[data-theme="dark"] .chip-slot.chip-slot-filled .slot-text,
+[data-theme="dark"] .chip-slot.border-indigo-500 * {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .chip-slot.chip-slot-filled .slot-remove-btn,
+[data-theme="dark"] .chip-slot.border-indigo-500 .slot-remove-btn {
+  color: #a5b4fc !important;
+}
+
+[data-theme="dark"] .chip-slot.chip-slot-filled .slot-remove-btn:hover,
+[data-theme="dark"] .chip-slot.border-indigo-500 .slot-remove-btn:hover {
+  color: #ffffff !important;
+}
+
+/* Active Blank Slot in Dark Mode */
+[data-theme="dark"] .chip-slot.chip-slot-active,
+[data-theme="dark"] .chip-slot.target-active {
+  background-color: rgba(245, 158, 11, 0.18) !important;
+  border: 2px dashed #f59e0b !important;
+  color: #fef08a !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.25) !important;
+}
+
+[data-theme="dark"] .chip-slot.chip-slot-active *,
+[data-theme="dark"] .chip-slot.target-active * {
+  color: #fef08a !important;
+}
+
+/* Evaluation States in Dark Mode */
+[data-theme="dark"] .chip-slot.filled-correct,
+[data-theme="dark"] .chip-slot.filled-correct * {
+  border-color: #34d399 !important;
+  background-color: rgba(6, 78, 59, 0.75) !important;
+  color: #a7f3d0 !important;
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.3) !important;
+}
+
+[data-theme="dark"] .chip-slot.filled-wrong,
+[data-theme="dark"] .chip-slot.filled-wrong * {
+  border-color: #fb7185 !important;
+  background-color: rgba(76, 5, 25, 0.75) !important;
+  color: #fecdd3 !important;
+  box-shadow: 0 0 14px rgba(251, 113, 133, 0.3) !important;
+}
+
+[data-theme="dark"] .chip-btn {
+  background-color: #334155 !important;
+  border-color: #38bdf8 !important;
+  color: #f8fafc !important;
+}
+
+/* Celebration Next Sentence Button in Dark Mode */
+[data-theme="dark"] #celeb-next-btn {
+  background: #ffffff !important;
+  color: #064e3b !important;
+  border: 1px solid #a7f3d0 !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-theme="dark"] #celeb-next-btn:hover {
+  background: #ecfdf5 !important;
+  color: #065f46 !important;
+}
+
+/* 3. Space Explorer Theme */
+[data-theme="space"] body {
+  background-color: #030712 !important;
+  background: 
+    radial-gradient(ellipse 90% 60% at 20% -10%, rgba(99, 102, 241, 0.22), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 85% 15%, rgba(168, 85, 247, 0.20), transparent 60%),
+    radial-gradient(ellipse 80% 60% at 50% 95%, rgba(14, 165, 233, 0.18), transparent 70%),
+    radial-gradient(circle 600px at 80% 80%, rgba(236, 72, 153, 0.12), transparent 60%),
+    radial-gradient(ellipse at center, #0a0e27 0%, #030712 100%) !important;
+  background-attachment: fixed !important;
+  color: #f9fafb !important;
+}
+
+/* Space Universe Background Layers */
+#space-universe {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+[data-theme="space"] #space-universe {
+  display: block !important;
+}
+
+.nebula-dust {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.55;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+.nebula-dust-1 {
+  width: 650px;
+  height: 550px;
+  top: -100px;
+  left: 8%;
+  background: radial-gradient(circle, rgba(124, 58, 237, 0.32) 0%, rgba(79, 70, 229, 0.18) 50%, transparent 70%);
+  animation: nebulaDrift1 26s ease-in-out infinite alternate;
+}
+
+.nebula-dust-2 {
+  width: 700px;
+  height: 600px;
+  bottom: -90px;
+  right: 5%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.26) 0%, rgba(59, 130, 246, 0.16) 45%, transparent 70%);
+  animation: nebulaDrift2 32s ease-in-out infinite alternate;
+}
+
+.nebula-dust-3 {
+  width: 520px;
+  height: 480px;
+  top: 40%;
+  right: 30%;
+  background: radial-gradient(circle, rgba(236, 72, 153, 0.20) 0%, rgba(168, 85, 247, 0.14) 50%, transparent 70%);
+  animation: nebulaDrift3 22s ease-in-out infinite alternate;
+}
+
+@keyframes nebulaDrift1 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.45; }
+  50% { transform: translate(60px, 40px) scale(1.12); opacity: 0.65; }
+  100% { transform: translate(-30px, 75px) scale(0.95); opacity: 0.5; }
+}
+
+@keyframes nebulaDrift2 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  50% { transform: translate(-50px, -45px) scale(1.15); opacity: 0.62; }
+  100% { transform: translate(45px, -65px) scale(0.92); opacity: 0.45; }
+}
+
+@keyframes nebulaDrift3 {
+  0% { transform: translate(0, 0) scale(0.95); opacity: 0.35; }
+  50% { transform: translate(-35px, 45px) scale(1.08); opacity: 0.55; }
+  100% { transform: translate(45px, -25px) scale(1); opacity: 0.4; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nebula-dust {
+    animation: none !important;
+  }
+}
+
+/* Translucent Sci-Fi Cockpit / Glassmorphic Panels */
+[data-theme="space"] .bg-white {
+  background-color: rgba(15, 23, 42, 0.76) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border-color: rgba(99, 102, 241, 0.28) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+}
+
+[data-theme="space"] .bg-slate-50 {
+  background-color: rgba(10, 15, 30, 0.65) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-color: rgba(99, 102, 241, 0.2) !important;
+}
+
+[data-theme="space"] .bg-slate-100 {
+  background-color: rgba(30, 41, 59, 0.72) !important;
+  border-color: rgba(99, 102, 241, 0.24) !important;
+  color: #f9fafb !important;
+}
+
+[data-theme="space"] .text-slate-900, 
+[data-theme="space"] .text-slate-800, 
+[data-theme="space"] .text-slate-700 {
+  color: #f9fafb !important;
+}
+
+[data-theme="space"] .text-slate-500, 
+[data-theme="space"] .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+[data-theme="space"] .text-indigo-950 {
+  color: #ffffff !important;
+}
+
+[data-theme="space"] .border-slate-200, 
+[data-theme="space"] .border-slate-100 {
+  border-color: rgba(71, 85, 105, 0.5) !important;
+}
+
+[data-theme="space"] .border-slate-200\/90 {
+  border-color: rgba(99, 102, 241, 0.28) !important;
+}
+
+/* Space Explorer Hero Banner */
+[data-theme="space"] #view-dashboard > .bg-gradient-to-r {
+  background: linear-gradient(135deg, rgba(30, 27, 75, 0.88) 0%, rgba(49, 46, 129, 0.82) 45%, rgba(88, 28, 135, 0.88) 100%) !important;
+  border: 1px solid rgba(168, 85, 247, 0.4) !important;
+  box-shadow: 0 12px 40px -8px rgba(124, 58, 237, 0.4) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+/* Word Chips & Target Slots (Space Theme) */
+[data-theme="space"] .chip-slot {
+  background-color: rgba(15, 23, 42, 0.6) !important;
+  border: 2px dashed rgba(168, 85, 247, 0.45) !important;
+  color: #94a3b8 !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Filled Blank Slot in Space Theme - Luminous Neon Glass / Celestial Pill */
+[data-theme="space"] .chip-slot.chip-slot-filled,
+[data-theme="space"] .chip-slot.border-indigo-500 {
+  background: linear-gradient(135deg, rgba(49, 46, 129, 0.9) 0%, rgba(30, 27, 75, 0.95) 100%) !important;
+  border: 2px solid #a855f7 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 18px rgba(168, 85, 247, 0.45), inset 0 0 12px rgba(99, 102, 241, 0.3) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+[data-theme="space"] .chip-slot.chip-slot-filled *,
+[data-theme="space"] .chip-slot.chip-slot-filled .slot-text,
+[data-theme="space"] .chip-slot.border-indigo-500 * {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="space"] .chip-slot.chip-slot-filled .slot-remove-btn,
+[data-theme="space"] .chip-slot.border-indigo-500 .slot-remove-btn {
+  color: #c084fc !important;
+}
+
+[data-theme="space"] .chip-slot.chip-slot-filled .slot-remove-btn:hover,
+[data-theme="space"] .chip-slot.border-indigo-500 .slot-remove-btn:hover {
+  color: #ffffff !important;
+}
+
+/* Active Blank Slot in Space Theme */
+[data-theme="space"] .chip-slot.chip-slot-active,
+[data-theme="space"] .chip-slot.target-active {
+  border: 2px dashed #38bdf8 !important;
+  background-color: rgba(56, 189, 248, 0.2) !important;
+  color: #bae6fd !important;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.45) !important;
+}
+
+[data-theme="space"] .chip-slot.chip-slot-active *,
+[data-theme="space"] .chip-slot.target-active * {
+  color: #bae6fd !important;
+}
+
+/* Evaluation States in Space Theme */
+[data-theme="space"] .chip-slot.filled-correct,
+[data-theme="space"] .chip-slot.filled-correct * {
+  border-color: #34d399 !important;
+  background-color: rgba(6, 78, 59, 0.75) !important;
+  color: #a7f3d0 !important;
+  box-shadow: 0 0 15px rgba(52, 211, 153, 0.4) !important;
+}
+
+[data-theme="space"] .chip-slot.filled-wrong,
+[data-theme="space"] .chip-slot.filled-wrong * {
+  border-color: #fb7185 !important;
+  background-color: rgba(76, 5, 25, 0.75) !important;
+  color: #fecdd3 !important;
+  box-shadow: 0 0 15px rgba(251, 113, 133, 0.4) !important;
+}
+
+[data-theme="space"] .chip-btn {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.85) 0%, rgba(15, 23, 42, 0.95) 100%) !important;
+  border: 1px solid rgba(192, 132, 252, 0.6) !important;
+  box-shadow: 0 4px 14px rgba(124, 58, 237, 0.25) !important;
+  color: #f9fafb !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+[data-theme="space"] .chip-btn:hover {
+  transform: translateY(-2px);
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 20px rgba(56, 189, 248, 0.5), 0 4px 16px rgba(124, 58, 237, 0.4) !important;
+}
+
+/* Celebration Modal & Action Buttons in Space Theme */
+[data-theme="space"] #game-celebration-card {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.88) 0%, rgba(15, 23, 42, 0.92) 50%, rgba(30, 27, 75, 0.94) 100%) !important;
+  border: 1.5px solid rgba(52, 211, 153, 0.45) !important;
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.8), 0 0 35px rgba(52, 211, 153, 0.25) !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+[data-theme="space"] #celebration-detail-text,
+[data-theme="space"] #celebration-comparison-text {
+  color: #c7d2fe !important;
+}
+
+[data-theme="space"] #celebration-timing-badge {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(168, 85, 247, 0.35) !important;
+}
+
+[data-theme="space"] #celeb-hear-answer-btn,
+[data-theme="space"] #celeb-finish-btn {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(168, 85, 247, 0.35) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="space"] #celeb-hear-answer-btn:hover,
+[data-theme="space"] #celeb-finish-btn:hover {
+  background: rgba(255, 255, 255, 0.22) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35) !important;
+}
+
+/* Next Sentence Button in Space Theme - Luminous Cosmic Warp Button */
+[data-theme="space"] #celeb-next-btn {
+  background: linear-gradient(135deg, #0ea5e9 0%, #6366f1 50%, #a855f7 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 0 24px rgba(56, 189, 248, 0.6), 0 4px 16px rgba(124, 58, 237, 0.45) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  font-weight: 900 !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+[data-theme="space"] #celeb-next-btn:hover {
+  background: linear-gradient(135deg, #38bdf8 0%, #818cf8 50%, #c084fc 100%) !important;
+  box-shadow: 0 0 32px rgba(56, 189, 248, 0.8), 0 6px 20px rgba(168, 85, 247, 0.6) !important;
+  transform: translateY(-2px) scale(1.03);
+}
+
+[data-theme="space"] #celeb-next-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Modals in space theme */
+[data-theme="space"] #settings-modal > div,
+[data-theme="space"] #shortcuts-modal > div,
+[data-theme="space"] #worksheet-modal > div {
+  background-color: rgba(15, 23, 42, 0.92) !important;
+  backdrop-filter: blur(24px) !important;
+  border-color: rgba(168, 85, 247, 0.35) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 30px rgba(124, 58, 237, 0.25) !important;
+}
+
+/* Space Scrollbars */
+[data-theme="space"] ::-webkit-scrollbar-track {
+  background: #090d1a !important;
+}
+[data-theme="space"] ::-webkit-scrollbar-thumb {
+  background: #3b2d6b !important;
+  border: 1px solid rgba(168, 85, 247, 0.3) !important;
+}
+[data-theme="space"] ::-webkit-scrollbar-thumb:hover {
+  background: #6366f1 !important;
+}
+
+/* ============================================================ */
+/* 4. Lava Forge Theme (Minecraft Nether & Fantasy RPG)         */
+/* ============================================================ */
+[data-theme="lava"] body {
+  background-color: #0c0705 !important;
+  background: 
+    radial-gradient(ellipse 90% 60% at 20% -10%, rgba(220, 38, 38, 0.22), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 85% 20%, rgba(234, 88, 12, 0.22), transparent 60%),
+    radial-gradient(ellipse 80% 60% at 50% 95%, rgba(245, 158, 11, 0.18), transparent 70%),
+    radial-gradient(circle 600px at 70% 70%, rgba(185, 28, 28, 0.15), transparent 60%),
+    radial-gradient(ellipse at center, #1c0d08 0%, #0c0705 100%) !important;
+  background-attachment: fixed !important;
+  color: #fff7ed !important;
+}
+
+#lava-universe {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+[data-theme="lava"] #lava-universe {
+  display: block !important;
+}
+
+/* Ambient Magma Fissures / Heat Glow */
+.magma-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(85px);
+  opacity: 0.5;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+.magma-glow-1 {
+  width: 680px;
+  height: 520px;
+  bottom: -120px;
+  left: 10%;
+  background: radial-gradient(circle, rgba(234, 88, 12, 0.35) 0%, rgba(185, 28, 28, 0.2) 50%, transparent 75%);
+  animation: magmaPulse1 18s ease-in-out infinite alternate;
+}
+
+.magma-glow-2 {
+  width: 720px;
+  height: 580px;
+  top: -100px;
+  right: 5%;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.28) 0%, rgba(220, 38, 38, 0.16) 45%, transparent 70%);
+  animation: magmaPulse2 24s ease-in-out infinite alternate;
+}
+
+.magma-glow-3 {
+  width: 500px;
+  height: 440px;
+  top: 45%;
+  left: 30%;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.22) 0%, rgba(153, 27, 27, 0.14) 50%, transparent 70%);
+  animation: magmaPulse3 20s ease-in-out infinite alternate;
+}
+
+@keyframes magmaPulse1 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.45; }
+  50% { transform: translate(40px, -30px) scale(1.1); opacity: 0.65; }
+  100% { transform: translate(-20px, 40px) scale(0.95); opacity: 0.48; }
+}
+
+@keyframes magmaPulse2 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  50% { transform: translate(-35px, 35px) scale(1.12); opacity: 0.6; }
+  100% { transform: translate(30px, -45px) scale(0.92); opacity: 0.42; }
+}
+
+@keyframes magmaPulse3 {
+  0% { transform: translate(0, 0) scale(0.95); opacity: 0.35; }
+  50% { transform: translate(-25px, -35px) scale(1.08); opacity: 0.55; }
+  100% { transform: translate(35px, 20px) scale(1); opacity: 0.4; }
+}
+
+/* Basalt Obsidian Glassmorphic Panels */
+[data-theme="lava"] .bg-white {
+  background-color: rgba(28, 14, 8, 0.82) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(249, 115, 22, 0.32) !important;
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.7), inset 0 0 15px rgba(245, 158, 11, 0.06) !important;
+}
+
+[data-theme="lava"] .bg-slate-50 {
+  background-color: rgba(18, 9, 5, 0.72) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-color: rgba(234, 88, 12, 0.25) !important;
+}
+
+[data-theme="lava"] .bg-slate-100 {
+  background-color: rgba(43, 20, 12, 0.75) !important;
+  border-color: rgba(249, 115, 22, 0.3) !important;
+  color: #fff7ed !important;
+}
+
+[data-theme="lava"] .text-slate-900, 
+[data-theme="lava"] .text-slate-800, 
+[data-theme="lava"] .text-slate-700 {
+  color: #fff7ed !important;
+}
+
+[data-theme="lava"] .text-slate-500, 
+[data-theme="lava"] .text-slate-600 {
+  color: #fdba74 !important;
+}
+
+[data-theme="lava"] .text-indigo-950 {
+  color: #ffffff !important;
+}
+
+[data-theme="lava"] .border-slate-200, 
+[data-theme="lava"] .border-slate-100 {
+  border-color: rgba(124, 45, 18, 0.5) !important;
+}
+
+[data-theme="lava"] .border-slate-200\/90 {
+  border-color: rgba(249, 115, 22, 0.32) !important;
+}
+
+/* Lava Forge Hero Banner */
+[data-theme="lava"] #view-dashboard > .bg-gradient-to-r {
+  background: linear-gradient(135deg, rgba(69, 26, 3, 0.9) 0%, rgba(124, 45, 18, 0.88) 45%, rgba(185, 28, 28, 0.9) 100%) !important;
+  border: 1px solid rgba(245, 158, 11, 0.45) !important;
+  box-shadow: 0 12px 40px -8px rgba(234, 88, 12, 0.5) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+/* Lava Word Chips */
+[data-theme="lava"] .chip-btn {
+  background: linear-gradient(135deg, rgba(43, 20, 12, 0.9) 0%, rgba(24, 10, 6, 0.95) 100%) !important;
+  border: 1px solid rgba(249, 115, 22, 0.6) !important;
+  box-shadow: 0 4px 14px rgba(194, 65, 12, 0.3) !important;
+  color: #fff7ed !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+[data-theme="lava"] .chip-btn:hover {
+  transform: translateY(-2px);
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 22px rgba(251, 191, 36, 0.6), 0 4px 16px rgba(234, 88, 12, 0.5) !important;
+}
+
+/* Lava Chip Slots */
+[data-theme="lava"] .chip-slot {
+  background-color: rgba(24, 10, 6, 0.65) !important;
+  border: 2px dashed rgba(234, 88, 12, 0.45) !important;
+  color: #fdba74 !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Filled Blank Slot in Lava Theme - Molten Golden Furnace Pill */
+[data-theme="lava"] .chip-slot.chip-slot-filled,
+[data-theme="lava"] .chip-slot.border-indigo-500 {
+  background: linear-gradient(135deg, rgba(124, 45, 18, 0.92) 0%, rgba(69, 26, 3, 0.96) 100%) !important;
+  border: 2px solid #f59e0b !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.45), inset 0 0 12px rgba(234, 88, 12, 0.3) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+[data-theme="lava"] .chip-slot.chip-slot-filled *,
+[data-theme="lava"] .chip-slot.chip-slot-filled .slot-text,
+[data-theme="lava"] .chip-slot.border-indigo-500 * {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="lava"] .chip-slot.chip-slot-filled .slot-remove-btn,
+[data-theme="lava"] .chip-slot.border-indigo-500 .slot-remove-btn {
+  color: #fde047 !important;
+}
+
+[data-theme="lava"] .chip-slot.chip-slot-filled .slot-remove-btn:hover,
+[data-theme="lava"] .chip-slot.border-indigo-500 .slot-remove-btn:hover {
+  color: #ffffff !important;
+}
+
+/* Active Blank Slot in Lava Theme */
+[data-theme="lava"] .chip-slot.chip-slot-active,
+[data-theme="lava"] .chip-slot.target-active {
+  border: 2px dashed #fbbf24 !important;
+  background-color: rgba(245, 158, 11, 0.22) !important;
+  color: #fef08a !important;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.5) !important;
+}
+
+[data-theme="lava"] .chip-slot.chip-slot-active *,
+[data-theme="lava"] .chip-slot.target-active * {
+  color: #fef08a !important;
+}
+
+/* Evaluation States in Lava Theme */
+[data-theme="lava"] .chip-slot.filled-correct,
+[data-theme="lava"] .chip-slot.filled-correct * {
+  border-color: #34d399 !important;
+  background-color: rgba(6, 78, 59, 0.75) !important;
+  color: #a7f3d0 !important;
+  box-shadow: 0 0 15px rgba(52, 211, 153, 0.4) !important;
+}
+
+[data-theme="lava"] .chip-slot.filled-wrong,
+[data-theme="lava"] .chip-slot.filled-wrong * {
+  border-color: #fb7185 !important;
+  background-color: rgba(76, 5, 25, 0.75) !important;
+  color: #fecdd3 !important;
+  box-shadow: 0 0 15px rgba(251, 113, 133, 0.4) !important;
+}
+
+/* Celebration Modal in Lava Theme - Nether Dungeon Cleared */
+[data-theme="lava"] #game-celebration-card {
+  background: linear-gradient(135deg, rgba(69, 26, 3, 0.94) 0%, rgba(28, 14, 8, 0.95) 50%, rgba(124, 45, 18, 0.94) 100%) !important;
+  border: 1.5px solid rgba(245, 158, 11, 0.5) !important;
+  box-shadow: 0 20px 50px -10px rgba(0, 0, 0, 0.85), 0 0 35px rgba(234, 88, 12, 0.35) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+[data-theme="lava"] #celebration-detail-text,
+[data-theme="lava"] #celebration-comparison-text {
+  color: #fed7aa !important;
+}
+
+[data-theme="lava"] #celebration-timing-badge {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(245, 158, 11, 0.35) !important;
+}
+
+[data-theme="lava"] #celeb-hear-answer-btn,
+[data-theme="lava"] #celeb-finish-btn {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(249, 115, 22, 0.4) !important;
+  color: #fff7ed !important;
+}
+
+[data-theme="lava"] #celeb-next-btn {
+  background: linear-gradient(135deg, #f59e0b 0%, #ea580c 50%, #dc2626 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 0 24px rgba(245, 158, 11, 0.6), 0 4px 16px rgba(185, 28, 28, 0.45) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  font-weight: 900 !important;
+}
+
+[data-theme="lava"] #celeb-next-btn:hover {
+  background: linear-gradient(135deg, #fbbf24 0%, #f97316 50%, #ef4444 100%) !important;
+  box-shadow: 0 0 32px rgba(251, 191, 36, 0.8), 0 6px 20px rgba(234, 88, 12, 0.6) !important;
+  transform: translateY(-2px) scale(1.03);
+}
+
+/* Modals in Lava Theme */
+[data-theme="lava"] #settings-modal > div,
+[data-theme="lava"] #shortcuts-modal > div,
+[data-theme="lava"] #worksheet-modal > div {
+  background-color: rgba(24, 10, 6, 0.94) !important;
+  backdrop-filter: blur(24px) !important;
+  border-color: rgba(249, 115, 22, 0.4) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85), 0 0 30px rgba(234, 88, 12, 0.3) !important;
+}
+
+[data-theme="lava"] ::-webkit-scrollbar-track {
+  background: #140804 !important;
+}
+[data-theme="lava"] ::-webkit-scrollbar-thumb {
+  background: #7c2d12 !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+[data-theme="lava"] ::-webkit-scrollbar-thumb:hover {
+  background: #ea580c !important;
+}
+
+/* ============================================================ */
+/* 5. Anime Action Theme (Demon Slayer & Naruto)                */
+/* ============================================================ */
+[data-theme="anime"] body {
+  background-color: #0b0f19 !important;
+  background: 
+    radial-gradient(ellipse 90% 60% at 15% -10%, rgba(249, 115, 22, 0.22), transparent 70%),
+    radial-gradient(ellipse 75% 55% at 85% 15%, rgba(6, 182, 212, 0.22), transparent 60%),
+    radial-gradient(ellipse 80% 60% at 50% 95%, rgba(239, 68, 68, 0.18), transparent 70%),
+    radial-gradient(circle 600px at 80% 80%, rgba(59, 130, 246, 0.15), transparent 60%),
+    radial-gradient(ellipse at center, #151c2e 0%, #0b0f19 100%) !important;
+  background-attachment: fixed !important;
+  color: #f8fafc !important;
+}
+
+#anime-universe {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+
+[data-theme="anime"] #anime-universe {
+  display: block !important;
+}
+
+/* Solar Flame & Chakra Energy Aura Layers */
+.anime-aura {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.52;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  will-change: transform, opacity;
+}
+
+.anime-aura-flame {
+  width: 650px;
+  height: 550px;
+  top: -80px;
+  left: 10%;
+  background: radial-gradient(circle, rgba(249, 115, 22, 0.32) 0%, rgba(239, 68, 68, 0.18) 50%, transparent 70%);
+  animation: animeAura1 20s ease-in-out infinite alternate;
+}
+
+.anime-aura-chakra {
+  width: 700px;
+  height: 600px;
+  bottom: -90px;
+  right: 5%;
+  background: radial-gradient(circle, rgba(6, 182, 212, 0.3) 0%, rgba(59, 130, 246, 0.18) 45%, transparent 70%);
+  animation: animeAura2 26s ease-in-out infinite alternate;
+}
+
+@keyframes animeAura1 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.45; }
+  50% { transform: translate(50px, 35px) scale(1.12); opacity: 0.65; }
+  100% { transform: translate(-25px, 60px) scale(0.95); opacity: 0.5; }
+}
+
+@keyframes animeAura2 {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.4; }
+  50% { transform: translate(-40px, -35px) scale(1.15); opacity: 0.62; }
+  100% { transform: translate(35px, -50px) scale(0.92); opacity: 0.45; }
+}
+
+/* Manga Cel-Shaded Cards with Graphic Punch */
+[data-theme="anime"] .bg-white {
+  background-color: rgba(17, 24, 39, 0.88) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 2px solid rgba(56, 189, 248, 0.35) !important;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.75), 0 10px 25px -5px rgba(0, 0, 0, 0.5) !important;
+}
+
+[data-theme="anime"] .bg-slate-50 {
+  background-color: rgba(11, 15, 25, 0.75) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border-color: rgba(56, 189, 248, 0.25) !important;
+}
+
+[data-theme="anime"] .bg-slate-100 {
+  background-color: rgba(30, 41, 59, 0.8) !important;
+  border-color: rgba(56, 189, 248, 0.3) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="anime"] .text-slate-900, 
+[data-theme="anime"] .text-slate-800, 
+[data-theme="anime"] .text-slate-700 {
+  color: #f8fafc !important;
+}
+
+[data-theme="anime"] .text-slate-500, 
+[data-theme="anime"] .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+[data-theme="anime"] .text-indigo-950 {
+  color: #ffffff !important;
+}
+
+[data-theme="anime"] .border-slate-200, 
+[data-theme="anime"] .border-slate-100 {
+  border-color: rgba(51, 65, 85, 0.6) !important;
+}
+
+[data-theme="anime"] .border-slate-200\/90 {
+  border-color: rgba(56, 189, 248, 0.35) !important;
+}
+
+/* Anime Action Hero Banner */
+[data-theme="anime"] #view-dashboard > .bg-gradient-to-r {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 27, 75, 0.9) 45%, rgba(124, 45, 18, 0.9) 100%) !important;
+  border: 2px solid rgba(249, 115, 22, 0.5) !important;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.8), 0 12px 40px -8px rgba(249, 115, 22, 0.45) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+/* Anime Word Chips */
+[data-theme="anime"] .chip-btn {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.9) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
+  border: 2px solid rgba(6, 182, 212, 0.65) !important;
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.8), 0 4px 14px rgba(6, 182, 212, 0.25) !important;
+  color: #f8fafc !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+[data-theme="anime"] .chip-btn:hover {
+  transform: translateY(-2px) scale(1.02);
+  border-color: #f97316 !important;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.9), 0 0 22px rgba(249, 115, 22, 0.6) !important;
+}
+
+/* Anime Chip Slots */
+[data-theme="anime"] .chip-slot {
+  background-color: rgba(15, 23, 42, 0.65) !important;
+  border: 2px dashed rgba(6, 182, 212, 0.5) !important;
+  color: #94a3b8 !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* Filled Blank Slot in Anime Theme - Total Concentration Breathing Slot */
+[data-theme="anime"] .chip-slot.chip-slot-filled,
+[data-theme="anime"] .chip-slot.border-indigo-500 {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
+  border: 2px solid #06b6d4 !important;
+  color: #ffffff !important;
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.8), 0 0 18px rgba(6, 182, 212, 0.45) !important;
+  backdrop-filter: blur(12px) !important;
+}
+
+[data-theme="anime"] .chip-slot.chip-slot-filled *,
+[data-theme="anime"] .chip-slot.chip-slot-filled .slot-text,
+[data-theme="anime"] .chip-slot.border-indigo-500 * {
+  color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="anime"] .chip-slot.chip-slot-filled .slot-remove-btn,
+[data-theme="anime"] .chip-slot.border-indigo-500 .slot-remove-btn {
+  color: #67e8f9 !important;
+}
+
+[data-theme="anime"] .chip-slot.chip-slot-filled .slot-remove-btn:hover,
+[data-theme="anime"] .chip-slot.border-indigo-500 .slot-remove-btn:hover {
+  color: #ffffff !important;
+}
+
+/* Active Blank Slot in Anime Theme */
+[data-theme="anime"] .chip-slot.chip-slot-active,
+[data-theme="anime"] .chip-slot.target-active {
+  border: 2px dashed #f97316 !important;
+  background-color: rgba(249, 115, 22, 0.2) !important;
+  color: #fed7aa !important;
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.5) !important;
+}
+
+[data-theme="anime"] .chip-slot.chip-slot-active *,
+[data-theme="anime"] .chip-slot.target-active * {
+  color: #fed7aa !important;
+}
+
+/* Evaluation States in Anime Theme */
+[data-theme="anime"] .chip-slot.filled-correct,
+[data-theme="anime"] .chip-slot.filled-correct * {
+  border-color: #22c55e !important;
+  background-color: rgba(6, 78, 59, 0.75) !important;
+  color: #bbf7d0 !important;
+  box-shadow: 0 0 15px rgba(34, 197, 94, 0.4) !important;
+}
+
+[data-theme="anime"] .chip-slot.filled-wrong,
+[data-theme="anime"] .chip-slot.filled-wrong * {
+  border-color: #ef4444 !important;
+  background-color: rgba(76, 5, 25, 0.75) !important;
+  color: #fecaca !important;
+  box-shadow: 0 0 15px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Celebration Modal in Anime Theme - Total Concentration Mastery */
+[data-theme="anime"] #game-celebration-card {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 27, 75, 0.94) 50%, rgba(124, 45, 18, 0.94) 100%) !important;
+  border: 2px solid rgba(249, 115, 22, 0.55) !important;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.9), 0 0 35px rgba(249, 115, 22, 0.35) !important;
+  backdrop-filter: blur(20px) !important;
+}
+
+[data-theme="anime"] #celebration-detail-text,
+[data-theme="anime"] #celebration-comparison-text {
+  color: #fed7aa !important;
+}
+
+[data-theme="anime"] #celebration-timing-badge {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(56, 189, 248, 0.35) !important;
+}
+
+[data-theme="anime"] #celeb-hear-answer-btn,
+[data-theme="anime"] #celeb-finish-btn {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme="anime"] #celeb-next-btn {
+  background: linear-gradient(135deg, #f97316 0%, #ef4444 50%, #8b5cf6 100%) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.8), 0 0 24px rgba(249, 115, 22, 0.6) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  font-weight: 900 !important;
+}
+
+[data-theme="anime"] #celeb-next-btn:hover {
+  background: linear-gradient(135deg, #fb923c 0%, #f87171 50%, #a78bfa 100%) !important;
+  box-shadow: 4px 4px 0px rgba(0, 0, 0, 0.9), 0 0 32px rgba(249, 115, 22, 0.8) !important;
+  transform: translateY(-2px) scale(1.03);
+}
+
+/* Modals in Anime Theme */
+[data-theme="anime"] #settings-modal > div,
+[data-theme="anime"] #shortcuts-modal > div,
+[data-theme="anime"] #worksheet-modal > div {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  backdrop-filter: blur(24px) !important;
+  border: 2px solid rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 6px 6px 0px rgba(0, 0, 0, 0.85), 0 0 30px rgba(6, 182, 212, 0.25) !important;
+}
+
+[data-theme="anime"] ::-webkit-scrollbar-track {
+  background: #0b0f19 !important;
+}
+[data-theme="anime"] ::-webkit-scrollbar-thumb {
+  background: #1e293b !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+}
+[data-theme="anime"] ::-webkit-scrollbar-thumb:hover {
+  background: #06b6d4 !important;
+}
+
+/* ========================================================================= */
+/* THEME 4: SUNNY BLUE SKY & DRIFTING CLOUDS (SKY)                          */
+/* ========================================================================= */
+
+[data-theme="sky"] body {
+  background: linear-gradient(180deg, #38bdf8 0%, #7dd3fc 30%, #bae6fd 65%, #e0f2fe 100%) !important;
+  background-attachment: fixed !important;
+  color: #0f172a;
+}
+
+#sky-universe {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+[data-theme="sky"] #sky-universe {
+  display: block !important;
+}
+
+.sky-sun-glow {
+  position: absolute;
+  top: -80px;
+  right: 8%;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(254, 240, 138, 0.45) 0%, rgba(251, 191, 36, 0.2) 40%, transparent 70%);
+  filter: blur(40px);
+  border-radius: 50%;
+  animation: sunGlowPulse 8s ease-in-out infinite alternate;
+}
+
+@keyframes sunGlowPulse {
+  0% { transform: scale(1); opacity: 0.8; }
+  100% { transform: scale(1.15); opacity: 1; }
+}
+
+.sky-cloud-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+}
+
+.sky-cloud-layer-1 {
+  background: radial-gradient(ellipse 400px 180px at 15% 18%, rgba(255, 255, 255, 0.8) 0%, transparent 70%),
+              radial-gradient(ellipse 550px 220px at 75% 25%, rgba(255, 255, 255, 0.75) 0%, transparent 70%);
+  filter: blur(30px);
+  animation: skyDrift1 36s ease-in-out infinite alternate;
+}
+
+.sky-cloud-layer-2 {
+  background: radial-gradient(ellipse 500px 200px at 45% 45%, rgba(255, 255, 255, 0.65) 0%, transparent 70%),
+              radial-gradient(ellipse 350px 150px at 85% 60%, rgba(255, 255, 255, 0.6) 0%, transparent 70%);
+  filter: blur(25px);
+  animation: skyDrift2 48s ease-in-out infinite alternate;
+}
+
+.sky-cloud-layer-3 {
+  background: radial-gradient(ellipse 600px 240px at 30% 75%, rgba(255, 255, 255, 0.55) 0%, transparent 70%);
+  filter: blur(35px);
+  animation: skyDrift3 42s ease-in-out infinite alternate;
+}
+
+@keyframes skyDrift1 {
+  0% { transform: translateX(-30px); }
+  100% { transform: translateX(50px); }
+}
+
+@keyframes skyDrift2 {
+  0% { transform: translateX(40px); }
+  100% { transform: translateX(-40px); }
+}
+
+@keyframes skyDrift3 {
+  0% { transform: translateX(-20px); }
+  100% { transform: translateX(35px); }
+}
+
+/* Daylight Frosted Glassmorphism Panels */
+[data-theme="sky"] .bg-white {
+  background-color: rgba(255, 255, 255, 0.88) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(186, 230, 253, 0.9) !important;
+  box-shadow: 0 10px 30px -5px rgba(2, 132, 199, 0.12), 0 0 0 1px rgba(255, 255, 255, 0.6) inset !important;
+}
+
+[data-theme="sky"] .bg-slate-50 {
+  background-color: rgba(240, 249, 255, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  border-color: rgba(186, 230, 253, 0.7) !important;
+}
+
+[data-theme="sky"] .bg-slate-100 {
+  background-color: rgba(224, 242, 254, 0.85) !important;
+  border-color: rgba(186, 230, 253, 0.9) !important;
+  color: #0369a1 !important;
+}
+
+[data-theme="sky"] .text-slate-900,
+[data-theme="sky"] .text-slate-800 {
+  color: #0c4a6e !important;
+}
+
+[data-theme="sky"] .text-slate-700,
+[data-theme="sky"] .text-slate-600 {
+  color: #0369a1 !important;
+}
+
+[data-theme="sky"] .text-slate-500 {
+  color: #0284c7 !important;
+}
+
+[data-theme="sky"] .text-indigo-950 {
+  color: #0c4a6e !important;
+}
+
+[data-theme="sky"] .border-slate-200,
+[data-theme="sky"] .border-slate-100 {
+  border-color: rgba(186, 230, 253, 0.8) !important;
+}
+
+/* Sky Word Chips */
+[data-theme="sky"] .chip-btn {
+  background: linear-gradient(135deg, #ffffff 0%, #f0f9ff 100%) !important;
+  border: 1.5px solid #0284c7 !important;
+  color: #0c4a6e !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 6px rgba(2, 132, 199, 0.18) !important;
+}
+
+[data-theme="sky"] .chip-btn:hover {
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%) !important;
+  border-color: #0369a1 !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.3) !important;
+}
+
+/* Sky Target Blank Slots */
+[data-theme="sky"] .chip-slot {
+  border: 2px dashed #38bdf8 !important;
+  background-color: rgba(240, 249, 255, 0.6) !important;
+  color: #0c4a6e !important;
+}
+
+[data-theme="sky"] .chip-slot.chip-slot-filled {
+  border: 2px solid #0284c7 !important;
+  background: linear-gradient(135deg, #ffffff 0%, #e0f2fe 100%) !important;
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.22) !important;
+  color: #0c4a6e !important;
+}
+
+[data-theme="sky"] .chip-slot.chip-slot-filled .slot-text {
+  color: #0c4a6e !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="sky"] .chip-slot.chip-slot-filled .slot-remove-btn {
+  color: #0284c7 !important;
+}
+
+[data-theme="sky"] .chip-slot.chip-slot-filled .slot-remove-btn:hover {
+  color: #dc2626 !important;
+}
+
+[data-theme="sky"] .chip-slot.chip-slot-active {
+  border: 2px solid #0284c7 !important;
+  background: rgba(224, 242, 254, 0.9) !important;
+  box-shadow: 0 0 16px rgba(14, 165, 233, 0.45) !important;
+}
+
+/* Sky Celebration Card */
+[data-theme="sky"] #game-celebration-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(224, 242, 254, 0.92) 100%) !important;
+  border: 2px solid #38bdf8 !important;
+  box-shadow: 0 16px 40px -10px rgba(2, 132, 199, 0.35) !important;
+}
+
+[data-theme="sky"] #celeb-next-btn {
+  background: linear-gradient(135deg, #0284c7 0%, #059669 100%) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 16px rgba(2, 132, 199, 0.4) !important;
+}
+
+[data-theme="sky"] #celeb-next-btn:hover {
+  box-shadow: 0 0 24px rgba(14, 165, 233, 0.6) !important;
+  transform: translateY(-2px);
+}
+
+[data-theme="sky"] ::-webkit-scrollbar-track {
+  background: #f0f9ff !important;
+}
+[data-theme="sky"] ::-webkit-scrollbar-thumb {
+  background: #bae6fd !important;
+  border: 1px solid rgba(2, 132, 199, 0.2) !important;
+}
+[data-theme="sky"] ::-webkit-scrollbar-thumb:hover {
+  background: #0284c7 !important;
+}
+
+
+/* ========================================================================= */
+/* THEME 5: DEEP OCEAN AQUARIUM & SWIMMING FISHES (OCEAN)                   */
+/* ========================================================================= */
+
+[data-theme="ocean"] body {
+  background: linear-gradient(180deg, #0369a1 0%, #075985 20%, #0c4a6e 50%, #082f49 80%, #02182b 100%) !important;
+  background-attachment: fixed !important;
+  color: #e0f2fe;
+}
+
+#ocean-universe {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+[data-theme="ocean"] #ocean-universe {
+  display: block !important;
+}
+
+.ocean-sunrays {
+  position: absolute;
+  top: 0;
+  left: 5%;
+  width: 90%;
+  height: 65%;
+  background: repeating-linear-gradient(
+    -75deg,
+    rgba(56, 189, 248, 0.08) 0px,
+    rgba(56, 189, 248, 0.08) 40px,
+    transparent 40px,
+    transparent 120px
+  );
+  filter: blur(14px);
+  animation: oceanRaysPulse 14s ease-in-out infinite alternate;
+}
+
+@keyframes oceanRaysPulse {
+  0% { transform: skewX(-4deg) scale(1); opacity: 0.5; }
+  50% { transform: skewX(2deg) scale(1.08); opacity: 0.8; }
+  100% { transform: skewX(-2deg) scale(0.96); opacity: 0.55; }
+}
+
+.ocean-caustic {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.22;
+}
+
+.ocean-caustic-1 {
+  background: radial-gradient(circle at 30% 25%, rgba(34, 211, 238, 0.25) 0%, transparent 60%),
+              radial-gradient(circle at 75% 65%, rgba(14, 165, 233, 0.2) 0%, transparent 55%);
+  filter: blur(40px);
+  animation: causticDrift1 24s ease-in-out infinite alternate;
+}
+
+.ocean-caustic-2 {
+  background: radial-gradient(circle at 65% 30%, rgba(6, 182, 212, 0.2) 0%, transparent 50%),
+              radial-gradient(circle at 20% 70%, rgba(56, 189, 248, 0.18) 0%, transparent 60%);
+  filter: blur(45px);
+  animation: causticDrift2 30s ease-in-out infinite alternate;
+}
+
+@keyframes causticDrift1 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(30px, -25px) scale(1.1); }
+}
+
+@keyframes causticDrift2 {
+  0% { transform: translate(0, 0) scale(1.05); }
+  100% { transform: translate(-35px, 20px) scale(0.95); }
+}
+
+/* Deep Ocean Translucent Glass Panels */
+[data-theme="ocean"] .bg-white {
+  background-color: rgba(5, 43, 72, 0.82) !important;
+  backdrop-filter: blur(18px) !important;
+  -webkit-backdrop-filter: blur(18px) !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+  box-shadow: 0 10px 35px 0 rgba(2, 24, 43, 0.7), inset 0 0 18px rgba(6, 182, 212, 0.08) !important;
+}
+
+[data-theme="ocean"] .bg-slate-50 {
+  background-color: rgba(8, 51, 88, 0.72) !important;
+  backdrop-filter: blur(12px) !important;
+  border-color: rgba(56, 189, 248, 0.22) !important;
+}
+
+[data-theme="ocean"] .bg-slate-100 {
+  background-color: rgba(12, 66, 111, 0.75) !important;
+  border-color: rgba(56, 189, 248, 0.35) !important;
+  color: #e0f2fe !important;
+}
+
+[data-theme="ocean"] .text-slate-900,
+[data-theme="ocean"] .text-slate-800,
+[data-theme="ocean"] .text-slate-700 {
+  color: #f0f9ff !important;
+}
+
+[data-theme="ocean"] .text-slate-500,
+[data-theme="ocean"] .text-slate-600 {
+  color: #7dd3fc !important;
+}
+
+[data-theme="ocean"] .text-indigo-950 {
+  color: #ffffff !important;
+}
+
+[data-theme="ocean"] .border-slate-200,
+[data-theme="ocean"] .border-slate-100 {
+  border-color: rgba(14, 116, 144, 0.45) !important;
+}
+
+/* Ocean Word Chips */
+[data-theme="ocean"] .chip-btn {
+  background: linear-gradient(135deg, #0a426f 0%, #073153 100%) !important;
+  border: 1.5px solid #06b6d4 !important;
+  color: #ffffff !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(2, 24, 43, 0.6) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+[data-theme="ocean"] .chip-btn:hover {
+  background: linear-gradient(135deg, #0e5a96 0%, #0a426f 100%) !important;
+  border-color: #38bdf8 !important;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.5) !important;
+  transform: translateY(-2px);
+}
+
+/* Ocean Target Blank Slots */
+[data-theme="ocean"] .chip-slot {
+  border: 2px dashed rgba(56, 189, 248, 0.5) !important;
+  background-color: rgba(8, 47, 73, 0.65) !important;
+  color: #e0f2fe !important;
+}
+
+[data-theme="ocean"] .chip-slot.chip-slot-filled {
+  border: 2px solid #38bdf8 !important;
+  background: linear-gradient(135deg, #0c4a7a 0%, #083358 100%) !important;
+  box-shadow: 0 0 18px rgba(14, 165, 233, 0.45) !important;
+  color: #ffffff !important;
+}
+
+[data-theme="ocean"] .chip-slot.chip-slot-filled .slot-text {
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85);
+}
+
+[data-theme="ocean"] .chip-slot.chip-slot-filled .slot-remove-btn {
+  color: #7dd3fc !important;
+}
+
+[data-theme="ocean"] .chip-slot.chip-slot-filled .slot-remove-btn:hover {
+  color: #ffffff !important;
+}
+
+[data-theme="ocean"] .chip-slot.chip-slot-active {
+  border: 2px solid #22d3ee !important;
+  background: rgba(14, 116, 144, 0.7) !important;
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.6) !important;
+}
+
+/* Ocean Celebration Card */
+[data-theme="ocean"] #game-celebration-card {
+  background: linear-gradient(135deg, rgba(5, 43, 72, 0.94) 0%, rgba(8, 51, 88, 0.92) 100%) !important;
+  border: 2px solid rgba(56, 189, 248, 0.5) !important;
+  box-shadow: 0 16px 40px -10px rgba(2, 24, 43, 0.8), 0 0 30px rgba(6, 182, 212, 0.25) !important;
+}
+
+[data-theme="ocean"] #celeb-next-btn {
+  background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 20px rgba(6, 182, 212, 0.55) !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="ocean"] #celeb-next-btn:hover {
+  box-shadow: 0 0 28px rgba(34, 211, 238, 0.75) !important;
+  transform: translateY(-2px);
+}
+
+[data-theme="ocean"] ::-webkit-scrollbar-track {
+  background: #02182b !important;
+}
+[data-theme="ocean"] ::-webkit-scrollbar-thumb {
+  background: #0a426f !important;
+  border: 1px solid rgba(56, 189, 248, 0.3) !important;
+}
+[data-theme="ocean"] ::-webkit-scrollbar-thumb:hover {
+  background: #06b6d4 !important;
+}
+
+[data-theme="ocean"] ::-webkit-scrollbar-thumb:hover {
+  background: #06b6d4 !important;
+}
+
+/* ========================================================================= */
+/* THEME 6: SAKURA PRINCESS — FALLING CHERRY-BLOSSOM PETALS (LIGHT PINK)     */
+/* ========================================================================= */
+
+[data-theme="sakura"] body {
+  background: linear-gradient(180deg, #fbcfe8 0%, #f9a8d4 22%, #fce7f3 55%, #fdf2f8 100%) !important;
+  background-attachment: fixed !important;
+  color: #831843;
+}
+
+#sakura-universe {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+[data-theme="sakura"] #sakura-universe {
+  display: block !important;
+}
+
+.sakura-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(60px);
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.sakura-glow-1 {
+  width: 560px;
+  height: 460px;
+  top: -110px;
+  left: 6%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.75) 0%, rgba(244, 114, 182, 0.28) 55%, transparent 72%);
+  animation: sakuraGlowDrift1 20s ease-in-out infinite alternate;
+}
+
+.sakura-glow-2 {
+  width: 620px;
+  height: 500px;
+  bottom: -120px;
+  right: 4%;
+  background: radial-gradient(circle, rgba(253, 242, 248, 0.8) 0%, rgba(249, 168, 212, 0.3) 50%, transparent 72%);
+  animation: sakuraGlowDrift2 26s ease-in-out infinite alternate;
+}
+
+@keyframes sakuraGlowDrift1 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(45px, 35px) scale(1.1); }
+}
+
+@keyframes sakuraGlowDrift2 {
+  0% { transform: translate(0, 0) scale(1.05); }
+  100% { transform: translate(-40px, -30px) scale(0.95); }
+}
+
+/* Frosted blush-glass panels */
+[data-theme="sakura"] .bg-white {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(244, 114, 182, 0.4) !important;
+  box-shadow: 0 10px 30px -8px rgba(190, 24, 93, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.7) !important;
+}
+
+[data-theme="sakura"] .bg-slate-50 {
+  background-color: rgba(253, 242, 248, 0.82) !important;
+  border-color: rgba(249, 168, 212, 0.55) !important;
+}
+
+[data-theme="sakura"] .bg-slate-100 {
+  background-color: rgba(252, 231, 243, 0.9) !important;
+  border-color: rgba(249, 168, 212, 0.6) !important;
+  color: #831843 !important;
+}
+
+[data-theme="sakura"] .text-slate-900,
+[data-theme="sakura"] .text-slate-800 {
+  color: #831843 !important;
+}
+
+[data-theme="sakura"] .text-slate-700,
+[data-theme="sakura"] .text-slate-600 {
+  color: #9d174d !important;
+}
+
+[data-theme="sakura"] .text-slate-500 {
+  color: #be185d !important;
+}
+
+[data-theme="sakura"] .text-indigo-950 {
+  color: #831843 !important;
+}
+
+[data-theme="sakura"] .border-slate-200,
+[data-theme="sakura"] .border-slate-100 {
+  border-color: rgba(249, 168, 212, 0.6) !important;
+}
+
+[data-theme="sakura"] #view-dashboard > .bg-gradient-to-r {
+  background: linear-gradient(135deg, rgba(190, 24, 93, 0.92) 0%, rgba(219, 39, 119, 0.9) 50%, rgba(244, 114, 182, 0.92) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.55) !important;
+  box-shadow: 0 12px 40px -8px rgba(190, 24, 93, 0.45) !important;
+}
+
+/* Sakura word chips — soft petal pills */
+[data-theme="sakura"] .chip-btn {
+  background: linear-gradient(135deg, #ffffff 0%, #fce7f3 100%) !important;
+  border: 1.5px solid #ec4899 !important;
+  color: #831843 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(236, 72, 153, 0.22) !important;
+}
+
+[data-theme="sakura"] .chip-btn:hover {
+  background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%) !important;
+  border-color: #be185d !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(236, 72, 153, 0.35) !important;
+}
+
+[data-theme="sakura"] .chip-slot {
+  border: 2px dashed #f472b6 !important;
+  background-color: rgba(253, 242, 248, 0.65) !important;
+  color: #831843 !important;
+}
+
+[data-theme="sakura"] .chip-slot.chip-slot-filled {
+  border: 2px solid #ec4899 !important;
+  background: linear-gradient(135deg, #ffffff 0%, #fce7f3 100%) !important;
+  box-shadow: 0 4px 14px rgba(236, 72, 153, 0.28) !important;
+  color: #831843 !important;
+}
+
+[data-theme="sakura"] .chip-slot.chip-slot-filled .slot-text {
+  color: #831843 !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="sakura"] .chip-slot.chip-slot-filled .slot-remove-btn {
+  color: #ec4899 !important;
+}
+
+[data-theme="sakura"] .chip-slot.chip-slot-filled .slot-remove-btn:hover {
+  color: #be185d !important;
+}
+
+[data-theme="sakura"] .chip-slot.chip-slot-active {
+  border: 2px solid #db2777 !important;
+  background: rgba(251, 207, 232, 0.9) !important;
+  box-shadow: 0 0 16px rgba(236, 72, 153, 0.5) !important;
+}
+
+[data-theme="sakura"] #game-celebration-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(252, 231, 243, 0.94) 100%) !important;
+  border: 2px solid #f472b6 !important;
+  box-shadow: 0 16px 40px -10px rgba(190, 24, 93, 0.35) !important;
+}
+
+[data-theme="sakura"] #celeb-next-btn {
+  background: linear-gradient(135deg, #db2777 0%, #ec4899 50%, #f59e0b 100%) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 16px rgba(219, 39, 119, 0.45) !important;
+}
+
+[data-theme="sakura"] #celeb-next-btn:hover {
+  box-shadow: 0 0 24px rgba(244, 114, 182, 0.7) !important;
+  transform: translateY(-2px);
+}
+
+[data-theme="sakura"] ::-webkit-scrollbar-track {
+  background: #fdf2f8 !important;
+}
+[data-theme="sakura"] ::-webkit-scrollbar-thumb {
+  background: #f9a8d4 !important;
+  border: 1px solid rgba(190, 24, 93, 0.2) !important;
+}
+[data-theme="sakura"] ::-webkit-scrollbar-thumb:hover {
+  background: #ec4899 !important;
+}
+
+/* ========================================================================= */
+/* THEME 7: FAIRY GARDEN — BUTTERFLY MEADOW & FIREFLY SPARKLES (LIGHT GREEN) */
+/* ========================================================================= */
+
+[data-theme="fairy"] body {
+  background: linear-gradient(180deg, #a7f3d0 0%, #bbf7d0 25%, #dcfce7 52%, #f0fdf4 78%, #fefce8 100%) !important;
+  background-attachment: fixed !important;
+  color: #14532d;
+}
+
+#fairy-universe {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+[data-theme="fairy"] #fairy-universe {
+  display: block !important;
+}
+
+.fairy-glow {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(55px);
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.fairy-glow-1 {
+  width: 600px;
+  height: 480px;
+  top: -100px;
+  left: 8%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.8) 0%, rgba(134, 239, 172, 0.35) 55%, transparent 72%);
+  animation: fairyGlowDrift1 22s ease-in-out infinite alternate;
+}
+
+.fairy-glow-2 {
+  width: 560px;
+  height: 460px;
+  bottom: -110px;
+  right: 6%;
+  background: radial-gradient(circle, rgba(254, 249, 195, 0.75) 0%, rgba(253, 224, 71, 0.25) 50%, transparent 72%);
+  animation: fairyGlowDrift2 28s ease-in-out infinite alternate;
+}
+
+.fairy-glow-3 {
+  width: 480px;
+  height: 420px;
+  top: 38%;
+  left: 32%;
+  background: radial-gradient(circle, rgba(251, 207, 232, 0.55) 0%, rgba(249, 168, 212, 0.22) 55%, transparent 72%);
+  animation: fairyGlowDrift1 24s ease-in-out infinite alternate-reverse;
+}
+
+@keyframes fairyGlowDrift1 {
+  0% { transform: translate(0, 0) scale(1); }
+  100% { transform: translate(40px, 30px) scale(1.08); }
+}
+
+@keyframes fairyGlowDrift2 {
+  0% { transform: translate(0, 0) scale(1.04); }
+  100% { transform: translate(-38px, -28px) scale(0.96); }
+}
+
+/* Dewy leaf-glass panels */
+[data-theme="fairy"] .bg-white {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(74, 222, 128, 0.5) !important;
+  box-shadow: 0 10px 30px -8px rgba(20, 83, 45, 0.16), inset 0 0 0 1px rgba(255, 255, 255, 0.7) !important;
+}
+
+[data-theme="fairy"] .bg-slate-50 {
+  background-color: rgba(240, 253, 244, 0.85) !important;
+  border-color: rgba(134, 239, 172, 0.65) !important;
+}
+
+[data-theme="fairy"] .bg-slate-100 {
+  background-color: rgba(220, 252, 231, 0.9) !important;
+  border-color: rgba(134, 239, 172, 0.7) !important;
+  color: #14532d !important;
+}
+
+[data-theme="fairy"] .text-slate-900,
+[data-theme="fairy"] .text-slate-800 {
+  color: #14532d !important;
+}
+
+[data-theme="fairy"] .text-slate-700,
+[data-theme="fairy"] .text-slate-600 {
+  color: #166534 !important;
+}
+
+[data-theme="fairy"] .text-slate-500 {
+  color: #15803d !important;
+}
+
+[data-theme="fairy"] .text-indigo-950 {
+  color: #14532d !important;
+}
+
+[data-theme="fairy"] .border-slate-200,
+[data-theme="fairy"] .border-slate-100 {
+  border-color: rgba(134, 239, 172, 0.65) !important;
+}
+
+[data-theme="fairy"] #view-dashboard > .bg-gradient-to-r {
+  background: linear-gradient(135deg, rgba(20, 83, 45, 0.94) 0%, rgba(22, 101, 52, 0.92) 50%, rgba(101, 163, 13, 0.9) 100%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.5) !important;
+  box-shadow: 0 12px 40px -8px rgba(20, 83, 45, 0.45) !important;
+}
+
+/* Fairy word chips — leaf + blossom pills */
+[data-theme="fairy"] .chip-btn {
+  background: linear-gradient(135deg, #ffffff 0%, #dcfce7 100%) !important;
+  border: 1.5px solid #22c55e !important;
+  color: #14532d !important;
+  font-weight: 700 !important;
+  box-shadow: 0 2px 8px rgba(34, 197, 94, 0.22) !important;
+}
+
+[data-theme="fairy"] .chip-btn:hover {
+  background: linear-gradient(135deg, #dcfce7 0%, #fef9c3 100%) !important;
+  border-color: #65a30d !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 14px rgba(101, 163, 13, 0.35) !important;
+}
+
+[data-theme="fairy"] .chip-slot {
+  border: 2px dashed #4ade80 !important;
+  background-color: rgba(240, 253, 244, 0.65) !important;
+  color: #14532d !important;
+}
+
+[data-theme="fairy"] .chip-slot.chip-slot-filled {
+  border: 2px solid #22c55e !important;
+  background: linear-gradient(135deg, #ffffff 0%, #dcfce7 100%) !important;
+  box-shadow: 0 4px 14px rgba(34, 197, 94, 0.28) !important;
+  color: #14532d !important;
+}
+
+[data-theme="fairy"] .chip-slot.chip-slot-filled .slot-text {
+  color: #14532d !important;
+  font-weight: 800 !important;
+}
+
+[data-theme="fairy"] .chip-slot.chip-slot-filled .slot-remove-btn {
+  color: #16a34a !important;
+}
+
+[data-theme="fairy"] .chip-slot.chip-slot-filled .slot-remove-btn:hover {
+  color: #dc2626 !important;
+}
+
+[data-theme="fairy"] .chip-slot.chip-slot-active {
+  border: 2px solid #65a30d !important;
+  background: rgba(254, 249, 195, 0.92) !important;
+  box-shadow: 0 0 16px rgba(190, 242, 100, 0.65) !important;
+}
+
+[data-theme="fairy"] #game-celebration-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96) 0%, rgba(220, 252, 231, 0.94) 100%) !important;
+  border: 2px solid #4ade80 !important;
+  box-shadow: 0 16px 40px -10px rgba(20, 83, 45, 0.32) !important;
+}
+
+[data-theme="fairy"] #celeb-next-btn {
+  background: linear-gradient(135deg, #16a34a 0%, #65a30d 50%, #ec4899 100%) !important;
+  color: #ffffff !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 16px rgba(22, 163, 74, 0.45) !important;
+}
+
+[data-theme="fairy"] #celeb-next-btn:hover {
+  box-shadow: 0 0 24px rgba(190, 242, 100, 0.7) !important;
+  transform: translateY(-2px);
+}
+
+[data-theme="fairy"] ::-webkit-scrollbar-track {
+  background: #f0fdf4 !important;
+}
+[data-theme="fairy"] ::-webkit-scrollbar-thumb {
+  background: #86efac !important;
+  border: 1px solid rgba(20, 83, 45, 0.2) !important;
+}
+[data-theme="fairy"] ::-webkit-scrollbar-thumb:hover {
+  background: #22c55e !important;
+}
+
+/* ========================================================================= */
+/* THEME COMPLETION PATCH: slot variants, evaluation states, celebration    */
+/* text, all modals, insertion cues for sky/ocean/sakura/fairy/dark        */
+/* ========================================================================= */
+
+/* ---- Filled-slot .border-indigo-500 variant (JS adds this class too) ---- */
+[data-theme="sky"] .chip-slot.border-indigo-500,
+[data-theme="sky"] .chip-slot.border-indigo-500 * {
+  border-color: #0284c7 !important;
+  background: linear-gradient(135deg, #ffffff 0%, #e0f2fe 100%) !important;
+  color: #0c4a6e !important;
+}
+[data-theme="ocean"] .chip-slot.border-indigo-500,
+[data-theme="ocean"] .chip-slot.border-indigo-500 * {
+  border-color: #38bdf8 !important;
+  background: linear-gradient(135deg, #0c4a7a 0%, #083358 100%) !important;
+  color: #ffffff !important;
+}
+[data-theme="sakura"] .chip-slot.border-indigo-500,
+[data-theme="sakura"] .chip-slot.border-indigo-500 * {
+  border-color: #ec4899 !important;
+  background: linear-gradient(135deg, #ffffff 0%, #fce7f3 100%) !important;
+  color: #831843 !important;
+}
+[data-theme="fairy"] .chip-slot.border-indigo-500,
+[data-theme="fairy"] .chip-slot.border-indigo-500 * {
+  border-color: #22c55e !important;
+  background: linear-gradient(135deg, #ffffff 0%, #dcfce7 100%) !important;
+  color: #14532d !important;
+}
+
+/* ---- Active-slot .target-active variant (drag/drop adds this class) ---- */
+[data-theme="sky"] .chip-slot.target-active,
+[data-theme="sky"] .chip-slot.target-active * {
+  border-color: #0284c7 !important;
+  background: rgba(224, 242, 254, 0.9) !important;
+  color: #0c4a6e !important;
+}
+[data-theme="ocean"] .chip-slot.target-active,
+[data-theme="ocean"] .chip-slot.target-active * {
+  border-color: #22d3ee !important;
+  background: rgba(14, 116, 144, 0.7) !important;
+  color: #e0f2fe !important;
+}
+[data-theme="sakura"] .chip-slot.target-active,
+[data-theme="sakura"] .chip-slot.target-active * {
+  border-color: #db2777 !important;
+  background: rgba(251, 207, 232, 0.9) !important;
+  color: #831843 !important;
+}
+[data-theme="fairy"] .chip-slot.target-active,
+[data-theme="fairy"] .chip-slot.target-active * {
+  border-color: #65a30d !important;
+  background: rgba(254, 249, 195, 0.92) !important;
+  color: #14532d !important;
+}
+
+/* ---- Evaluation states (correct/wrong answer feedback) ---- */
+[data-theme="sky"] .chip-slot.filled-correct,
+[data-theme="sky"] .chip-slot.filled-correct * {
+  border-color: #16a34a !important;
+  background-color: #dcfce7 !important;
+  color: #166534 !important;
+}
+[data-theme="sky"] .chip-slot.filled-wrong,
+[data-theme="sky"] .chip-slot.filled-wrong * {
+  border-color: #dc2626 !important;
+  background-color: #fee2e2 !important;
+  color: #991b1b !important;
+}
+[data-theme="ocean"] .chip-slot.filled-correct,
+[data-theme="ocean"] .chip-slot.filled-correct * {
+  border-color: #34d399 !important;
+  background-color: rgba(6, 78, 59, 0.75) !important;
+  color: #a7f3d0 !important;
+}
+[data-theme="ocean"] .chip-slot.filled-wrong,
+[data-theme="ocean"] .chip-slot.filled-wrong * {
+  border-color: #fb7185 !important;
+  background-color: rgba(76, 5, 25, 0.75) !important;
+  color: #fecdd3 !important;
+}
+[data-theme="sakura"] .chip-slot.filled-correct,
+[data-theme="sakura"] .chip-slot.filled-correct * {
+  border-color: #059669 !important;
+  background-color: #d1fae5 !important;
+  color: #065f46 !important;
+}
+[data-theme="sakura"] .chip-slot.filled-wrong,
+[data-theme="sakura"] .chip-slot.filled-wrong * {
+  border-color: #e11d48 !important;
+  background-color: #ffe4e6 !important;
+  color: #9f1239 !important;
+}
+[data-theme="fairy"] .chip-slot.filled-correct,
+[data-theme="fairy"] .chip-slot.filled-correct * {
+  border-color: #059669 !important;
+  background-color: #bbf7d0 !important;
+  color: #14532d !important;
+}
+[data-theme="fairy"] .chip-slot.filled-wrong,
+[data-theme="fairy"] .chip-slot.filled-wrong * {
+  border-color: #dc2626 !important;
+  background-color: #fecaca !important;
+  color: #7f1d1d !important;
+}
+
+/* ---- Celebration text readability on light cards ---- */
+[data-theme="sky"] #celebration-detail-text,
+[data-theme="sky"] #celebration-comparison-text {
+  color: #0c4a6e !important;
+}
+[data-theme="sakura"] #celebration-detail-text,
+[data-theme="sakura"] #celebration-comparison-text {
+  color: #831843 !important;
+}
+[data-theme="fairy"] #celebration-detail-text,
+[data-theme="fairy"] #celebration-comparison-text {
+  color: #14532d !important;
+}
+[data-theme="sky"] #celebration-timing-badge,
+[data-theme="sakura"] #celebration-timing-badge,
+[data-theme="fairy"] #celebration-timing-badge {
+  background: rgba(255, 255, 255, 0.65) !important;
+}
+[data-theme="sky"] #celeb-hear-answer-btn,
+[data-theme="sky"] #celeb-retry-btn,
+[data-theme="sky"] #celeb-finish-btn {
+  background: rgba(2, 132, 199, 0.1) !important;
+  border: 1px solid rgba(2, 132, 199, 0.35) !important;
+  color: #0c4a6e !important;
+}
+[data-theme="sakura"] #celeb-hear-answer-btn,
+[data-theme="sakura"] #celeb-retry-btn,
+[data-theme="sakura"] #celeb-finish-btn {
+  background: rgba(219, 39, 119, 0.08) !important;
+  border: 1px solid rgba(236, 72, 153, 0.4) !important;
+  color: #831843 !important;
+}
+[data-theme="fairy"] #celeb-hear-answer-btn,
+[data-theme="fairy"] #celeb-retry-btn,
+[data-theme="fairy"] #celeb-finish-btn {
+  background: rgba(22, 163, 74, 0.08) !important;
+  border: 1px solid rgba(34, 197, 94, 0.4) !important;
+  color: #14532d !important;
+}
+[data-theme="ocean"] #celebration-detail-text,
+[data-theme="ocean"] #celebration-comparison-text {
+  color: #bae6fd !important;
+}
+[data-theme="ocean"] #celeb-hear-answer-btn,
+[data-theme="ocean"] #celeb-retry-btn,
+[data-theme="ocean"] #celeb-finish-btn {
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(56, 189, 248, 0.35) !important;
+  color: #f0f9ff !important;
+}
+
+/* ---- All 8 modals for sky/ocean/sakura/fairy ---- */
+[data-theme="sky"] #profile-modal > div,
+[data-theme="sky"] #exam-scope-modal > div,
+[data-theme="sky"] #settings-modal > div,
+[data-theme="sky"] #shortcuts-modal > div,
+[data-theme="sky"] #worksheet-modal > div,
+[data-theme="sky"] #timing-history-modal > div,
+[data-theme="sky"] #chapter-reset-modal > div,
+[data-theme="sky"] #card-editor-modal > div {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(56, 189, 248, 0.5) !important;
+}
+[data-theme="ocean"] #profile-modal > div,
+[data-theme="ocean"] #exam-scope-modal > div,
+[data-theme="ocean"] #settings-modal > div,
+[data-theme="ocean"] #shortcuts-modal > div,
+[data-theme="ocean"] #worksheet-modal > div,
+[data-theme="ocean"] #timing-history-modal > div,
+[data-theme="ocean"] #chapter-reset-modal > div,
+[data-theme="ocean"] #card-editor-modal > div {
+  background-color: rgba(5, 43, 72, 0.94) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 25px 50px -12px rgba(2, 24, 43, 0.85), 0 0 30px rgba(6, 182, 212, 0.2) !important;
+}
+[data-theme="sakura"] #profile-modal > div,
+[data-theme="sakura"] #exam-scope-modal > div,
+[data-theme="sakura"] #settings-modal > div,
+[data-theme="sakura"] #shortcuts-modal > div,
+[data-theme="sakura"] #worksheet-modal > div,
+[data-theme="sakura"] #timing-history-modal > div,
+[data-theme="sakura"] #chapter-reset-modal > div,
+[data-theme="sakura"] #card-editor-modal > div {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(244, 114, 182, 0.5) !important;
+}
+[data-theme="fairy"] #profile-modal > div,
+[data-theme="fairy"] #exam-scope-modal > div,
+[data-theme="fairy"] #settings-modal > div,
+[data-theme="fairy"] #shortcuts-modal > div,
+[data-theme="fairy"] #worksheet-modal > div,
+[data-theme="fairy"] #timing-history-modal > div,
+[data-theme="fairy"] #chapter-reset-modal > div,
+[data-theme="fairy"] #card-editor-modal > div {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(74, 222, 128, 0.55) !important;
+}
+
+/* ---- Dark theme: hero banner, celebration card, scrollbar, all modals ---- */
+[data-theme="dark"] #view-dashboard > .bg-gradient-to-r {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(51, 65, 85, 0.92) 50%, rgba(15, 23, 42, 0.95) 100%) !important;
+  border: 1px solid rgba(148, 163, 184, 0.3) !important;
+}
+[data-theme="dark"] #game-celebration-card {
+  background: linear-gradient(135deg, rgba(6, 78, 59, 0.9) 0%, rgba(30, 41, 59, 0.94) 100%) !important;
+  border: 1.5px solid rgba(52, 211, 153, 0.4) !important;
+}
+[data-theme="dark"] #celebration-detail-text,
+[data-theme="dark"] #celebration-comparison-text {
+  color: #a7f3d0 !important;
+}
+[data-theme="dark"] #celebration-timing-badge {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(148, 163, 184, 0.3) !important;
+}
+[data-theme="dark"] #celeb-hear-answer-btn,
+[data-theme="dark"] #celeb-retry-btn,
+[data-theme="dark"] #celeb-finish-btn {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(148, 163, 184, 0.3) !important;
+  color: #f8fafc !important;
+}
+[data-theme="dark"] #profile-modal > div,
+[data-theme="dark"] #exam-scope-modal > div,
+[data-theme="dark"] #settings-modal > div,
+[data-theme="dark"] #shortcuts-modal > div,
+[data-theme="dark"] #worksheet-modal > div,
+[data-theme="dark"] #timing-history-modal > div,
+[data-theme="dark"] #chapter-reset-modal > div,
+[data-theme="dark"] #card-editor-modal > div {
+  background-color: rgba(30, 41, 59, 0.96) !important;
+  border-color: rgba(71, 85, 105, 0.6) !important;
+}
+[data-theme="dark"] ::-webkit-scrollbar-track {
+  background: #0f172a !important;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background: #475569 !important;
+}
+[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background: #64748b !important;
+}
+
+/* ---- Insertion-gap cues for dark/ocean (default sky-blue glares) ---- */
+[data-theme="ocean"] .insertion-gap:hover,
+[data-theme="ocean"] .insertion-gap.insertion-gap-hover,
+[data-theme="ocean"] .insertion-gap.active {
+  background-color: rgba(34, 211, 238, 0.2) !important;
+  border-color: #22d3ee !important;
+}
+[data-theme="ocean"] .chip-btn.insert-between-neighbor {
+  border-color: #22d3ee !important;
+  background-color: rgba(34, 211, 238, 0.2) !important;
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35) !important;
+}
+

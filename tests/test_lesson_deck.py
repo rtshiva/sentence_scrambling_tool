@@ -95,5 +95,18 @@ class TestLessonDeck(unittest.TestCase):
         self.assertTrue(deck.is_finished())
         self.assertEqual(deck.completed_steps(), 2)
 
+    def test_lesson_deck_dependency_injection(self):
+        isolated_mem = {}
+        deck = LessonDeck(memory_store=isolated_mem)
+        deck.qa_data = [
+            QuestionItem("DI Question", ["Chunk1", "Chunk2"])
+        ]
+        deck.reset_deck()
+        self.assertEqual(len(deck.deck), 1)
+        deck.process_result(flawless=True)
+        self.assertEqual(len(isolated_mem), 1)
+        key = list(isolated_mem.keys())[0]
+        self.assertEqual(isolated_mem[key]['repetition_level'], 1)
+
 if __name__ == '__main__':
     unittest.main()

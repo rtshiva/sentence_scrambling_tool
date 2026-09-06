@@ -2,8 +2,12 @@ import os
 import json
 import threading
 import datetime
+import logging
 from typing import List, Dict, Any, Optional
 from core.models import DEFAULT_SETTINGS
+from core.storage import StorageBackend, JsonFileStorage
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_PROFILES_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_profiles.json')
 OLD_SETTINGS_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_settings.json')
@@ -11,9 +15,20 @@ OLD_MEMORY_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_memory
 
 class ProfileManager:
     """Manages multiple user accounts, active profile switching, and isolated settings/memory/tracker."""
+    _storage: StorageBackend = JsonFileStorage()
     _data = None
     _lock = threading.RLock()
     profiles_filepath = DEFAULT_PROFILES_FILE
+
+    @classmethod
+    def set_storage(cls, storage: StorageBackend):
+        with cls._lock:
+            cls._storage = storage
+            cls._data = None
+
+    @classmethod
+    def get_storage(cls) -> StorageBackend:
+        return cls._storage
 
     @classmethod
     def set_filepath(cls, path: str):
@@ -32,36 +47,13 @@ class ProfileManager:
             if cls._data is not None:
                 return
 
-            candidates = [cls.profiles_filepath, cls._get_backup_filepath()]
-            loaded_data = None
-            recovered_from_backup = False
-
-            for path in candidates:
-                if os.path.exists(path):
-                    try:
-                        with open(path, 'r', encoding='utf-8') as f:
-                            saved = json.load(f)
-                            if isinstance(saved, dict) and 'profiles' in saved and saved['profiles']:
-                                loaded_data = saved
-                                if path != cls.profiles_filepath:
-                                    recovered_from_backup = True
-                                break
-                    except Exception:
-                        continue
-
-            if loaded_data is not None:
+            loaded_data = cls._storage.load(cls.profiles_filepath)
+            if loaded_data is not None and isinstance(loaded_data, dict) and 'profiles' in loaded_data and loaded_data['profiles']:
                 cls._data = loaded_data
-                if recovered_from_backup:
-                    try:
-                        import shutil
-                        shutil.copy2(cls._get_backup_filepath(), cls.profiles_filepath)
-                    except Exception:
-                        pass
                 return
 
             cls._data = {
                 'active_profile': 'Default',
-                'legacy_tkinter_usage': {'count': 0, 'first_seen': None, 'last_seen': None, 'sources': {}},
                 'profiles': {
                     'Default': {
                         'avatar': '👤',
@@ -74,7 +66,8 @@ class ProfileManager:
 
             # Migration from legacy files if present
             migrated = False
-            if not os.path.exists(cls.profiles_filepath) and not os.path.exists(cls._get_backup_filepath()):
+            bak_path = cls._get_backup_filepath()
+            if not os.path.exists(cls.profiles_filepath) and not os.path.exists(bak_path):
                 if os.path.exists(OLD_SETTINGS_FILE):
                     try:
                         with open(OLD_SETTINGS_FILE, 'r', encoding='utf-8') as f:
@@ -82,7 +75,7 @@ class ProfileManager:
                             cls._data['profiles']['Default']['settings'].update(old_s)
                             migrated = True
                     except Exception:
-                        pass
+                        logger.warning("Failed to migrate legacy settings file", exc_info=True)
                 if os.path.exists(OLD_MEMORY_FILE):
                     try:
                         with open(OLD_MEMORY_FILE, 'r', encoding='utf-8') as f:
@@ -90,40 +83,16 @@ class ProfileManager:
                             cls._data['profiles']['Default']['memory'].update(old_m)
                             migrated = True
                     except Exception:
-                        pass
+                        logger.warning("Failed to migrate legacy memory file", exc_info=True)
                 if migrated:
                     cls._save()
 
     @classmethod
-    def _save(cls):
+    def _save(cls) -> bool:
         with cls._lock:
             if cls._data is None:
-                return
-            try:
-                # 1. Write atomically to .tmp file
-                tmp_path = cls.profiles_filepath + '.tmp'
-                with open(tmp_path, 'w', encoding='utf-8') as f:
-                    json.dump(cls._data, f, indent=2, ensure_ascii=False)
-                    f.flush()
-                    os.fsync(f.fileno())
-
-                # 2. Update backup file with latest valid JSON state
-                bak_path = cls._get_backup_filepath()
-                try:
-                    import shutil
-                    shutil.copy2(tmp_path, bak_path)
-                except Exception:
-                    pass
-
-                # 3. Atomically replace target
-                os.replace(tmp_path, cls.profiles_filepath)
-            except Exception:
-                # Fallback to direct write if os.replace fails
-                try:
-                    with open(cls.profiles_filepath, 'w', encoding='utf-8') as f:
-                        json.dump(cls._data, f, indent=2, ensure_ascii=False)
-                except Exception:
-                    pass
+                return False
+            return cls._storage.save(cls.profiles_filepath, cls._data)
 
     @classmethod
     def get_profile_names(cls) -> List[str]:
@@ -340,56 +309,3 @@ class ProfileManager:
             return True
         return False
 
-    # ---------------------------------------------------------
-    # Legacy Tkinter usage flag (removal telemetry).
-    # Set on every Tkinter launch; scan after ~1 week of usage:
-    #   python -c "from core.profile_manager import ProfileManager; print(ProfileManager.get_tkinter_usage())"
-    # If count == 0, Tkinter was never used and is safe to remove.
-    # ---------------------------------------------------------
-    @classmethod
-    def _ensure_legacy_usage(cls) -> Dict[str, Any]:
-        cls._load()
-        usage = cls._data.get('legacy_tkinter_usage')
-        if not isinstance(usage, dict):
-            usage = {'count': 0, 'first_seen': None, 'last_seen': None, 'sources': {}}
-            cls._data['legacy_tkinter_usage'] = usage
-        usage.setdefault('count', 0)
-        usage.setdefault('first_seen', None)
-        usage.setdefault('last_seen', None)
-        if not isinstance(usage.get('sources'), dict):
-            usage['sources'] = {}
-        return usage
-
-    @classmethod
-    def record_tkinter_launch(cls, source: str = 'unknown') -> Dict[str, Any]:
-        """Flag setter: call on every Tkinter window launch. Never raises."""
-        try:
-            with cls._lock:
-                usage = cls._ensure_legacy_usage()
-                now = datetime.datetime.now().isoformat(timespec='seconds')
-                usage['count'] = int(usage.get('count', 0)) + 1
-                if not usage.get('first_seen'):
-                    usage['first_seen'] = now
-                usage['last_seen'] = now
-                sources = usage['sources']
-                sources[source] = int(sources.get(source, 0)) + 1
-                cls._save()
-                return dict(usage)
-        except Exception:
-            return {'count': 0, 'first_seen': None, 'last_seen': None, 'sources': {}}
-
-    @classmethod
-    def get_tkinter_usage(cls) -> Dict[str, Any]:
-        """Scan target: returns {'count', 'first_seen', 'last_seen', 'sources'}."""
-        with cls._lock:
-            usage = cls._ensure_legacy_usage()
-            return {
-                'count': int(usage.get('count', 0)),
-                'first_seen': usage.get('first_seen'),
-                'last_seen': usage.get('last_seen'),
-                'sources': dict(usage.get('sources', {})),
-            }
-
-    @classmethod
-    def was_tkinter_ever_used(cls) -> bool:
-        return cls.get_tkinter_usage().get('count', 0) > 0

@@ -90,6 +90,24 @@ window.addEventListener('DOMContentLoaded', () => {
 
 window.addEventListener('keydown', function(e) {
   const isTyping = ['INPUT', 'TEXTAREA'].includes(document.activeElement?.tagName) || document.activeElement?.isContentEditable;
+  if (e.key === 'F11') {
+    e.preventDefault();
+    toggleFullscreenMode();
+    return;
+  }
+  if (!isTyping && (e.key === 'f' || e.key === 'F') && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    e.preventDefault();
+    toggleFullscreenMode();
+    return;
+  }
+  if (e.key === 'Escape') {
+    if (state.gameplay && state.gameplay.writing_lcwc_active) {
+      dismissWritingCurtain(true);
+    }
+    if (document.body.classList.contains('zen-focus-active') || state.is_fullscreen) {
+      toggleFullscreenMode();
+    }
+  }
   if (e.ctrlKey || e.metaKey) {
     const key = e.key.toLowerCase();
     if (key === 'a') {
@@ -106,6 +124,14 @@ window.addEventListener('keydown', function(e) {
       if (state.gameplay && state.gameplay.active && !isTyping) {
         e.preventDefault();
         gameActionHint();
+      }
+    } else if (key === 'p') {
+      if (state.gameplay && state.gameplay.active) {
+        const mode = state.gameplay.effective_mode || state.gameplay.mode;
+        if (mode === 'writing') {
+          e.preventDefault();
+          toggleWritingGhostPeekClick();
+        }
       }
     }
   }
@@ -196,1619 +222,8 @@ function seedDemoData() {
   ];
 }
 
-// =========================================================================
-// Cosmic Starfield & Nebula Canvas Engine (Space Explorer Theme)
-// =========================================================================
-const spaceUniverseEngine = {
-  running: false,
-  animId: null,
-  canvas: null,
-  ctx: null,
-  stars: [],
-  meteors: [],
-  lastMeteorTime: 0,
-  mouseX: 0,
-  mouseY: 0,
-  targetMouseX: 0,
-  targetMouseY: 0,
-  width: 0,
-  height: 0,
-  boundResize: null,
-  boundMouseMove: null,
-
-  init() {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    this.canvas = document.getElementById('space-stars-canvas');
-    if (!this.canvas || !this.canvas.getContext) return;
-    this.ctx = this.canvas.getContext('2d');
-    if (!this.ctx) return;
-
-    this.boundResize = () => this.resize();
-    this.boundMouseMove = (e) => {
-      if (!e) return;
-      this.targetMouseX = ((e.clientX || 0) - this.width / 2) * 0.04;
-      this.targetMouseY = ((e.clientY || 0) - this.height / 2) * 0.04;
-    };
-  },
-
-  resize() {
-    if (!this.canvas) return;
-    this.width = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1280;
-    this.height = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 800;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    this.createStars();
-  },
-
-  createStars() {
-    this.stars = [];
-    const count = Math.min(220, Math.max(100, Math.floor((this.width * this.height) / 6000)));
-    const colors = [
-      '#ffffff', // crisp white
-      '#e0e7ff', // soft indigo
-      '#bae6fd', // celestial cyan
-      '#fbcfe8', // faint rose
-      '#fef08a'  // warm starlight
-    ];
-
-    for (let i = 0; i < count; i++) {
-      const radius = Math.random() < 0.82 ? Math.random() * 1.2 + 0.3 : Math.random() * 1.8 + 1.2;
-      this.stars.push({
-        x: Math.random() * this.width,
-        y: Math.random() * this.height,
-        radius,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        baseAlpha: Math.random() * 0.5 + 0.35,
-        twinkleSpeed: Math.random() * 0.025 + 0.008,
-        twinklePhase: Math.random() * Math.PI * 2,
-        parallaxFactor: radius * 0.6,
-        hasDiffraction: radius > 2.0
-      });
-    }
-  },
-
-  spawnMeteor() {
-    const startX = Math.random() * this.width * 0.8 + this.width * 0.1;
-    const startY = Math.random() * this.height * 0.3;
-    const speed = Math.random() * 5 + 6;
-    const angle = (Math.PI / 4) + (Math.random() - 0.5) * 0.3;
-    const length = Math.random() * 80 + 90;
-    this.meteors.push({
-      x: startX,
-      y: startY,
-      dx: Math.cos(angle) * speed,
-      dy: Math.sin(angle) * speed,
-      length,
-      opacity: 1,
-      decay: Math.random() * 0.015 + 0.012
-    });
-  },
-
-  start() {
-    if (this.running || typeof window === 'undefined') return;
-    if (!this.canvas) this.init();
-    if (!this.canvas || !this.ctx) return;
-
-    this.running = true;
-    this.resize();
-    if (window.addEventListener && this.boundResize) {
-      window.addEventListener('resize', this.boundResize);
-    }
-    if (window.addEventListener && this.boundMouseMove) {
-      window.addEventListener('mousemove', this.boundMouseMove);
-    }
-    this.lastMeteorTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-
-    const universeEl = document.getElementById('space-universe');
-    if (universeEl && universeEl.classList) universeEl.classList.remove('hidden');
-
-    if (typeof requestAnimationFrame === 'function') {
-      const loop = (timestamp) => {
-        if (!this.running) return;
-        this.updateAndDraw(timestamp || (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()));
-        this.animId = requestAnimationFrame(loop);
-      };
-      this.animId = requestAnimationFrame(loop);
-    }
-  },
-
-  stop() {
-    this.running = false;
-    if (this.animId && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this.animId);
-      this.animId = null;
-    }
-    if (typeof window !== 'undefined') {
-      if (this.boundResize && window.removeEventListener) window.removeEventListener('resize', this.boundResize);
-      if (this.boundMouseMove && window.removeEventListener) window.removeEventListener('mousemove', this.boundMouseMove);
-    }
-    const universeEl = typeof document !== 'undefined' ? document.getElementById('space-universe') : null;
-    if (universeEl && universeEl.classList) universeEl.classList.add('hidden');
-
-    if (this.ctx && this.canvas && typeof this.ctx.clearRect === 'function') {
-      this.ctx.clearRect(0, 0, this.canvas.width || 0, this.canvas.height || 0);
-    }
-  },
-
-  updateAndDraw(timestamp) {
-    if (!this.ctx || !this.canvas) return;
-
-    // Smooth mouse parallax lerp
-    this.mouseX += (this.targetMouseX - this.mouseX) * 0.05;
-    this.mouseY += (this.targetMouseY - this.mouseY) * 0.05;
-
-    if (typeof this.ctx.clearRect === 'function') {
-      this.ctx.clearRect(0, 0, this.width, this.height);
-    }
-
-    // 1. Draw Twinkling Stars
-    if (typeof this.ctx.save === 'function' && typeof this.ctx.beginPath === 'function') {
-      for (let i = 0; i < this.stars.length; i++) {
-        const s = this.stars[i];
-        s.twinklePhase += s.twinkleSpeed;
-        const alpha = Math.max(0.1, Math.min(1, s.baseAlpha + Math.sin(s.twinklePhase) * 0.35));
-
-        const sx = (s.x + this.mouseX * s.parallaxFactor + this.width) % this.width;
-        const sy = (s.y + this.mouseY * s.parallaxFactor + this.height) % this.height;
-
-        this.ctx.save();
-        this.ctx.globalAlpha = alpha;
-        this.ctx.fillStyle = s.color;
-
-        this.ctx.beginPath();
-        if (typeof this.ctx.arc === 'function') {
-          this.ctx.arc(sx, sy, s.radius, 0, Math.PI * 2);
-        }
-        if (typeof this.ctx.fill === 'function') {
-          this.ctx.fill();
-        }
-
-        // Optical diffraction spikes on luminous hero stars
-        if (s.hasDiffraction && typeof this.ctx.stroke === 'function') {
-          this.ctx.strokeStyle = s.color;
-          this.ctx.lineWidth = 0.6;
-          this.ctx.beginPath();
-          this.ctx.moveTo(sx - s.radius * 2.5, sy);
-          this.ctx.lineTo(sx + s.radius * 2.5, sy);
-          this.ctx.moveTo(sx, sy - s.radius * 2.5);
-          this.ctx.lineTo(sx, sy + s.radius * 2.5);
-          this.ctx.stroke();
-        }
-        this.ctx.restore();
-      }
-    }
-
-    // 2. Periodic Shooting Stars (Meteors)
-    const now = timestamp || Date.now();
-    if (now - this.lastMeteorTime > 5500 + Math.random() * 4000) {
-      this.spawnMeteor();
-      this.lastMeteorTime = now;
-    }
-
-    if (typeof this.ctx.save === 'function' && typeof this.ctx.createLinearGradient === 'function') {
-      for (let i = this.meteors.length - 1; i >= 0; i--) {
-        const m = this.meteors[i];
-        m.x += m.dx;
-        m.y += m.dy;
-        m.opacity -= m.decay;
-
-        if (m.opacity <= 0 || m.x > this.width || m.y > this.height) {
-          this.meteors.splice(i, 1);
-          continue;
-        }
-
-        const hyp = Math.hypot(m.dx, m.dy) || 1;
-        const tailX = m.x - (m.dx / hyp) * m.length;
-        const tailY = m.y - (m.dy / hyp) * m.length;
-
-        this.ctx.save();
-        this.ctx.globalAlpha = Math.max(0, m.opacity);
-        const grad = this.ctx.createLinearGradient(m.x, m.y, tailX, tailY);
-        grad.addColorStop(0, '#ffffff');
-        grad.addColorStop(0.2, '#38bdf8');
-        grad.addColorStop(1, 'transparent');
-
-        this.ctx.strokeStyle = grad;
-        this.ctx.lineWidth = 1.8;
-        this.ctx.lineCap = 'round';
-        this.ctx.beginPath();
-        this.ctx.moveTo(m.x, m.y);
-        this.ctx.lineTo(tailX, tailY);
-        this.ctx.stroke();
-        this.ctx.restore();
-      }
-    }
-  }
-};
-
-// =========================================================================
-// Volcanic Nether Magma & Rising Embers Engine (Lava Forge Theme)
-// =========================================================================
-const lavaUniverseEngine = {
-  running: false,
-  animId: null,
-  canvas: null,
-  ctx: null,
-  embers: [],
-  mouseX: 0,
-  mouseY: 0,
-  targetMouseX: 0,
-  targetMouseY: 0,
-  width: 0,
-  height: 0,
-  boundResize: null,
-  boundMouseMove: null,
-
-  init() {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    this.canvas = document.getElementById('lava-canvas');
-    if (!this.canvas || !this.canvas.getContext) return;
-    this.ctx = this.canvas.getContext('2d');
-    if (!this.ctx) return;
-
-    this.boundResize = () => this.resize();
-    this.boundMouseMove = (e) => {
-      if (!e) return;
-      this.targetMouseX = ((e.clientX || 0) - this.width / 2) * 0.03;
-      this.targetMouseY = ((e.clientY || 0) - this.height / 2) * 0.03;
-    };
-  },
-
-  resize() {
-    if (!this.canvas) return;
-    this.width = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1280;
-    this.height = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 800;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    this.createEmbers();
-  },
-
-  createEmbers() {
-    this.embers = [];
-    const count = Math.min(100, Math.max(50, Math.floor((this.width * this.height) / 11000)));
-    const colors = [
-      '#fbbf24', // molten gold
-      '#f59e0b', // amber forge
-      '#f97316', // blazing orange
-      '#ef4444', // Nether crimson
-      '#ffedd5', // incandescent white
-      '#ea580c'  // magma spark
-    ];
-
-    for (let i = 0; i < count; i++) {
-      this.embers.push(this.spawnEmber(colors, true));
-    }
-  },
-
-  spawnEmber(colorsList, randomY = false) {
-    const colors = colorsList || ['#fbbf24', '#f59e0b', '#f97316', '#ef4444', '#ffedd5'];
-    const radius = Math.random() < 0.75 ? Math.random() * 1.5 + 0.8 : Math.random() * 2.6 + 1.8;
-    return {
-      x: Math.random() * (this.width || 1280),
-      y: randomY ? Math.random() * (this.height || 800) : (this.height || 800) + Math.random() * 20,
-      radius,
-      vy: -(Math.random() * 1.2 + 0.5), // Rising upward
-      baseVx: (Math.random() - 0.5) * 0.4,
-      swaySpeed: Math.random() * 0.02 + 0.01,
-      swayAmp: Math.random() * 1.5 + 0.5,
-      swayPhase: Math.random() * Math.PI * 2,
-      color: colors[Math.floor(Math.random() * colors.length)],
-      alpha: Math.random() * 0.4 + 0.5,
-      decay: Math.random() * 0.003 + 0.001,
-      hasGlow: radius > 2.0
-    };
-  },
-
-  start() {
-    if (this.running || typeof window === 'undefined') return;
-    if (!this.canvas) this.init();
-    if (!this.canvas || !this.ctx) return;
-
-    this.running = true;
-    this.resize();
-    if (window.addEventListener && this.boundResize) {
-      window.addEventListener('resize', this.boundResize);
-    }
-    if (window.addEventListener && this.boundMouseMove) {
-      window.addEventListener('mousemove', this.boundMouseMove);
-    }
-
-    const universeEl = document.getElementById('lava-universe');
-    if (universeEl && universeEl.classList) universeEl.classList.remove('hidden');
-
-    if (typeof requestAnimationFrame === 'function') {
-      const loop = (timestamp) => {
-        if (!this.running) return;
-        this.updateAndDraw(timestamp || (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()));
-        this.animId = requestAnimationFrame(loop);
-      };
-      this.animId = requestAnimationFrame(loop);
-    }
-  },
-
-  stop() {
-    this.running = false;
-    if (this.animId && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this.animId);
-      this.animId = null;
-    }
-    if (typeof window !== 'undefined') {
-      if (this.boundResize && window.removeEventListener) window.removeEventListener('resize', this.boundResize);
-      if (this.boundMouseMove && window.removeEventListener) window.removeEventListener('mousemove', this.boundMouseMove);
-    }
-    const universeEl = typeof document !== 'undefined' ? document.getElementById('lava-universe') : null;
-    if (universeEl && universeEl.classList) universeEl.classList.add('hidden');
-
-    if (this.ctx && this.canvas && typeof this.ctx.clearRect === 'function') {
-      this.ctx.clearRect(0, 0, this.canvas.width || 0, this.canvas.height || 0);
-    }
-  },
-
-  updateAndDraw(timestamp) {
-    if (!this.ctx || !this.canvas) return;
-
-    // Smooth mouse parallax draft lerp
-    this.mouseX += (this.targetMouseX - this.mouseX) * 0.04;
-    this.mouseY += (this.targetMouseY - this.mouseY) * 0.04;
-
-    if (typeof this.ctx.clearRect === 'function') {
-      this.ctx.clearRect(0, 0, this.width, this.height);
-    }
-
-    if (typeof this.ctx.save === 'function' && typeof this.ctx.beginPath === 'function') {
-      for (let i = 0; i < this.embers.length; i++) {
-        const e = this.embers[i];
-        e.y += e.vy;
-        e.swayPhase += e.swaySpeed;
-        e.x += e.baseVx + Math.sin(e.swayPhase) * e.swayAmp + this.mouseX * 0.3;
-        e.alpha -= e.decay;
-
-        // Respawn when top edge reached or burnt out
-        if (e.y < -20 || e.alpha <= 0.05 || e.x < -30 || e.x > this.width + 30) {
-          const respawned = this.spawnEmber(null, false);
-          e.x = respawned.x;
-          e.y = respawned.y;
-          e.vy = respawned.vy;
-          e.alpha = respawned.alpha;
-          e.decay = respawned.decay;
-          e.color = respawned.color;
-          e.radius = respawned.radius;
-          e.hasGlow = respawned.hasGlow;
-          continue;
-        }
-
-        this.ctx.save();
-        this.ctx.globalAlpha = Math.max(0.05, Math.min(1, e.alpha));
-        this.ctx.fillStyle = e.color;
-
-        this.ctx.beginPath();
-        if (typeof this.ctx.arc === 'function') {
-          this.ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
-        }
-        if (typeof this.ctx.fill === 'function') {
-          this.ctx.fill();
-        }
-
-        // Ambient molten halo for luminous embers
-        if (e.hasGlow && typeof this.ctx.stroke === 'function') {
-          this.ctx.strokeStyle = e.color;
-          this.ctx.lineWidth = 1;
-          this.ctx.beginPath();
-          if (typeof this.ctx.arc === 'function') {
-            this.ctx.arc(e.x, e.y, e.radius * 1.8, 0, Math.PI * 2);
-          }
-          this.ctx.stroke();
-        }
-        this.ctx.restore();
-      }
-    }
-  }
-};
-
-// =========================================================================
-// Anime Action Manga Energy & Katana Slash Engine (Anime Theme)
-// Enhanced with Demon Slayer Sakura Petals & Thunder Breathing Lightning
-// =========================================================================
-const animeUniverseEngine = {
-  running: false,
-  animId: null,
-  canvas: null,
-  ctx: null,
-  particles: [],
-  slashes: [],
-  petals: [],
-  lightning: [],
-  lastSlashTime: 0,
-  lastLightningTime: 0,
-  mouseX: 0,
-  mouseY: 0,
-  targetMouseX: 0,
-  targetMouseY: 0,
-  width: 0,
-  height: 0,
-  boundResize: null,
-  boundMouseMove: null,
-
-  init() {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    this.canvas = document.getElementById('anime-canvas');
-    if (!this.canvas || !this.canvas.getContext) return;
-    this.ctx = this.canvas.getContext('2d');
-    if (!this.ctx) return;
-
-    this.boundResize = () => this.resize();
-    this.boundMouseMove = (e) => {
-      if (!e) return;
-      this.targetMouseX = ((e.clientX || 0) - this.width / 2) * 0.05;
-      this.targetMouseY = ((e.clientY || 0) - this.height / 2) * 0.05;
-      // Add cursor chakra spark trail
-      if (Math.random() < 0.35 && this.particles.length < 120) {
-        this.particles.push({
-          x: e.clientX || 0,
-          y: e.clientY || 0,
-          vx: (Math.random() - 0.5) * 2,
-          vy: (Math.random() - 0.5) * 2,
-          radius: Math.random() * 2 + 1,
-          color: Math.random() < 0.6 ? '#06b6d4' : '#f97316',
-          alpha: 0.9,
-          decay: 0.03
-        });
-      }
-    };
-  },
-
-  resize() {
-    if (!this.canvas) return;
-    this.width = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1280;
-    this.height = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 800;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    this.createParticles();
-    this.createPetals();
-  },
-
-  createParticles() {
-    this.particles = [];
-    const count = Math.min(80, Math.max(40, Math.floor((this.width * this.height) / 14000)));
-    const colors = [
-      '#06b6d4', // Rasengan cyan
-      '#38bdf8', // Chakra sky
-      '#f97316', // Sun breathing orange
-      '#ef4444', // Flame breathing red
-      '#fbbf24', // Nichirin blade gold
-      '#ffffff'  // Pure aura white
-    ];
-
-    for (let i = 0; i < count; i++) {
-      this.particles.push({
-        x: Math.random() * this.width,
-        y: Math.random() * this.height,
-        vx: (Math.random() - 0.5) * 0.8,
-        vy: -(Math.random() * 0.9 + 0.3),
-        radius: Math.random() * 2 + 0.8,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        alpha: Math.random() * 0.5 + 0.3,
-        decay: Math.random() * 0.005 + 0.002
-      });
-    }
-  },
-
-  createPetals() {
-    this.petals = [];
-    const count = Math.min(28, Math.max(16, Math.floor(this.width / 50)));
-    const colors = ['#fb7185', '#fda4af', '#f43f5e', '#f472b6'];
-
-    for (let i = 0; i < count; i++) {
-      this.petals.push({
-        x: Math.random() * (this.width + 100) - 50,
-        y: Math.random() * this.height,
-        vx: Math.random() * 0.9 + 0.6,
-        vy: Math.random() * 0.8 + 0.7,
-        swayPhase: Math.random() * Math.PI * 2,
-        swaySpeed: Math.random() * 0.03 + 0.02,
-        swayAmp: Math.random() * 1.5 + 0.8,
-        rot: Math.random() * Math.PI * 2,
-        rotSpeed: (Math.random() - 0.5) * 0.04,
-        flip: Math.random() * Math.PI * 2,
-        flipSpeed: Math.random() * 0.04 + 0.02,
-        size: Math.random() * 4 + 8,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        alpha: Math.random() * 0.3 + 0.55
-      });
-    }
-  },
-
-  spawnSlash() {
-    // Dynamic anime speed line / katana slash across the screen
-    const isCyan = Math.random() < 0.5;
-    const startX = Math.random() * this.width;
-    const startY = Math.random() * this.height * 0.7;
-    const angle = (Math.PI / 6) + (Math.random() - 0.5) * 0.4; // diagonal angle ~30 deg
-    const speed = Math.random() * 12 + 16;
-    const length = Math.random() * 140 + 120;
-    this.slashes.push({
-      x: startX,
-      y: startY,
-      dx: Math.cos(angle) * speed,
-      dy: Math.sin(angle) * speed,
-      length,
-      color: isCyan ? '#06b6d4' : '#f97316',
-      accentColor: isCyan ? '#ffffff' : '#fbbf24',
-      opacity: 1.0,
-      decay: Math.random() * 0.035 + 0.025
-    });
-  },
-
-  spawnLightning() {
-    // Zenitsu Thunder Breathing / Sasuke Chidori electric crackle
-    const isGold = Math.random() < 0.65;
-    const mainColor = isGold ? '#fde047' : '#38bdf8';
-    const glowColor = isGold ? '#eab308' : '#06b6d4';
-
-    const startX = Math.random() * (this.width * 0.75) + this.width * 0.12;
-    const startY = 0;
-    const targetX = startX + (Math.random() - 0.5) * 320;
-    const targetY = this.height * 0.65 + Math.random() * (this.height * 0.35);
-
-    const steps = 10;
-    const mainBranch = [{ x: startX, y: startY }];
-    let currX = startX;
-    let currY = startY;
-    const dx = (targetX - startX) / steps;
-    const dy = (targetY - startY) / steps;
-
-    for (let i = 1; i < steps; i++) {
-      currX += dx + (Math.random() - 0.5) * 70;
-      currY += dy + (Math.random() - 0.2) * 25;
-      mainBranch.push({ x: currX, y: currY });
-    }
-    mainBranch.push({ x: targetX, y: targetY });
-
-    const forks = [];
-    if (Math.random() < 0.75) {
-      const forkIdx = Math.floor(Math.random() * 4) + 3;
-      if (mainBranch[forkIdx]) {
-        let fx = mainBranch[forkIdx].x;
-        let fy = mainBranch[forkIdx].y;
-        const subFork = [{ x: fx, y: fy }];
-        const forkSteps = 4;
-        for (let k = 0; k < forkSteps; k++) {
-          fx += (Math.random() - 0.3) * 60;
-          fy += Math.random() * 40 + 25;
-          subFork.push({ x: fx, y: fy });
-        }
-        forks.push(subFork);
-      }
-    }
-
-    this.lightning.push({
-      branches: [mainBranch, ...forks],
-      color: mainColor,
-      glowColor,
-      alpha: 1.0,
-      decay: 0.08
-    });
-  },
-
-  start() {
-    if (this.running || typeof window === 'undefined') return;
-    if (!this.canvas) this.init();
-    if (!this.canvas || !this.ctx) return;
-
-    this.running = true;
-    this.resize();
-    if (window.addEventListener && this.boundResize) {
-      window.addEventListener('resize', this.boundResize);
-    }
-    if (window.addEventListener && this.boundMouseMove) {
-      window.addEventListener('mousemove', this.boundMouseMove);
-    }
-    this.lastSlashTime = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
-    this.lastLightningTime = this.lastSlashTime;
-
-    const universeEl = document.getElementById('anime-universe');
-    if (universeEl && universeEl.classList) universeEl.classList.remove('hidden');
-
-    if (typeof requestAnimationFrame === 'function') {
-      const loop = (timestamp) => {
-        if (!this.running) return;
-        this.updateAndDraw(timestamp || (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()));
-        this.animId = requestAnimationFrame(loop);
-      };
-      this.animId = requestAnimationFrame(loop);
-    }
-  },
-
-  stop() {
-    this.running = false;
-    if (this.animId && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this.animId);
-      this.animId = null;
-    }
-    if (typeof window !== 'undefined') {
-      if (this.boundResize && window.removeEventListener) window.removeEventListener('resize', this.boundResize);
-      if (this.boundMouseMove && window.removeEventListener) window.removeEventListener('mousemove', this.boundMouseMove);
-    }
-    const universeEl = typeof document !== 'undefined' ? document.getElementById('anime-universe') : null;
-    if (universeEl && universeEl.classList) universeEl.classList.add('hidden');
-
-    this.lightning = [];
-
-    if (this.ctx && this.canvas && typeof this.ctx.clearRect === 'function') {
-      this.ctx.clearRect(0, 0, this.canvas.width || 0, this.canvas.height || 0);
-    }
-  },
-
-  updateAndDraw(timestamp) {
-    if (!this.ctx || !this.canvas) return;
-
-    // Smooth parallax drift
-    this.mouseX += (this.targetMouseX - this.mouseX) * 0.05;
-    this.mouseY += (this.targetMouseY - this.mouseY) * 0.05;
-
-    if (typeof this.ctx.clearRect === 'function') {
-      this.ctx.clearRect(0, 0, this.width, this.height);
-    }
-
-    // 1. Draw floating chakra & flame particles
-    if (typeof this.ctx.save === 'function' && typeof this.ctx.beginPath === 'function') {
-      for (let i = this.particles.length - 1; i >= 0; i--) {
-        const p = this.particles[i];
-        p.x += p.vx + this.mouseX * 0.2;
-        p.y += p.vy;
-        p.alpha -= p.decay;
-
-        if (p.alpha <= 0 || p.y < -10 || p.x < -10 || p.x > this.width + 10) {
-          if (this.particles.length > 60) {
-            this.particles.splice(i, 1);
-            continue;
-          }
-          p.x = Math.random() * this.width;
-          p.y = this.height + 10;
-          p.alpha = Math.random() * 0.5 + 0.3;
-        }
-
-        this.ctx.save();
-        this.ctx.globalAlpha = Math.max(0.05, Math.min(1, p.alpha));
-        this.ctx.fillStyle = p.color;
-        this.ctx.beginPath();
-        if (typeof this.ctx.arc === 'function') {
-          this.ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-        }
-        if (typeof this.ctx.fill === 'function') {
-          this.ctx.fill();
-        }
-        this.ctx.restore();
-      }
-    }
-
-    // 2. Draw Fluttering Demon Slayer Sakura Petals (Cherry Blossom Storm)
-    if (typeof this.ctx.save === 'function' && typeof this.ctx.beginPath === 'function') {
-      for (let i = 0; i < this.petals.length; i++) {
-        const p = this.petals[i];
-        p.swayPhase += p.swaySpeed;
-        p.rot += p.rotSpeed;
-        p.flip += p.flipSpeed;
-        p.x += p.vx + Math.sin(p.swayPhase) * p.swayAmp + this.mouseX * 0.15;
-        p.y += p.vy;
-
-        // Wrap around bottom/right edges
-        if (p.y > this.height + 25) {
-          p.y = -25;
-          p.x = Math.random() * (this.width + 100) - 50;
-        } else if (p.x > this.width + 50) {
-          p.x = -30;
-          p.y = Math.random() * this.height;
-        }
-
-        this.ctx.save();
-        this.ctx.translate(p.x, p.y);
-        this.ctx.rotate(p.rot);
-        this.ctx.scale(1, Math.cos(p.flip));
-        this.ctx.globalAlpha = p.alpha;
-        this.ctx.fillStyle = p.color;
-
-        this.ctx.beginPath();
-        const s = p.size;
-        if (typeof this.ctx.moveTo === 'function' && typeof this.ctx.bezierCurveTo === 'function') {
-          this.ctx.moveTo(0, -s);
-          this.ctx.bezierCurveTo(s * 0.6, -s * 0.6, s * 0.8, s * 0.4, 0, s);
-          this.ctx.bezierCurveTo(-s * 0.8, s * 0.4, -s * 0.6, -s * 0.6, 0, -s);
-        } else if (typeof this.ctx.arc === 'function') {
-          this.ctx.arc(0, 0, s * 0.6, 0, Math.PI * 2);
-        }
-        if (typeof this.ctx.fill === 'function') {
-          this.ctx.fill();
-        }
-        this.ctx.restore();
-      }
-    }
-
-    // 3. Periodic Katana Slash / Speed lines
-    const now = timestamp || Date.now();
-    if (now - this.lastSlashTime > 4000 + Math.random() * 3000) {
-      this.spawnSlash();
-      this.lastSlashTime = now;
-    }
-
-    if (typeof this.ctx.save === 'function' && typeof this.ctx.createLinearGradient === 'function') {
-      for (let i = this.slashes.length - 1; i >= 0; i--) {
-        const s = this.slashes[i];
-        s.x += s.dx;
-        s.y += s.dy;
-        s.opacity -= s.decay;
-
-        if (s.opacity <= 0 || s.x > this.width + 100 || s.y > this.height + 100) {
-          this.slashes.splice(i, 1);
-          continue;
-        }
-
-        const hyp = Math.hypot(s.dx, s.dy) || 1;
-        const tailX = s.x - (s.dx / hyp) * s.length;
-        const tailY = s.y - (s.dy / hyp) * s.length;
-
-        this.ctx.save();
-        this.ctx.globalAlpha = Math.max(0, s.opacity);
-        const grad = this.ctx.createLinearGradient(s.x, s.y, tailX, tailY);
-        grad.addColorStop(0, s.accentColor);
-        grad.addColorStop(0.3, s.color);
-        grad.addColorStop(1, 'transparent');
-
-        this.ctx.strokeStyle = grad;
-        this.ctx.lineWidth = 2.2;
-        this.ctx.lineCap = 'round';
-        this.ctx.beginPath();
-        this.ctx.moveTo(s.x, s.y);
-        this.ctx.lineTo(tailX, tailY);
-        this.ctx.stroke();
-        this.ctx.restore();
-      }
-    }
-
-    // 4. Thunder Breathing Lightning Crackle (Zenitsu & Chidori)
-    if (now - this.lastLightningTime > 4500 + Math.random() * 3500) {
-      this.spawnLightning();
-      this.lastLightningTime = now;
-    }
-
-    if (typeof this.ctx.save === 'function' && typeof this.ctx.beginPath === 'function') {
-      for (let i = this.lightning.length - 1; i >= 0; i--) {
-        const lt = this.lightning[i];
-        lt.alpha -= lt.decay;
-
-        if (lt.alpha <= 0) {
-          this.lightning.splice(i, 1);
-          continue;
-        }
-
-        for (let b = 0; b < lt.branches.length; b++) {
-          const pts = lt.branches[b];
-          if (pts.length < 2) continue;
-
-          // Outer Glow
-          this.ctx.save();
-          this.ctx.globalAlpha = lt.alpha * 0.65;
-          this.ctx.strokeStyle = lt.glowColor;
-          this.ctx.lineWidth = 4.2;
-          this.ctx.lineCap = 'round';
-          this.ctx.lineJoin = 'round';
-          this.ctx.beginPath();
-          this.ctx.moveTo(pts[0].x, pts[0].y);
-          for (let p = 1; p < pts.length; p++) {
-            this.ctx.lineTo(pts[p].x, pts[p].y);
-          }
-          if (typeof this.ctx.stroke === 'function') this.ctx.stroke();
-
-          // White-hot core
-          this.ctx.globalAlpha = lt.alpha;
-          this.ctx.strokeStyle = '#ffffff';
-          this.ctx.lineWidth = 1.6;
-          this.ctx.beginPath();
-          this.ctx.moveTo(pts[0].x, pts[0].y);
-          for (let p = 1; p < pts.length; p++) {
-            this.ctx.lineTo(pts[p].x, pts[p].y);
-          }
-          if (typeof this.ctx.stroke === 'function') this.ctx.stroke();
-          this.ctx.restore();
-        }
-      }
-    }
-  }
-};
-
-// =========================================================================
-// Sunny Blue Sky & Drifting Clouds Engine (Sky Theme)
-// =========================================================================
-const skyUniverseEngine = {
-  running: false,
-  animId: null,
-  canvas: null,
-  ctx: null,
-  clouds: [],
-  birds: [],
-  mouseX: 0,
-  mouseY: 0,
-  targetMouseX: 0,
-  targetMouseY: 0,
-  width: 0,
-  height: 0,
-  boundResize: null,
-  boundMouseMove: null,
-
-  init() {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    this.canvas = document.getElementById('sky-canvas');
-    if (!this.canvas || !this.canvas.getContext) return;
-    this.ctx = this.canvas.getContext('2d');
-    if (!this.ctx) return;
-
-    this.boundResize = () => this.resize();
-    this.boundMouseMove = (e) => {
-      if (!e) return;
-      this.targetMouseX = ((e.clientX || 0) - this.width / 2) * 0.02;
-      this.targetMouseY = ((e.clientY || 0) - this.height / 2) * 0.02;
-    };
-  },
-
-  resize() {
-    if (!this.canvas) return;
-    this.width = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1280;
-    this.height = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 800;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    this.createClouds();
-    this.createBirds();
-  },
-
-  createClouds() {
-    this.clouds = [];
-    const count = Math.min(10, Math.max(6, Math.floor(this.width / 180)));
-    for (let i = 0; i < count; i++) {
-      const scale = Math.random() * 0.6 + 0.7;
-      const puffs = [];
-      const puffCount = Math.floor(Math.random() * 4) + 5;
-      for (let p = 0; p < puffCount; p++) {
-        puffs.push({
-          dx: (p - puffCount / 2) * 28 * scale + (Math.random() - 0.5) * 12,
-          dy: (Math.random() - 0.5) * 16 * scale,
-          r: (Math.random() * 22 + 28) * scale
-        });
-      }
-      this.clouds.push({
-        x: Math.random() * (this.width + 300) - 150,
-        y: Math.random() * (this.height * 0.65) + 30,
-        speed: (Math.random() * 0.35 + 0.25) * (scale * 0.9),
-        scale,
-        opacity: Math.random() * 0.25 + 0.45,
-        puffs
-      });
-    }
-  },
-
-  createBirds() {
-    this.birds = [];
-    const birdCount = 3;
-    for (let i = 0; i < birdCount; i++) {
-      this.birds.push({
-        x: Math.random() * this.width,
-        y: Math.random() * (this.height * 0.45) + 40,
-        vx: Math.random() * 0.8 + 1.2,
-        vy: (Math.random() - 0.5) * 0.2,
-        size: Math.random() * 4 + 7,
-        wingPhase: Math.random() * Math.PI * 2,
-        wingSpeed: Math.random() * 0.05 + 0.08
-      });
-    }
-  },
-
-  start() {
-    if (this.running || typeof window === 'undefined') return;
-    if (!this.canvas) this.init();
-    if (!this.canvas || !this.ctx) return;
-
-    this.running = true;
-    this.resize();
-    if (window.addEventListener && this.boundResize) {
-      window.addEventListener('resize', this.boundResize);
-    }
-    if (window.addEventListener && this.boundMouseMove) {
-      window.addEventListener('mousemove', this.boundMouseMove);
-    }
-
-    const universeEl = document.getElementById('sky-universe');
-    if (universeEl && universeEl.classList) universeEl.classList.remove('hidden');
-
-    if (typeof requestAnimationFrame === 'function') {
-      const loop = (timestamp) => {
-        if (!this.running) return;
-        this.updateAndDraw(timestamp || (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()));
-        this.animId = requestAnimationFrame(loop);
-      };
-      this.animId = requestAnimationFrame(loop);
-    }
-  },
-
-  stop() {
-    this.running = false;
-    if (this.animId && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this.animId);
-      this.animId = null;
-    }
-    if (typeof window !== 'undefined') {
-      if (this.boundResize && window.removeEventListener) window.removeEventListener('resize', this.boundResize);
-      if (this.boundMouseMove && window.removeEventListener) window.removeEventListener('mousemove', this.boundMouseMove);
-    }
-    const universeEl = typeof document !== 'undefined' ? document.getElementById('sky-universe') : null;
-    if (universeEl && universeEl.classList) universeEl.classList.add('hidden');
-
-    if (this.ctx && this.canvas && typeof this.ctx.clearRect === 'function') {
-      this.ctx.clearRect(0, 0, this.canvas.width || 0, this.canvas.height || 0);
-    }
-  },
-
-  updateAndDraw(timestamp) {
-    if (!this.ctx || !this.canvas) return;
-
-    // Smooth mouse breeze lerp
-    this.mouseX += (this.targetMouseX - this.mouseX) * 0.03;
-    this.mouseY += (this.targetMouseY - this.mouseY) * 0.03;
-
-    if (typeof this.ctx.clearRect === 'function') {
-      this.ctx.clearRect(0, 0, this.width, this.height);
-    }
-
-    // 1. Draw Fluffy Drifting Clouds
-    if (typeof this.ctx.save === 'function' && typeof this.ctx.beginPath === 'function') {
-      for (let i = 0; i < this.clouds.length; i++) {
-        const c = this.clouds[i];
-        c.x += c.speed + this.mouseX * 0.15;
-
-        // Wrap around right-to-left
-        if (c.x - 250 > this.width) {
-          c.x = -250;
-          c.y = Math.random() * (this.height * 0.65) + 30;
-        }
-
-        this.ctx.save();
-        this.ctx.fillStyle = '#ffffff';
-        this.ctx.globalAlpha = c.opacity;
-        for (let p = 0; p < c.puffs.length; p++) {
-          const puff = c.puffs[p];
-          this.ctx.beginPath();
-          if (typeof this.ctx.arc === 'function') {
-            this.ctx.arc(c.x + puff.dx, c.y + puff.dy, puff.r, 0, Math.PI * 2);
-          }
-          if (typeof this.ctx.fill === 'function') {
-            this.ctx.fill();
-          }
-        }
-        this.ctx.restore();
-      }
-    }
-
-    // 2. Draw Gentle Soaring Birds
-    if (typeof this.ctx.save === 'function' && typeof this.ctx.beginPath === 'function') {
-      for (let i = 0; i < this.birds.length; i++) {
-        const b = this.birds[i];
-        b.x += b.vx;
-        b.y += b.vy;
-        b.wingPhase += b.wingSpeed;
-
-        if (b.x - 40 > this.width) {
-          b.x = -40;
-          b.y = Math.random() * (this.height * 0.45) + 40;
-        }
-
-        const wingY = Math.sin(b.wingPhase) * b.size * 0.45;
-
-        this.ctx.save();
-        this.ctx.strokeStyle = '#0369a1';
-        this.ctx.lineWidth = 1.6;
-        this.ctx.lineCap = 'round';
-        this.ctx.globalAlpha = 0.55;
-
-        this.ctx.beginPath();
-        if (typeof this.ctx.moveTo === 'function' && typeof this.ctx.quadraticCurveTo === 'function') {
-          this.ctx.moveTo(b.x - b.size, b.y + wingY);
-          this.ctx.quadraticCurveTo(b.x - b.size * 0.4, b.y - b.size * 0.25, b.x, b.y);
-          this.ctx.quadraticCurveTo(b.x + b.size * 0.4, b.y - b.size * 0.25, b.x + b.size, b.y + wingY);
-        }
-        if (typeof this.ctx.stroke === 'function') {
-          this.ctx.stroke();
-        }
-        this.ctx.restore();
-      }
-    }
-  }
-};
-
-// =========================================================================
-// Deep Ocean Aquarium & Swimming Fishes Engine (Ocean Theme)
-// =========================================================================
-const oceanUniverseEngine = {
-  running: false,
-  animId: null,
-  canvas: null,
-  ctx: null,
-  fishes: [],
-  bubbles: [],
-  mouseX: -999,
-  mouseY: -999,
-  width: 0,
-  height: 0,
-  boundResize: null,
-  boundMouseMove: null,
-
-  init() {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    this.canvas = document.getElementById('ocean-canvas');
-    if (!this.canvas || !this.canvas.getContext) return;
-    this.ctx = this.canvas.getContext('2d');
-    if (!this.ctx) return;
-
-    this.boundResize = () => this.resize();
-    this.boundMouseMove = (e) => {
-      if (!e) return;
-      this.mouseX = e.clientX || 0;
-      this.mouseY = e.clientY || 0;
-    };
-  },
-
-  resize() {
-    if (!this.canvas) return;
-    this.width = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1280;
-    this.height = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 800;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    this.createFishes();
-    this.createBubbles();
-  },
-
-  createFishes() {
-    this.fishes = [];
-    const count = Math.min(22, Math.max(12, Math.floor((this.width * this.height) / 45000)));
-    const fishColors = [
-      { body: '#f97316', stripe: '#ffffff' }, // Clownfish orange
-      { body: '#0284c7', stripe: '#38bdf8' }, // Blue tang
-      { body: '#eab308', stripe: '#fef08a' }, // Yellow tang
-      { body: '#f43f5e', stripe: '#ffffff' }, // Coral rose
-      { body: '#10b981', stripe: '#6ee7b7' }  // Emerald chromis
-    ];
-
-    for (let i = 0; i < count; i++) {
-      const palette = fishColors[Math.floor(Math.random() * fishColors.length)];
-      const goingRight = Math.random() < 0.55;
-      const speed = Math.random() * 1.0 + 0.7;
-      const length = Math.random() * 12 + 20; // 20 to 32px
-      const height = length * 0.45;
-
-      this.fishes.push({
-        x: Math.random() * this.width,
-        baseY: Math.random() * (this.height * 0.8) + this.height * 0.1,
-        y: 0,
-        vx: goingRight ? speed : -speed,
-        length,
-        height,
-        color: palette.body,
-        stripe: palette.stripe,
-        swimPhase: Math.random() * Math.PI * 2,
-        swimSpeed: Math.random() * 0.04 + 0.03,
-        tailPhase: Math.random() * Math.PI * 2,
-        tailSpeed: Math.random() * 0.15 + 0.12,
-        alpha: Math.random() * 0.35 + 0.6
-      });
-    }
-  },
-
-  createBubbles() {
-    this.bubbles = [];
-    const count = Math.min(35, Math.max(20, Math.floor(this.width / 40)));
-    for (let i = 0; i < count; i++) {
-      this.bubbles.push({
-        x: Math.random() * this.width,
-        y: Math.random() * this.height,
-        vy: -(Math.random() * 1.2 + 0.7),
-        radius: Math.random() * 3 + 1.5,
-        wobblePhase: Math.random() * Math.PI * 2,
-        wobbleSpeed: Math.random() * 0.05 + 0.03,
-        alpha: Math.random() * 0.4 + 0.3
-      });
-    }
-  },
-
-  start() {
-    if (this.running || typeof window === 'undefined') return;
-    if (!this.canvas) this.init();
-    if (!this.canvas || !this.ctx) return;
-
-    this.running = true;
-    this.resize();
-    if (window.addEventListener && this.boundResize) {
-      window.addEventListener('resize', this.boundResize);
-    }
-    if (window.addEventListener && this.boundMouseMove) {
-      window.addEventListener('mousemove', this.boundMouseMove);
-    }
-
-    const universeEl = document.getElementById('ocean-universe');
-    if (universeEl && universeEl.classList) universeEl.classList.remove('hidden');
-
-    if (typeof requestAnimationFrame === 'function') {
-      const loop = (timestamp) => {
-        if (!this.running) return;
-        this.updateAndDraw(timestamp || (typeof performance !== 'undefined' && performance.now ? performance.now() : Date.now()));
-        this.animId = requestAnimationFrame(loop);
-      };
-      this.animId = requestAnimationFrame(loop);
-    }
-  },
-
-  stop() {
-    this.running = false;
-    if (this.animId && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this.animId);
-      this.animId = null;
-    }
-    if (typeof window !== 'undefined') {
-      if (this.boundResize && window.removeEventListener) window.removeEventListener('resize', this.boundResize);
-      if (this.boundMouseMove && window.removeEventListener) window.removeEventListener('mousemove', this.boundMouseMove);
-    }
-    const universeEl = typeof document !== 'undefined' ? document.getElementById('ocean-universe') : null;
-    if (universeEl && universeEl.classList) universeEl.classList.add('hidden');
-
-    if (this.ctx && this.canvas && typeof this.ctx.clearRect === 'function') {
-      this.ctx.clearRect(0, 0, this.canvas.width || 0, this.canvas.height || 0);
-    }
-  },
-
-  updateAndDraw(timestamp) {
-    if (!this.ctx || !this.canvas) return;
-
-    if (typeof this.ctx.clearRect === 'function') {
-      this.ctx.clearRect(0, 0, this.width, this.height);
-    }
-
-    // 1. Draw Rising Oxygen Bubbles
-    if (typeof this.ctx.save === 'function' && typeof this.ctx.beginPath === 'function') {
-      for (let i = 0; i < this.bubbles.length; i++) {
-        const b = this.bubbles[i];
-        b.y += b.vy;
-        b.wobblePhase += b.wobbleSpeed;
-        const bx = b.x + Math.sin(b.wobblePhase) * 1.5;
-
-        // Respawn at bottom when reaching top
-        if (b.y < -15) {
-          b.y = this.height + 10;
-          b.x = Math.random() * this.width;
-        }
-
-        this.ctx.save();
-        this.ctx.globalAlpha = b.alpha;
-        this.ctx.strokeStyle = '#38bdf8';
-        this.ctx.fillStyle = 'rgba(186, 230, 253, 0.25)';
-        this.ctx.lineWidth = 1;
-
-        this.ctx.beginPath();
-        if (typeof this.ctx.arc === 'function') {
-          this.ctx.arc(bx, b.y, b.radius, 0, Math.PI * 2);
-        }
-        if (typeof this.ctx.fill === 'function') {
-          this.ctx.fill();
-        }
-        if (typeof this.ctx.stroke === 'function') {
-          this.ctx.stroke();
-        }
-
-        // Shimmer glint highlight
-        if (b.radius > 2.5 && typeof this.ctx.arc === 'function') {
-          this.ctx.fillStyle = '#ffffff';
-          this.ctx.beginPath();
-          this.ctx.arc(bx - b.radius * 0.35, b.y - b.radius * 0.35, b.radius * 0.3, 0, Math.PI * 2);
-          if (typeof this.ctx.fill === 'function') this.ctx.fill();
-        }
-        this.ctx.restore();
-      }
-    }
-
-    // 2. Draw Animated Swimming Fishes
-    if (typeof this.ctx.save === 'function' && typeof this.ctx.beginPath === 'function') {
-      for (let i = 0; i < this.fishes.length; i++) {
-        const f = this.fishes[i];
-        f.swimPhase += f.swimSpeed;
-        f.tailPhase += f.tailSpeed;
-
-        // Subtle vertical undulating
-        f.y = f.baseY + Math.sin(f.swimPhase) * 6;
-
-        // Mouse dart reaction (swim faster if mouse is near)
-        const distToMouse = Math.hypot(this.mouseX - f.x, this.mouseY - f.y);
-        let currentVx = f.vx;
-        if (distToMouse < 80) {
-          currentVx = f.vx * 2.2;
-        }
-
-        f.x += currentVx;
-
-        // Wrap around screen
-        if (f.vx > 0 && f.x - f.length > this.width) {
-          f.x = -f.length;
-          f.baseY = Math.random() * (this.height * 0.8) + this.height * 0.1;
-        } else if (f.vx < 0 && f.x + f.length < 0) {
-          f.x = this.width + f.length;
-          f.baseY = Math.random() * (this.height * 0.8) + this.height * 0.1;
-        }
-
-        const dir = f.vx > 0 ? 1 : -1;
-        const tailOffset = Math.sin(f.tailPhase) * (f.height * 0.45);
-
-        this.ctx.save();
-        this.ctx.globalAlpha = f.alpha;
-        this.ctx.fillStyle = f.color;
-
-        // Draw Fish Body (Tear/Ellipse shape)
-        this.ctx.beginPath();
-        if (typeof this.ctx.moveTo === 'function' && typeof this.ctx.quadraticCurveTo === 'function') {
-          const noseX = f.x + dir * (f.length * 0.5);
-          const tailBaseX = f.x - dir * (f.length * 0.45);
-          
-          this.ctx.moveTo(noseX, f.y);
-          this.ctx.quadraticCurveTo(f.x, f.y - f.height * 0.6, tailBaseX, f.y);
-          this.ctx.quadraticCurveTo(f.x, f.y + f.height * 0.6, noseX, f.y);
-          if (typeof this.ctx.fill === 'function') this.ctx.fill();
-
-          // Draw Fish Tail Fin (articulated wagging)
-          const tailTipX = tailBaseX - dir * (f.length * 0.35);
-          this.ctx.beginPath();
-          this.ctx.moveTo(tailBaseX, f.y);
-          this.ctx.lineTo(tailTipX, f.y - f.height * 0.55 + tailOffset);
-          this.ctx.lineTo(tailTipX + dir * 3, f.y + tailOffset * 0.5);
-          this.ctx.lineTo(tailTipX, f.y + f.height * 0.55 + tailOffset);
-          this.ctx.closePath();
-          if (typeof this.ctx.fill === 'function') this.ctx.fill();
-
-          // Reef stripe accent
-          if (f.stripe && typeof this.ctx.stroke === 'function') {
-            this.ctx.strokeStyle = f.stripe;
-            this.ctx.lineWidth = 1.8;
-            this.ctx.beginPath();
-            this.ctx.moveTo(f.x - dir * 2, f.y - f.height * 0.4);
-            this.ctx.lineTo(f.x - dir * 2, f.y + f.height * 0.4);
-            this.ctx.stroke();
-          }
-
-          // Little eye dot
-          if (typeof this.ctx.arc === 'function') {
-            const eyeX = f.x + dir * (f.length * 0.32);
-            const eyeY = f.y - f.height * 0.12;
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.beginPath();
-            this.ctx.arc(eyeX, eyeY, 1.8, 0, Math.PI * 2);
-            if (typeof this.ctx.fill === 'function') this.ctx.fill();
-
-            this.ctx.fillStyle = '#02182b';
-            this.ctx.beginPath();
-            this.ctx.arc(eyeX + dir * 0.5, eyeY, 0.9, 0, Math.PI * 2);
-            if (typeof this.ctx.fill === 'function') this.ctx.fill();
-          }
-        }
-        this.ctx.restore();
-      }
-    }
-  }
-};
-
-// =========================================================================
-// Sakura Princess — Falling Cherry-Blossom Petals Engine (Sakura Theme)
-// =========================================================================
-const sakuraUniverseEngine = {
-  running: false,
-  animId: null,
-  canvas: null,
-  ctx: null,
-  petals: [],
-  width: 0,
-  height: 0,
-  boundResize: null,
-
-  init() {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    this.canvas = document.getElementById('sakura-canvas');
-    if (!this.canvas || !this.canvas.getContext) return;
-    this.ctx = this.canvas.getContext('2d');
-    if (!this.ctx) return;
-    this.boundResize = () => this.resize();
-  },
-
-  resize() {
-    if (!this.canvas) return;
-    this.width = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1280;
-    this.height = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 800;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    this.createPetals();
-  },
-
-  createPetals() {
-    this.petals = [];
-    const count = Math.min(42, Math.max(24, Math.floor(this.width / 34)));
-    const colors = ['#fbcfe8', '#f9a8d4', '#f472b6', '#fda4af', '#ffffff', '#fce7f3'];
-    for (let i = 0; i < count; i++) {
-      this.petals.push({
-        x: Math.random() * this.width,
-        y: Math.random() * this.height,
-        vy: Math.random() * 0.9 + 0.5,
-        swayPhase: Math.random() * Math.PI * 2,
-        swaySpeed: Math.random() * 0.02 + 0.008,
-        swayAmp: Math.random() * 28 + 12,
-        size: Math.random() * 5 + 5,
-        rot: Math.random() * Math.PI * 2,
-        rotSpeed: (Math.random() - 0.5) * 0.03,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        alpha: Math.random() * 0.35 + 0.55
-      });
-    }
-  },
-
-  start() {
-    if (this.running || typeof window === 'undefined') return;
-    if (!this.canvas) this.init();
-    if (!this.canvas || !this.ctx) return;
-    this.running = true;
-    this.resize();
-    if (window.addEventListener && this.boundResize) window.addEventListener('resize', this.boundResize);
-    const universeEl = document.getElementById('sakura-universe');
-    if (universeEl && universeEl.classList) universeEl.classList.remove('hidden');
-    if (typeof requestAnimationFrame === 'function') {
-      const loop = (ts) => {
-        if (!this.running) return;
-        this.updateAndDraw();
-        this.animId = requestAnimationFrame(loop);
-      };
-      this.animId = requestAnimationFrame(loop);
-    }
-  },
-
-  stop() {
-    this.running = false;
-    if (this.animId && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this.animId);
-      this.animId = null;
-    }
-    if (typeof window !== 'undefined' && this.boundResize && window.removeEventListener) {
-      window.removeEventListener('resize', this.boundResize);
-    }
-    const universeEl = typeof document !== 'undefined' ? document.getElementById('sakura-universe') : null;
-    if (universeEl && universeEl.classList) universeEl.classList.add('hidden');
-    if (this.ctx && this.canvas && typeof this.ctx.clearRect === 'function') {
-      this.ctx.clearRect(0, 0, this.canvas.width || 0, this.canvas.height || 0);
-    }
-  },
-
-  updateAndDraw() {
-    if (!this.ctx || !this.canvas) return;
-    this.ctx.clearRect(0, 0, this.width, this.height);
-    for (let i = 0; i < this.petals.length; i++) {
-      const p = this.petals[i];
-      p.y += p.vy;
-      p.swayPhase += p.swaySpeed;
-      p.rot += p.rotSpeed;
-      p.x += Math.sin(p.swayPhase) * 0.6;
-      if (p.y > this.height + 16) {
-        p.y = -16;
-        p.x = Math.random() * this.width;
-      }
-      if (p.x > this.width + 20) p.x = -20;
-      if (p.x < -20) p.x = this.width + 20;
-      this.ctx.save();
-      this.ctx.globalAlpha = p.alpha;
-      this.ctx.translate(p.x, p.y);
-      this.ctx.rotate(p.rot);
-      this.ctx.fillStyle = p.color;
-      this.ctx.beginPath();
-      // petal shape: two quadratic curves
-      this.ctx.moveTo(0, -p.size * 0.6);
-      this.ctx.quadraticCurveTo(p.size * 0.7, -p.size * 0.3, p.size * 0.35, p.size * 0.55);
-      this.ctx.quadraticCurveTo(0, p.size * 0.85, -p.size * 0.35, p.size * 0.55);
-      this.ctx.quadraticCurveTo(-p.size * 0.7, -p.size * 0.3, 0, -p.size * 0.6);
-      this.ctx.fill();
-      // tiny white highlight notch
-      this.ctx.fillStyle = 'rgba(255,255,255,0.65)';
-      this.ctx.beginPath();
-      this.ctx.arc(-p.size * 0.12, -p.size * 0.18, p.size * 0.14, 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.restore();
-    }
-  }
-};
-
-// =========================================================================
-// Fairy Garden — Butterflies + Firefly Sparkles Engine (Fairy Theme)
-// =========================================================================
-const fairyUniverseEngine = {
-  running: false,
-  animId: null,
-  canvas: null,
-  ctx: null,
-  butterflies: [],
-  sparkles: [],
-  width: 0,
-  height: 0,
-  boundResize: null,
-
-  init() {
-    if (typeof window === 'undefined' || typeof document === 'undefined') return;
-    this.canvas = document.getElementById('fairy-canvas');
-    if (!this.canvas || !this.canvas.getContext) return;
-    this.ctx = this.canvas.getContext('2d');
-    if (!this.ctx) return;
-    this.boundResize = () => this.resize();
-  },
-
-  resize() {
-    if (!this.canvas) return;
-    this.width = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1280;
-    this.height = (typeof window !== 'undefined' && window.innerHeight) ? window.innerHeight : 800;
-    this.canvas.width = this.width;
-    this.canvas.height = this.height;
-    this.createButterflies();
-    this.createSparkles();
-  },
-
-  createButterflies() {
-    this.butterflies = [];
-    const palettes = [
-      { wing: '#f472b6', edge: '#be185d' },
-      { wing: '#c084fc', edge: '#7e22ce' },
-      { wing: '#fbbf24', edge: '#b45309' },
-      { wing: '#4ade80', edge: '#15803d' },
-      { wing: '#38bdf8', edge: '#0369a1' }
-    ];
-    const count = Math.min(9, Math.max(5, Math.floor(this.width / 220)));
-    for (let i = 0; i < count; i++) {
-      const pal = palettes[Math.floor(Math.random() * palettes.length)];
-      this.butterflies.push({
-        x: Math.random() * this.width,
-        y: Math.random() * (this.height * 0.7) + 40,
-        vx: (Math.random() - 0.5) * 1.1,
-        vy: (Math.random() - 0.5) * 0.6,
-        size: Math.random() * 6 + 9,
-        wingPhase: Math.random() * Math.PI * 2,
-        wingSpeed: Math.random() * 0.12 + 0.14,
-        driftPhase: Math.random() * Math.PI * 2,
-        wing: pal.wing,
-        edge: pal.edge,
-        alpha: Math.random() * 0.25 + 0.7
-      });
-    }
-  },
-
-  createSparkles() {
-    this.sparkles = [];
-    const count = Math.min(45, Math.max(25, Math.floor(this.width / 32)));
-    for (let i = 0; i < count; i++) {
-      this.sparkles.push({
-        x: Math.random() * this.width,
-        y: Math.random() * this.height,
-        r: Math.random() * 1.8 + 0.8,
-        twinklePhase: Math.random() * Math.PI * 2,
-        twinkleSpeed: Math.random() * 0.06 + 0.03,
-        vy: -(Math.random() * 0.25 + 0.08)
-      });
-    }
-  },
-
-  start() {
-    if (this.running || typeof window === 'undefined') return;
-    if (!this.canvas) this.init();
-    if (!this.canvas || !this.ctx) return;
-    this.running = true;
-    this.resize();
-    if (window.addEventListener && this.boundResize) window.addEventListener('resize', this.boundResize);
-    const universeEl = document.getElementById('fairy-universe');
-    if (universeEl && universeEl.classList) universeEl.classList.remove('hidden');
-    if (typeof requestAnimationFrame === 'function') {
-      const loop = () => {
-        if (!this.running) return;
-        this.updateAndDraw();
-        this.animId = requestAnimationFrame(loop);
-      };
-      this.animId = requestAnimationFrame(loop);
-    }
-  },
-
-  stop() {
-    this.running = false;
-    if (this.animId && typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(this.animId);
-      this.animId = null;
-    }
-    if (typeof window !== 'undefined' && this.boundResize && window.removeEventListener) {
-      window.removeEventListener('resize', this.boundResize);
-    }
-    const universeEl = typeof document !== 'undefined' ? document.getElementById('fairy-universe') : null;
-    if (universeEl && universeEl.classList) universeEl.classList.add('hidden');
-    if (this.ctx && this.canvas && typeof this.ctx.clearRect === 'function') {
-      this.ctx.clearRect(0, 0, this.canvas.width || 0, this.canvas.height || 0);
-    }
-  },
-
-  updateAndDraw() {
-    if (!this.ctx || !this.canvas) return;
-    this.ctx.clearRect(0, 0, this.width, this.height);
-    // 1. twinkling firefly sparkles drifting upward
-    for (let i = 0; i < this.sparkles.length; i++) {
-      const s = this.sparkles[i];
-      s.twinklePhase += s.twinkleSpeed;
-      s.y += s.vy;
-      if (s.y < -8) {
-        s.y = this.height + 8;
-        s.x = Math.random() * this.width;
-      }
-      const glow = 0.35 + Math.abs(Math.sin(s.twinklePhase)) * 0.6;
-      this.ctx.save();
-      this.ctx.globalAlpha = glow;
-      this.ctx.fillStyle = '#fef9c3';
-      this.ctx.beginPath();
-      this.ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.globalAlpha = glow * 0.35;
-      this.ctx.fillStyle = '#fde047';
-      this.ctx.beginPath();
-      this.ctx.arc(s.x, s.y, s.r * 2.6, 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.restore();
-    }
-    // 2. fluttering butterflies (two flapping wing ellipses + body)
-    for (let i = 0; i < this.butterflies.length; i++) {
-      const b = this.butterflies[i];
-      b.wingPhase += b.wingSpeed;
-      b.driftPhase += 0.012;
-      b.x += b.vx + Math.sin(b.driftPhase) * 0.5;
-      b.y += b.vy + Math.cos(b.driftPhase * 1.3) * 0.4;
-      if (b.x > this.width + 30) b.x = -30;
-      if (b.x < -30) b.x = this.width + 30;
-      if (b.y > this.height + 30) b.y = -30;
-      if (b.y < -30) b.y = this.height + 30;
-      const flap = Math.abs(Math.sin(b.wingPhase));
-      const wingSpread = 0.35 + flap * 0.65;
-      this.ctx.save();
-      this.ctx.globalAlpha = b.alpha;
-      this.ctx.translate(b.x, b.y);
-      // wings
-      this.ctx.fillStyle = b.wing;
-      this.ctx.strokeStyle = b.edge;
-      this.ctx.lineWidth = 1;
-      for (const side of [-1, 1]) {
-        this.ctx.save();
-        this.ctx.scale(side * wingSpread, 1);
-        this.ctx.beginPath();
-        this.ctx.ellipse(b.size * 0.55, -b.size * 0.15, b.size * 0.6, b.size * 0.42, 0.5, 0, Math.PI * 2);
-        this.ctx.fill();
-        this.ctx.stroke();
-        this.ctx.beginPath();
-        this.ctx.ellipse(b.size * 0.45, b.size * 0.4, b.size * 0.42, b.size * 0.3, -0.4, 0, Math.PI * 2);
-        this.ctx.fill();
-        this.ctx.restore();
-      }
-      // body
-      this.ctx.fillStyle = '#3f3f46';
-      this.ctx.beginPath();
-      this.ctx.ellipse(0, 0, b.size * 0.12, b.size * 0.5, 0, 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.restore();
-    }
-  }
-};
-
-if (typeof window !== 'undefined') {
-  window.spaceUniverseEngine = spaceUniverseEngine;
-  window.lavaUniverseEngine = lavaUniverseEngine;
-  window.animeUniverseEngine = animeUniverseEngine;
-  window.skyUniverseEngine = skyUniverseEngine;
-  window.oceanUniverseEngine = oceanUniverseEngine;
-  window.sakuraUniverseEngine = sakuraUniverseEngine;
-  window.fairyUniverseEngine = fairyUniverseEngine;
-}
+// Note: Space, Lava, Anime, Sky, Ocean, Sakura, and Fairy canvas universe engines
+// have been modularized into js/effects/particles.js
 
 function applyTheme(themeName) {
   const t = themeName || (state.settings && state.settings.theme) || 'pastel';
@@ -1887,6 +302,7 @@ if (typeof window !== 'undefined') {
 function initUI() {
   applyTheme();
   applyFontSize();
+  updateFullscreenUI(false);
   document.getElementById('header-student-name').textContent = state.active_profile;
   const heroName = document.getElementById('hero-student-name');
   if (heroName) heroName.textContent = state.active_profile;
@@ -1946,8 +362,31 @@ function showView(viewName, params = {}) {
     }
   });
 
+  // Top header visibility:
+  // Hidden during all gameplay modes ('gameplay') to focus entirely on question & arena;
+  // Shown only during 'dashboard' and 'chapter' selection (and 'parent' studio).
+  const appHeader = document.getElementById('app-header');
+  if (appHeader) {
+    if (viewName === 'gameplay') {
+      appHeader.classList.add('hidden');
+    } else {
+      appHeader.classList.remove('hidden');
+    }
+  }
+
   if (typeof window.scrollTo === 'function') {
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  // Update Zen Focus Mode state based on view
+  if (viewName === 'gameplay' && state.is_fullscreen) {
+    document.body.classList.add('zen-focus-active');
+    const exitPill = document.getElementById('zen-focus-exit-btn');
+    if (exitPill) exitPill.classList.remove('hidden');
+  } else if (viewName !== 'gameplay') {
+    document.body.classList.remove('zen-focus-active');
+    const exitPill = document.getElementById('zen-focus-exit-btn');
+    if (exitPill) exitPill.classList.add('hidden');
   }
 
   if (viewName === 'dashboard') {
@@ -1973,6 +412,94 @@ function switchRole(role) {
     btnStudent.className = 'px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition';
     showView('parent');
   }
+}
+
+// =========================================================================
+// 2.1 FULLSCREEN & ZEN FOCUS IMMERSION ENGINE
+// =========================================================================
+
+async function toggleFullscreenMode() {
+  // 1. Try PyWebView native window fullscreen bridge first
+  if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.toggle_fullscreen === 'function') {
+    try {
+      const isFull = await window.pywebview.api.toggle_fullscreen();
+      updateFullscreenUI(isFull);
+      return;
+    } catch (e) {
+      console.warn("PyWebView fullscreen toggle error, falling back to Web API:", e);
+    }
+  }
+
+  // 2. Web Fullscreen API fallback
+  try {
+    if (!document.fullscreenElement) {
+      if (document.documentElement && document.documentElement.requestFullscreen) {
+        await document.documentElement.requestFullscreen();
+      }
+      updateFullscreenUI(true);
+    } else {
+      if (document.exitFullscreen) {
+        await document.exitFullscreen();
+      }
+      updateFullscreenUI(false);
+    }
+  } catch (err) {
+    // If browser blocks requestFullscreen or in mock sandbox, toggle state directly
+    const nextState = !state.is_fullscreen;
+    updateFullscreenUI(nextState);
+  }
+}
+
+function updateFullscreenUI(isFull) {
+  state.is_fullscreen = Boolean(isFull);
+
+  const iconEl = document.getElementById('fullscreen-icon');
+  const textEl = document.getElementById('fullscreen-text');
+  const headerBtn = document.getElementById('btn-toggle-fullscreen');
+  const zenBtn = document.getElementById('game-zen-toggle-btn');
+  const exitPill = document.getElementById('zen-focus-exit-btn');
+
+  if (iconEl) iconEl.textContent = isFull ? '🗗' : '⛶';
+  if (textEl) textEl.textContent = isFull ? 'Exit Full' : 'Fullscreen';
+
+  if (headerBtn) {
+    if (!headerBtn.onclick) headerBtn.onclick = () => toggleFullscreenMode();
+    if (isFull) {
+      headerBtn.className = 'flex items-center gap-1.5 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 border border-indigo-300 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer';
+    } else {
+      headerBtn.className = 'flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer';
+    }
+  }
+
+  if (zenBtn) {
+    if (!zenBtn.onclick) zenBtn.onclick = () => toggleFullscreenMode();
+    if (isFull) {
+      zenBtn.className = 'bg-indigo-600 text-white px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-xs cursor-pointer';
+    } else {
+      zenBtn.className = 'bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer';
+    }
+  }
+
+  if (exitPill && !exitPill.onclick) {
+    exitPill.onclick = () => toggleFullscreenMode();
+  }
+
+  // Zen focus mode: automatically activated during gameplay when in fullscreen
+  const inGameplay = (state.current_view === 'gameplay');
+  if (isFull && inGameplay) {
+    document.body.classList.add('zen-focus-active');
+    if (exitPill) exitPill.classList.remove('hidden');
+  } else {
+    document.body.classList.remove('zen-focus-active');
+    if (exitPill) exitPill.classList.add('hidden');
+  }
+}
+
+if (typeof document !== 'undefined' && document.addEventListener) {
+  document.addEventListener('fullscreenchange', () => {
+    const isFull = Boolean(document.fullscreenElement);
+    updateFullscreenUI(isFull);
+  });
 }
 
 // =========================================================================
@@ -2943,6 +1470,7 @@ function getStageForMode(modeName) {
     case 'jigsaw': return 2;
     case 'listening': return 3;
     case 'voice': return 4;
+    case 'typing_blanks':
     case 'speed': return 5;
     case 'writing': return 6;
     default: return 1;
@@ -3259,6 +1787,8 @@ function loadGameplayCard() {
     // Hide celebration card
     const celeb = document.getElementById('game-celebration-card');
     if (celeb) celeb.classList.add('hidden');
+    const jumpWriteBtn = document.getElementById('celeb-jump-to-write-btn');
+    if (jumpWriteBtn) jumpWriteBtn.classList.add('hidden');
 
     const assembly = document.getElementById('game-assembly-board');
     if (assembly) assembly.classList.remove('border-emerald-500', 'bg-emerald-50/50');
@@ -3306,7 +1836,7 @@ function loadGameplayCard() {
       else if (stage === 2) effectiveMode = 'jigsaw';
       else if (stage === 3) effectiveMode = 'listening';
       else if (stage === 4) effectiveMode = 'voice';
-      else if (stage === 5) effectiveMode = 'blanks';
+      else if (stage === 5) effectiveMode = 'typing_blanks';
       else if (stage === 6) effectiveMode = 'writing';
     }
     g.effective_mode = effectiveMode;
@@ -3316,6 +1846,7 @@ function loadGameplayCard() {
       'jigsaw': 'Jigsaw Scramble Puzzle',
       'listening': 'Listening Comprehension',
       'voice': 'Voice Mastery Studio',
+      'typing_blanks': 'Progressive Typing Blanks',
       'writing': 'Active Writing Studio',
       'guided_mission': 'Guided Mission'
     };
@@ -3324,6 +1855,7 @@ function loadGameplayCard() {
       'jigsaw': '🔀',
       'listening': '🎧',
       'voice': '🎙️',
+      'typing_blanks': '⌨️',
       'writing': '✍️',
       'guided_mission': '🚀'
     };
@@ -3387,6 +1919,12 @@ function loadGameplayCard() {
       if (chipsContainer) chipsContainer.classList.add('hidden');
       if (checkBtn) checkBtn.classList.add('hidden');
       initVoiceCard();
+    } else if (effectiveMode === 'typing_blanks') {
+      if (writeBox) writeBox.classList.remove('hidden');
+      if (assemblyContainer) assemblyContainer.classList.add('hidden');
+      if (chipsContainer) chipsContainer.classList.add('hidden');
+      if (checkBtn) checkBtn.classList.remove('hidden');
+      initTypingBlanksCard();
     } else if (effectiveMode === 'writing') {
       if (writeBox) writeBox.classList.remove('hidden');
       if (assemblyContainer) assemblyContainer.classList.add('hidden');
@@ -3761,6 +2299,19 @@ function initJigsawCard() {
   renderJigsawChips();
 }
 
+function clearAllJigsawDropCues() {
+  const board = document.getElementById('game-assembly-board');
+  if (!board) return;
+  board.querySelectorAll('.chip-btn').forEach(c => {
+    c.classList.remove('insert-between-neighbor', 'swap-neighbor');
+  });
+  board.querySelectorAll('.insertion-gap').forEach(gap => {
+    if (!gap.classList.contains('active')) {
+      gap.classList.remove('insertion-gap-hover');
+    }
+  });
+}
+
 function renderJigsawBoard() {
   const g = state.gameplay;
   const board = document.getElementById('game-assembly-board');
@@ -3771,6 +2322,7 @@ function renderJigsawBoard() {
     board.innerHTML = '<span class="text-xs text-slate-400 italic">Click or drag phrase chips below to assemble the sentence...</span>';
     board.ondragover = (e) => {
       if (e && e.preventDefault) e.preventDefault();
+      if (e && e.dataTransfer) e.dataTransfer.dropEffect = 'copyMove';
       board.classList.add('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
     };
     board.ondragleave = () => {
@@ -3778,12 +2330,13 @@ function renderJigsawBoard() {
     };
     board.ondrop = (e) => {
       if (e && e.preventDefault) e.preventDefault();
+      if (e && e.stopPropagation) e.stopPropagation();
       board.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
       try {
         const raw = e && e.dataTransfer && e.dataTransfer.getData('text/plain');
         if (raw) {
           const data = JSON.parse(raw);
-          if (data && data.chunk) {
+          if (data && data.source === 'tray' && data.chunk) {
             insertChunkFromTray(data.chunk, 0);
           }
         }
@@ -3792,16 +2345,39 @@ function renderJigsawBoard() {
     return;
   }
 
+  // Non-empty board: reconfigure board container drag/drop behavior
+  board.classList.remove('ring-2', 'ring-indigo-400', 'bg-indigo-50/50');
+  board.ondragover = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  };
+  board.ondragleave = (e) => {
+    if (!e.relatedTarget || (board.contains && !board.contains(e.relatedTarget))) {
+      clearAllJigsawDropCues();
+    }
+  };
+  board.ondrop = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+    clearAllJigsawDropCues();
+    try {
+      const raw = e && e.dataTransfer && e.dataTransfer.getData('text/plain');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      const targetIndex = (g.active_insert_index !== null && g.active_insert_index !== undefined)
+        ? g.active_insert_index
+        : g.placed_chunks.length;
+      if (data && data.source === 'tray' && data.chunk) {
+        insertChunkFromTray(data.chunk, targetIndex);
+      } else if (data && data.source === 'board' && typeof data.index === 'number') {
+        movePlacedChunk(data.index, targetIndex);
+      }
+    } catch (err) {}
+  };
+
   // Clear all drop and hover cues across the board
   const clearAllDropCues = () => {
-    board.querySelectorAll('.chip-btn').forEach(c => {
-      c.classList.remove('insert-between-neighbor', 'swap-neighbor');
-    });
-    board.querySelectorAll('.insertion-gap').forEach(gap => {
-      if (!gap.classList.contains('active')) {
-        gap.classList.remove('insertion-gap-hover');
-      }
-    });
+    clearAllJigsawDropCues();
   };
 
   // Dual sky-blue border highlighting on both adjacent neighbor blocks
@@ -3889,14 +2465,15 @@ function renderJigsawBoard() {
     };
     gap.ondrop = (e) => {
       if (e && e.preventDefault) e.preventDefault();
+      if (e && e.stopPropagation) e.stopPropagation();
       clearAllDropCues();
       try {
         const raw = e && e.dataTransfer && e.dataTransfer.getData('text/plain');
         if (raw) {
           const data = JSON.parse(raw);
-          if (data.source === 'tray') {
+          if (data && data.source === 'tray' && data.chunk) {
             insertChunkFromTray(data.chunk, insertIndex);
-          } else if (data.source === 'board') {
+          } else if (data && data.source === 'board' && typeof data.index === 'number') {
             movePlacedChunk(data.index, insertIndex);
           }
         }
@@ -3927,6 +2504,7 @@ function renderJigsawBoard() {
 
     // Drag start
     btn.ondragstart = (e) => {
+      window._jigsawDragging = true;
       if (e && e.dataTransfer) {
         e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'board', chunk: chunk, index: idx }));
         e.dataTransfer.effectAllowed = 'move';
@@ -3936,6 +2514,7 @@ function renderJigsawBoard() {
     btn.ondragend = () => {
       btn.classList.remove('opacity-40');
       clearAllDropCues();
+      setTimeout(() => { window._jigsawDragging = false; }, 120);
     };
 
     // 3-Zone Drag Over: Left 28% -> insert before; Right 28% -> insert after; Center 44% -> swap
@@ -3958,6 +2537,7 @@ function renderJigsawBoard() {
     };
     btn.ondrop = (e) => {
       if (e && e.preventDefault) e.preventDefault();
+      if (e && e.stopPropagation) e.stopPropagation();
       const rect = btn.getBoundingClientRect ? btn.getBoundingClientRect() : { left: 0, width: 100 };
       const clientX = (e && typeof e.clientX === 'number') ? e.clientX : 0;
       const relX = (clientX - rect.left) / Math.max(1, rect.width);
@@ -3967,20 +2547,22 @@ function renderJigsawBoard() {
         if (!raw) return;
         const data = JSON.parse(raw);
         if (relX < 0.28) {
-          if (data.source === 'tray') insertChunkFromTray(data.chunk, idx);
-          else if (data.source === 'board') movePlacedChunk(data.index, idx);
+          if (data && data.source === 'tray' && data.chunk) insertChunkFromTray(data.chunk, idx);
+          else if (data && data.source === 'board' && typeof data.index === 'number') movePlacedChunk(data.index, idx);
         } else if (relX > 0.72) {
-          if (data.source === 'tray') insertChunkFromTray(data.chunk, idx + 1);
-          else if (data.source === 'board') movePlacedChunk(data.index, idx + 1);
+          if (data && data.source === 'tray' && data.chunk) insertChunkFromTray(data.chunk, idx + 1);
+          else if (data && data.source === 'board' && typeof data.index === 'number') movePlacedChunk(data.index, idx + 1);
         } else {
-          if (data.source === 'tray') swapTrayChunkWithBoard(data.chunk, idx);
-          else if (data.source === 'board') swapPlacedChunks(data.index, idx);
+          if (data && data.source === 'tray' && data.chunk) swapTrayChunkWithBoard(data.chunk, idx);
+          else if (data && data.source === 'board' && typeof data.index === 'number') swapPlacedChunks(data.index, idx);
         }
       } catch (err) {}
     };
 
     // Direct click removes chunk back to tray
-    btn.onclick = () => {
+    btn.onclick = (e) => {
+      if (window._jigsawDragging) return;
+      if (e && e.stopPropagation) e.stopPropagation();
       playSound('click');
       g.active_insert_index = null;
       g.placed_chunks.splice(idx, 1);
@@ -4002,6 +2584,31 @@ function renderJigsawChips() {
   if (!tray) return;
   tray.innerHTML = '';
 
+  tray.ondragover = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+  };
+  tray.ondrop = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (e && e.stopPropagation) e.stopPropagation();
+    try {
+      const raw = e && e.dataTransfer && e.dataTransfer.getData('text/plain');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (data && data.source === 'board' && typeof data.index === 'number') {
+        const idx = data.index;
+        if (idx >= 0 && idx < g.placed_chunks.length) {
+          const removed = g.placed_chunks.splice(idx, 1)[0];
+          g.available_chips.push(removed);
+          g.active_insert_index = null;
+          playSound('click');
+          renderJigsawBoard();
+          renderJigsawChips();
+        }
+      }
+    } catch (err) {}
+  };
+
   if (g.available_chips.length === 0) {
     tray.innerHTML = '<span class="text-xs text-slate-400 italic">All words placed. Ready to check!</span>';
     return;
@@ -4016,6 +2623,7 @@ function renderJigsawChips() {
     attachChunkHoverTooltip(btn, chunk);
 
     btn.ondragstart = (e) => {
+      window._jigsawDragging = true;
       if (e && e.dataTransfer) {
         e.dataTransfer.setData('text/plain', JSON.stringify({ source: 'tray', chunk: chunk, index: idx }));
         e.dataTransfer.effectAllowed = 'copyMove';
@@ -4024,13 +2632,12 @@ function renderJigsawChips() {
     };
     btn.ondragend = () => {
       btn.classList.remove('opacity-40');
-      const board = document.getElementById('game-assembly-board');
-      if (board) {
-        board.querySelectorAll('.chip-btn').forEach(c => c.classList.remove('insert-between-neighbor', 'swap-neighbor'));
-      }
+      clearAllJigsawDropCues();
+      setTimeout(() => { window._jigsawDragging = false; }, 120);
     };
 
     btn.onclick = () => {
+      if (window._jigsawDragging) return;
       playSound('click');
       if (g.active_insert_index !== null && g.active_insert_index !== undefined) {
         insertChunkFromTray(chunk, g.active_insert_index);
@@ -4052,9 +2659,11 @@ function renderJigsawChips() {
 function insertChunkFromTray(chunk, insertIndex) {
   const g = state.gameplay;
   const chipIdx = g.available_chips.indexOf(chunk);
-  if (chipIdx !== -1) {
-    g.available_chips.splice(chipIdx, 1);
+  if (chipIdx === -1) {
+    // Guard against duplicate insertion: chunk is not available in the tray!
+    return;
   }
+  g.available_chips.splice(chipIdx, 1);
   const safeIdx = Math.max(0, Math.min(g.placed_chunks.length, insertIndex));
   g.placed_chunks.splice(safeIdx, 0, chunk);
   g.active_insert_index = null;
@@ -4103,14 +2712,11 @@ function swapPlacedChunks(index1, index2) {
 function swapTrayChunkWithBoard(trayChunk, boardIndex) {
   const g = state.gameplay;
   if (boardIndex < 0 || boardIndex >= g.placed_chunks.length) return;
+  const trayIdx = g.available_chips.indexOf(trayChunk);
+  if (trayIdx === -1) return; // Guard against invalid swap: chunk not in tray!
   const oldBoardChunk = g.placed_chunks[boardIndex];
   g.placed_chunks[boardIndex] = trayChunk;
-  const trayIdx = g.available_chips.indexOf(trayChunk);
-  if (trayIdx !== -1) {
-    g.available_chips[trayIdx] = oldBoardChunk;
-  } else {
-    g.available_chips.push(oldBoardChunk);
-  }
+  g.available_chips[trayIdx] = oldBoardChunk;
   g.active_insert_index = null;
   playSound('click');
   renderJigsawBoard();
@@ -4333,25 +2939,230 @@ function evaluateVoiceSpeech(spoken, target) {
 }
 
 // -------------------------------------------------------------------------
-// Mode E: Active Writing & Spelling Studio
+// Mode E: Active Writing & Spelling Studio (with Pedagogical Scaffolding)
 // -------------------------------------------------------------------------
 
-function initWritingCard() {
+// -------------------------------------------------------------------------
+// Mode D-2: Progressive Typing Blanks Engine (Stage 5 Scaffolding)
+// -------------------------------------------------------------------------
+
+function initTypingBlanksCard() {
   const g = state.gameplay;
   const card = g.current_card;
+  if (!card) return;
 
-  document.getElementById('writing-input-area').value = '';
-  document.getElementById('writing-word-count').textContent = '0 words typed';
-  document.getElementById('writing-diff-result').classList.add('hidden');
-  document.getElementById('game-helper-tip').textContent = 'Type the complete answer and click "Check Sentence".';
+  g.writing_peek_used = false;
+  g.writing_starter_used = false;
+  g.writing_wordbank_used = false;
+  g.writing_lcwc_active = false;
+  if (g.writing_lcwc_timer) {
+    clearInterval(g.writing_lcwc_timer);
+    g.writing_lcwc_timer = null;
+  }
+
+  closeDetectiveInspection();
+  dismissWritingCurtain(false);
+  hideWritingGhostPeek();
+
+  const tip = document.getElementById('game-helper-tip');
+  if (tip) tip.textContent = 'Type the missing word(s) in the boxes and press Enter or Check Sentence.';
+
+  // Start at Level 1 (1 Blank)
+  setWritingLadderLevel(1);
 
   // Render virtual Hindi helper keys
+  renderWritingHindiKeys();
+}
+
+function setWritingLadderLevel(level) {
+  const g = state.gameplay;
+  if (g) g.cloze_level = level;
+
+  // Update button styling
+  for (let l = 1; l <= 3; l++) {
+    const btn = document.getElementById(`writing-ladder-level-${l}`);
+    if (btn) {
+      if (l === level) {
+        btn.className = 'px-2 py-0.5 rounded-lg font-bold transition bg-indigo-600 text-white shadow-2xs cursor-pointer';
+      } else {
+        btn.className = 'px-2 py-0.5 rounded-lg font-bold transition text-slate-600 hover:text-slate-900 bg-white/80 cursor-pointer';
+      }
+    }
+  }
+
+  const clozeBoard = document.getElementById('writing-cloze-board');
+  const fullContainer = document.getElementById('writing-full-textarea-container');
+  const passPill = document.getElementById('writing-cloze-pass-pill');
+  const promptEl = document.getElementById('writing-cloze-prompt');
+
+  if (level === 1 || level === 2) {
+    if (clozeBoard) clozeBoard.classList.remove('hidden');
+    if (fullContainer) fullContainer.classList.add('hidden');
+    if (passPill) passPill.textContent = level === 1 ? '1 Blank' : '2 Blanks';
+    if (promptEl) {
+      promptEl.textContent = level === 1 
+        ? 'Type the 1 missing word in the box:' 
+        : 'Type the 2 missing words in the boxes:';
+    }
+    if (g && g.current_card) {
+      renderClozeTypingBoard(g.current_card, level);
+    }
+  } else {
+    // Level 3: Full Scribe
+    if (clozeBoard) clozeBoard.classList.add('hidden');
+    if (fullContainer) fullContainer.classList.remove('hidden');
+    const ta = document.getElementById('writing-input-area');
+    if (ta) {
+      try { ta.focus(); } catch (e) {}
+    }
+  }
+}
+
+function renderClozeTypingBoard(card, level) {
+  const row = document.getElementById('writing-cloze-slots-row');
+  if (!row || !card) return;
+  row.innerHTML = '';
+
+  const chunks = card.chunks || [];
+  const numChunks = chunks.length;
+
+  let blankIndices = [];
+  if (level === 1) {
+    const idx = numChunks > 1 ? 1 : 0;
+    blankIndices = [idx];
+  } else if (level === 2) {
+    if (numChunks <= 1) {
+      blankIndices = [0];
+    } else if (numChunks === 2) {
+      blankIndices = [0, 1];
+    } else {
+      blankIndices = [1, Math.min(numChunks - 1, 3)];
+    }
+  }
+
+  const g = state.gameplay;
+  if (g) g.cloze_blank_indices = blankIndices;
+
+  chunks.forEach((chunk, idx) => {
+    const isBlank = blankIndices.includes(idx);
+    if (!isBlank) {
+      const span = document.createElement('span');
+      span.className = 'px-3 py-1.5 bg-slate-100/90 text-slate-800 rounded-xl font-medium border border-slate-200 text-base md:text-lg select-none';
+      span.textContent = chunk;
+      row.appendChild(span);
+    } else {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'cloze-typing-slot px-3 py-1.5 bg-indigo-50/60 border-2 border-indigo-400 focus:border-indigo-600 focus:bg-white text-indigo-950 font-bold rounded-xl outline-none text-base md:text-lg text-center transition-all shadow-2xs';
+      input.dataset.slotIndex = idx;
+      input.dataset.expected = chunk;
+      input.placeholder = 'Type word...';
+      input.autocomplete = 'off';
+      input.autocapitalize = 'off';
+      input.spellcheck = false;
+      input.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          checkClozeTypingAnswer();
+        }
+      };
+      row.appendChild(input);
+    }
+  });
+
+  const firstInput = row.querySelector('.cloze-typing-slot');
+  if (firstInput) {
+    try { firstInput.focus(); } catch (e) {}
+  }
+}
+
+async function checkClozeTypingAnswer() {
+  const g = state.gameplay;
+  if (!g || !g.current_card) return;
+
+  const row = document.getElementById('writing-cloze-slots-row');
+  if (!row) return;
+
+  const slots = Array.from(row.querySelectorAll('.cloze-typing-slot'));
+  if (slots.length === 0) return;
+
+  const emptySlots = slots.filter(s => !s.value.trim());
+  if (emptySlots.length > 0) {
+    alert("Please fill in all blanks before checking!");
+    try { emptySlots[0].focus(); } catch (e) {}
+    return;
+  }
+
+  let allCorrect = true;
+  let firstIncorrect = null;
+
+  slots.forEach(slot => {
+    const typed = slot.value.trim();
+    const expected = (slot.dataset.expected || '').trim();
+    const cleanTyped = typed.toLowerCase().replace(/[।?!,.]/g, '').trim();
+    const cleanExpected = expected.toLowerCase().replace(/[।?!,.]/g, '').trim();
+
+    if (cleanTyped === cleanExpected) {
+      slot.classList.remove('incorrect');
+      slot.classList.add('correct');
+    } else {
+      slot.classList.remove('correct');
+      slot.classList.add('incorrect');
+      allCorrect = false;
+      if (!firstIncorrect) {
+        firstIncorrect = { slot, typed, expected };
+      }
+    }
+  });
+
+  if (allCorrect) {
+    playSound('success');
+    triggerSuccessAnimation();
+    closeDetectiveInspection();
+
+    const isTypingBlanksMode = (g.effective_mode === 'typing_blanks');
+
+    if (isTypingBlanksMode) {
+      if (g.cloze_level === 1) {
+        setTimeout(() => {
+          setWritingLadderLevel(2);
+        }, 500);
+      } else {
+        await recordCardCompletion(true);
+      }
+    } else {
+      if (g.cloze_level === 1) {
+        setTimeout(() => {
+          setWritingLadderLevel(2);
+        }, 500);
+      } else if (g.cloze_level === 2) {
+        setTimeout(() => {
+          setWritingLadderLevel(3);
+        }, 500);
+      }
+    }
+  } else {
+    playSound('error');
+    triggerErrorAnimation();
+    if (firstIncorrect) {
+      openDetectiveInspection({
+        word: firstIncorrect.typed,
+        expected: firstIncorrect.expected,
+        slotEl: firstIncorrect.slot,
+        status: 'typo'
+      });
+    }
+  }
+}
+
+function renderWritingHindiKeys() {
   const keysContainer = document.getElementById('writing-hindi-virtual-keys');
+  if (!keysContainer) return;
   keysContainer.innerHTML = '';
   const hindiKeys = ['्', 'ा', 'ि', 'ी', 'ु', 'ू', 'े', 'ै', 'ो', 'औ', 'ं', 'ँ', 'ः', '।', 'ऋ', 'ज्ञ', 'क्ष', 'त्र', 'श्र', '?', '!'];
-  
   hindiKeys.forEach(k => {
     const btn = document.createElement('button');
+    btn.type = 'button';
     btn.className = 'px-2 py-1 bg-white hover:bg-indigo-50 border border-slate-200 text-slate-800 font-bold rounded-lg shadow-2xs text-xs transition active:scale-95 cursor-pointer';
     btn.textContent = k;
     btn.onclick = () => insertCharIntoWritingInput(k);
@@ -4359,10 +3170,314 @@ function initWritingCard() {
   });
 }
 
-function insertCharIntoWritingInput(char) {
+// -------------------------------------------------------------------------
+// Mode E: Active Writing & Spelling Studio (with Pedagogical Scaffolding)
+// -------------------------------------------------------------------------
+
+function initWritingCard() {
+  const g = state.gameplay;
+  const card = g.current_card;
+  if (!card) return;
+
+  g.writing_peek_used = false;
+  g.writing_starter_used = false;
+  g.writing_wordbank_used = false;
+  g.writing_lcwc_active = false;
+  if (g.writing_lcwc_timer) {
+    clearInterval(g.writing_lcwc_timer);
+    g.writing_lcwc_timer = null;
+  }
+
+  closeDetectiveInspection();
+
+  // Active Writing defaults to Full Scribe (Level 3)
+  setWritingLadderLevel(3);
+
   const ta = document.getElementById('writing-input-area');
-  const start = ta.selectionStart;
-  const end = ta.selectionEnd;
+  if (ta) ta.value = '';
+  const wc = document.getElementById('writing-word-count');
+  if (wc) wc.textContent = '0 words typed';
+  const diffBox = document.getElementById('writing-diff-result');
+  if (diffBox) diffBox.classList.add('hidden');
+  const tip = document.getElementById('game-helper-tip');
+  if (tip) tip.textContent = 'Type the complete answer and click "Check Sentence". Press Ctrl+P for Ghost Peek.';
+
+  // Dismiss curtain and ghost watermark
+  dismissWritingCurtain(false);
+  hideWritingGhostPeek();
+
+  // Reset scaffold badge
+  const scaffoldBadge = document.getElementById('writing-scaffold-status-badge');
+  if (scaffoldBadge) {
+    scaffoldBadge.classList.add('hidden');
+    scaffoldBadge.textContent = '';
+  }
+
+  // Pre-fill watermark text
+  const targetSentence = (card.chunks || []).join(' ');
+  const watermark = document.getElementById('writing-ghost-watermark');
+  if (watermark) {
+    watermark.textContent = targetSentence;
+  }
+
+  // Prepare Word Bank
+  renderWritingWordBank(card);
+  const wbContainer = document.getElementById('writing-word-bank-container');
+  if (wbContainer) wbContainer.classList.add('hidden');
+
+  // Render virtual Hindi helper keys
+  renderWritingHindiKeys();
+}
+
+// Look-Cover-Write-Check (LCWC) 5-second Memorize Flow
+function startWritingLookCoverWrite() {
+  const g = state.gameplay;
+  const card = g.current_card;
+  if (!card) return;
+
+  const targetSentence = (card.chunks || []).join(' ');
+  const curtain = document.getElementById('writing-memorize-curtain');
+  const targetTextEl = document.getElementById('writing-curtain-target-text');
+  const meaningTextEl = document.getElementById('writing-curtain-meaning-text');
+  const countdownEl = document.getElementById('writing-curtain-countdown');
+
+  if (curtain && targetTextEl) {
+    targetTextEl.textContent = targetSentence;
+    if (meaningTextEl) {
+      meaningTextEl.textContent = card.meaning ? `"${card.meaning}"` : '';
+    }
+    curtain.classList.remove('hidden');
+  }
+
+  g.writing_lcwc_active = true;
+  g.writing_lcwc_seconds_left = 5;
+  if (countdownEl) countdownEl.textContent = '5s';
+
+  // Auditory phonological rehearsal
+  try {
+    playAnswerTTS();
+  } catch (e) {}
+
+  if (g.writing_lcwc_timer) {
+    clearInterval(g.writing_lcwc_timer);
+  }
+
+  g.writing_lcwc_timer = setInterval(() => {
+    if (!state.gameplay || !state.gameplay.active || !state.gameplay.writing_lcwc_active) {
+      clearInterval(g.writing_lcwc_timer);
+      g.writing_lcwc_timer = null;
+      return;
+    }
+    g.writing_lcwc_seconds_left--;
+    if (countdownEl) {
+      countdownEl.textContent = `${g.writing_lcwc_seconds_left}s`;
+    }
+    if (g.writing_lcwc_seconds_left <= 0) {
+      dismissWritingCurtain(true);
+    }
+  }, 1000);
+}
+
+function dismissWritingCurtain(focusInput = true) {
+  const g = state.gameplay;
+  if (g && g.writing_lcwc_timer) {
+    clearInterval(g.writing_lcwc_timer);
+    g.writing_lcwc_timer = null;
+  }
+  if (g) g.writing_lcwc_active = false;
+
+  const curtain = document.getElementById('writing-memorize-curtain');
+  if (curtain) curtain.classList.add('hidden');
+
+  const tip = document.getElementById('game-helper-tip');
+  if (tip) tip.textContent = 'Now write what you remember from memory! Press Ctrl+P for Ghost Peek if needed.';
+
+  if (focusInput) {
+    const ta = document.getElementById('writing-input-area');
+    if (ta) ta.focus();
+  }
+}
+
+// Ghost Watermark Peek Lifeline
+function showWritingGhostPeek() {
+  const g = state.gameplay;
+  const watermark = document.getElementById('writing-ghost-watermark');
+  const scaffoldBadge = document.getElementById('writing-scaffold-status-badge');
+
+  if (watermark) {
+    const card = g.current_card;
+    if (card) watermark.textContent = (card.chunks || []).join(' ');
+    watermark.classList.remove('hidden');
+    watermark.classList.add('ghost-watermark-active');
+  }
+  if (g) g.writing_peek_used = true;
+
+  if (scaffoldBadge) {
+    scaffoldBadge.textContent = '👻 Peek Used (Assisted)';
+    scaffoldBadge.classList.remove('hidden');
+  }
+}
+
+function hideWritingGhostPeek() {
+  const watermark = document.getElementById('writing-ghost-watermark');
+  if (watermark) {
+    watermark.classList.remove('ghost-watermark-active');
+    watermark.classList.add('hidden');
+  }
+}
+
+function toggleWritingGhostPeekClick() {
+  const watermark = document.getElementById('writing-ghost-watermark');
+  if (!watermark) return;
+  const isShown = !watermark.classList.contains('hidden');
+  if (isShown) {
+    hideWritingGhostPeek();
+  } else {
+    showWritingGhostPeek();
+  }
+}
+
+// Sentence Starter Scaffold
+function insertWritingSentenceStarter() {
+  const g = state.gameplay;
+  const card = g.current_card;
+  if (!card) return;
+  const chunks = card.chunks || [];
+  if (chunks.length === 0) return;
+
+  const firstChunk = chunks[0];
+  const ta = document.getElementById('writing-input-area');
+  if (!ta) return;
+
+  const curVal = ta.value.trim();
+  if (!curVal.startsWith(firstChunk)) {
+    ta.value = firstChunk + ' ' + curVal;
+    ta.value = ta.value.trim() + ' ';
+  }
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = ta.value.length;
+  updateWritingWordCount();
+
+  g.writing_starter_used = true;
+  const scaffoldBadge = document.getElementById('writing-scaffold-status-badge');
+  if (scaffoldBadge) {
+    scaffoldBadge.textContent = '💡 Starter Inserted (Assisted)';
+    scaffoldBadge.classList.remove('hidden');
+  }
+  const tip = document.getElementById('game-helper-tip');
+  if (tip) tip.textContent = `Sentence starter added: "${firstChunk}". Continue writing the rest!`;
+}
+
+// Faded Word Bank Reference Drawer
+function toggleWritingWordBank() {
+  const container = document.getElementById('writing-word-bank-container');
+  if (!container) return;
+  const isHidden = container.classList.contains('hidden');
+  if (isHidden) {
+    container.classList.remove('hidden');
+    if (state.gameplay) state.gameplay.writing_wordbank_used = true;
+  } else {
+    container.classList.add('hidden');
+  }
+}
+
+function renderWritingWordBank(card) {
+  const tray = document.getElementById('writing-word-bank-tray');
+  if (!tray || !card) return;
+  tray.innerHTML = '';
+
+  const chunks = card.chunks || [];
+  const words = [];
+  chunks.forEach(ch => {
+    ch.trim().split(/\s+/).forEach(w => {
+      if (w.trim()) words.push(w.trim());
+    });
+  });
+
+  // Jumble words so it acts as an anagram reference bank
+  const shuffled = words.slice();
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  shuffled.forEach(word => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'writing-word-chip px-2.5 py-1 bg-white hover:bg-emerald-100 text-emerald-900 border border-emerald-300 rounded-xl font-bold text-xs shadow-2xs cursor-pointer';
+    chip.textContent = word;
+    chip.title = `Click to insert "${word}" into typing box`;
+    chip.onclick = () => {
+      insertCharIntoWritingInput(word + ' ');
+      chip.classList.add('used');
+    };
+    tray.appendChild(chip);
+  });
+}
+
+// Post-Jigsaw "Write It Now" Mini-Bridge
+function jumpFromCelebrationToWriting() {
+  const g = state.gameplay;
+  const card = g.current_card;
+  if (!card) return;
+
+  const celebCard = document.getElementById('game-celebration-card');
+  if (celebCard) celebCard.classList.add('hidden');
+
+  g.effective_mode = 'writing';
+  g.current_attempt_stage = 6;
+  card._attempt_stage = 6;
+
+  const modePill = document.getElementById('game-mode-pill');
+  if (modePill) {
+    modePill.innerHTML = `<span>✍️</span> <span id="game-mode-name">Active Writing Studio</span>`;
+  }
+
+  const passBox = document.getElementById('game-pass-indicator-box');
+  if (passBox) passBox.classList.add('hidden');
+  const listenBox = document.getElementById('game-listening-box');
+  if (listenBox) listenBox.classList.add('hidden');
+  const voiceBox = document.getElementById('game-voice-box');
+  if (voiceBox) voiceBox.classList.add('hidden');
+  const assemblyContainer = document.getElementById('game-assembly-board');
+  if (assemblyContainer) assemblyContainer.classList.add('hidden');
+  const chipsContainer = document.getElementById('game-chips-tray');
+  if (chipsContainer) chipsContainer.classList.add('hidden');
+  const jigsawSizeBox = document.getElementById('jigsaw-block-size-container');
+  if (jigsawSizeBox) jigsawSizeBox.classList.add('hidden');
+
+  const writeBox = document.getElementById('game-writing-box');
+  if (writeBox) writeBox.classList.remove('hidden');
+  const checkBtn = document.getElementById('game-check-btn');
+  if (checkBtn) checkBtn.classList.remove('hidden');
+
+  startQuestionTimer();
+  initWritingCard();
+  startWritingLookCoverWrite();
+}
+
+function insertCharIntoWritingInput(char) {
+  const g = state.gameplay;
+  // If in cloze slots mode, insert into active or first cloze slot
+  if (g && (g.cloze_level === 1 || g.cloze_level === 2)) {
+    const activeSlot = (document.activeElement && document.activeElement.classList && document.activeElement.classList.contains('cloze-typing-slot'))
+      ? document.activeElement
+      : document.querySelector('.cloze-typing-slot');
+    if (activeSlot) {
+      const start = activeSlot.selectionStart || 0;
+      const end = activeSlot.selectionEnd || 0;
+      const val = activeSlot.value || '';
+      activeSlot.value = val.substring(0, start) + char + val.substring(end);
+      activeSlot.selectionStart = activeSlot.selectionEnd = start + char.length;
+      activeSlot.focus();
+      return;
+    }
+  }
+
+  const ta = document.getElementById('writing-input-area');
+  if (!ta) return;
+  const start = ta.selectionStart || 0;
+  const end = ta.selectionEnd || 0;
   const val = ta.value;
   ta.value = val.substring(0, start) + char + val.substring(end);
   ta.selectionStart = ta.selectionEnd = start + char.length;
@@ -4371,16 +3486,19 @@ function insertCharIntoWritingInput(char) {
 }
 
 function updateWritingWordCount() {
-  const text = document.getElementById('writing-input-area').value.trim();
+  const ta = document.getElementById('writing-input-area');
+  const text = ta ? ta.value.trim() : '';
   const words = text ? text.split(/\s+/).length : 0;
-  document.getElementById('writing-word-count').textContent = `${words} words typed`;
+  const wc = document.getElementById('writing-word-count');
+  if (wc) wc.textContent = `${words} words typed`;
 }
 
 async function checkWritingAnswer() {
   const g = state.gameplay;
   const card = g.current_card;
   const targetText = (card.chunks || []).join(' ');
-  const typedText = document.getElementById('writing-input-area').value.trim();
+  const ta = document.getElementById('writing-input-area');
+  const typedText = ta ? ta.value.trim() : '';
 
   if (!typedText) {
     alert("Please write your answer before checking!");
@@ -4388,7 +3506,7 @@ async function checkWritingAnswer() {
   }
 
   let evalResult = null;
-  if (window.pywebview) {
+  if (window.pywebview && window.pywebview.api && typeof window.pywebview.api.evaluate_spelling === 'function') {
     evalResult = await window.pywebview.api.evaluate_spelling(targetText, typedText);
   } else {
     evalResult = clientSideEvaluateSpelling(targetText, typedText);
@@ -4398,15 +3516,25 @@ async function checkWritingAnswer() {
 
   const score = evalResult.overall_score !== undefined ? evalResult.overall_score : 100;
   const isPerfect = evalResult.flawless || score >= 85;
+  const isAssisted = Boolean(g.writing_peek_used || g.writing_starter_used);
 
   if (isPerfect) {
     playSound('success');
     triggerSuccessAnimation();
-    recordCardCompletion(true);
+    closeDetectiveInspection();
+    if (isAssisted) {
+      recordCardCompletion(false, { hint_used: true, hints_used: 1 });
+    } else {
+      recordCardCompletion(true, { hint_used: false, hints_used: 0 });
+    }
   } else {
     playSound('error');
     triggerErrorAnimation();
     g.flawless = false;
+    const firstError = evalResult.tokens ? evalResult.tokens.find(t => t.status === 'typo' || t.status === 'missing') : null;
+    if (firstError) {
+      openDetectiveInspection(firstError);
+    }
   }
 }
 
@@ -4422,12 +3550,12 @@ function clientSideEvaluateSpelling(target, typed) {
   targetWords.forEach((tw, idx) => {
     const uw = userWords[idx];
     if (uw && uw.toLowerCase() === tw.toLowerCase()) {
-      tokens.push({ word: tw, status: 'correct' });
+      tokens.push({ text: tw, word: tw, status: 'correct' });
       matchCount++;
     } else if (uw) {
-      tokens.push({ word: uw, status: 'typo', expected: tw });
+      tokens.push({ text: uw, word: uw, status: 'typo', expected: tw });
     } else {
-      tokens.push({ word: tw, status: 'missing' });
+      tokens.push({ text: tw, word: tw, status: 'missing', expected: tw });
     }
   });
 
@@ -4447,29 +3575,167 @@ function renderWritingDiffPills(evalResult) {
   if (box) box.classList.remove('hidden');
   const tokens = Array.isArray(evalResult) ? evalResult : (evalResult ? (evalResult.tokens || []) : []);
   const score = (evalResult && typeof evalResult.overall_score === 'number') ? evalResult.overall_score : (tokens.length > 0 ? 85 : 0);
+  
   if (badge) {
-    badge.textContent = `Score: ${score}%`;
-    badge.className = score >= 80 
-      ? 'bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full text-xs' 
-      : 'bg-rose-100 text-rose-800 font-bold px-2.5 py-0.5 rounded-full text-xs';
+    if (score === 100) {
+      badge.textContent = `🏆 Flawless Scribe (100%)`;
+      badge.className = 'bg-emerald-100 text-emerald-800 font-black px-3 py-1 rounded-full text-xs shadow-2xs';
+    } else if (score >= 80) {
+      badge.textContent = `🌟 Master Scribe (Score: ${score}%)`;
+      badge.className = 'bg-emerald-100 text-emerald-800 font-bold px-3 py-1 rounded-full text-xs shadow-2xs';
+    } else if (score >= 50) {
+      badge.textContent = `👍 Good Attempt (Score: ${score}%)`;
+      badge.className = 'bg-amber-100 text-amber-800 font-bold px-3 py-1 rounded-full text-xs shadow-2xs';
+    } else {
+      badge.textContent = `💪 Keep Practicing (Score: ${score}%)`;
+      badge.className = 'bg-rose-100 text-rose-800 font-bold px-3 py-1 rounded-full text-xs shadow-2xs';
+    }
   }
 
   if (!tokensRow) return;
   tokensRow.innerHTML = '';
   tokens.forEach(t => {
+    const wordText = t.word || t.token || t.text || '';
     const pill = document.createElement('span');
     if (t.status === 'correct' || t.status === 'match') {
       pill.className = 'px-2.5 py-1 bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg text-xs font-bold';
-      pill.textContent = t.word || t.token;
+      pill.textContent = `✓ ${wordText}`;
     } else if (t.status === 'typo') {
-      pill.className = 'px-2.5 py-1 bg-rose-50 text-rose-800 border border-rose-200 rounded-lg text-xs font-bold';
-      pill.textContent = `${t.word || t.token} (typo)`;
+      pill.className = 'writing-diff-pill-interactive px-2.5 py-1 bg-rose-50 text-rose-800 border border-rose-200 rounded-lg text-xs font-bold cursor-pointer hover:bg-rose-100 transition shadow-2xs';
+      const expectedText = t.expected ? ` ➔ ${t.expected}` : '';
+      pill.textContent = `🔍 ✗ ${wordText}${expectedText}`;
+      pill.title = 'Click for Detective Clue & 1-Click Auto-Fix';
+      pill.onclick = () => {
+        openDetectiveInspection(t);
+      };
     } else {
-      pill.className = 'px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold';
-      pill.textContent = `${t.word || t.token} (missing)`;
+      pill.className = 'writing-diff-pill-interactive px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 rounded-lg text-xs font-bold cursor-pointer hover:bg-amber-100 transition shadow-2xs';
+      const expectedText = t.expected || wordText;
+      pill.textContent = `🔍 + [${expectedText}] (missing)`;
+      pill.title = 'Click for Detective Clue & 1-Click Auto-Fix';
+      pill.onclick = () => {
+        openDetectiveInspection(t);
+      };
     }
     tokensRow.appendChild(pill);
   });
+}
+
+// -------------------------------------------------------------------------
+// Interactive Detective Self-Correction System
+// -------------------------------------------------------------------------
+
+function openDetectiveInspection(token) {
+  if (!token) return;
+  const g = state.gameplay;
+  if (g) g.active_detective_token = token;
+
+  const card = document.getElementById('writing-detective-card');
+  if (!card) return;
+
+  const typedEl = document.getElementById('detective-typed-word');
+  const targetEl = document.getElementById('detective-target-word');
+  const clueEl = document.getElementById('detective-clue-text');
+
+  const typed = token.word || token.text || '(missing)';
+  const expected = token.expected || token.word || '';
+
+  if (typedEl) {
+    typedEl.textContent = typed;
+    if (token.status === 'missing') {
+      typedEl.className = 'font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200';
+    } else {
+      typedEl.className = 'font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200 line-through';
+    }
+  }
+
+  if (targetEl) targetEl.textContent = expected;
+
+  if (clueEl) {
+    if (token.status === 'missing') {
+      clueEl.textContent = `You missed the word "${expected}". Add it to your sentence to make it complete!`;
+    } else if (typed && expected) {
+      if (typed.length !== expected.length) {
+        clueEl.textContent = `Length hint: "${expected}" has ${expected.length} characters, while you typed ${typed.length}. Check for missing or extra matras.`;
+      } else {
+        clueEl.textContent = `Spelling clue: Compare the matras and letters carefully. Target spelling is "${expected}".`;
+      }
+    } else {
+      clueEl.textContent = `Inspect the differences between the words and click Auto-Fix to correct.`;
+    }
+  }
+
+  card.classList.remove('hidden');
+}
+
+function closeDetectiveInspection() {
+  const card = document.getElementById('writing-detective-card');
+  if (card) card.classList.add('hidden');
+}
+
+function speakDetectiveWord() {
+  const g = state.gameplay;
+  const token = g ? g.active_detective_token : null;
+  if (!token) return;
+  const target = token.expected || token.word || '';
+  if (!target) return;
+  const isHindi = /[\u0900-\u097F]/.test(target);
+  playCardAudioDirect(target, isHindi ? 'Hindi' : 'English');
+}
+
+function locateAndEditWordInInput() {
+  const g = state.gameplay;
+  const token = g ? g.active_detective_token : null;
+  if (!token) return;
+
+  if (token.slotEl) {
+    try {
+      token.slotEl.focus();
+      token.slotEl.select();
+    } catch (e) {}
+    return;
+  }
+
+  const ta = document.getElementById('writing-input-area');
+  if (ta && token.word) {
+    const val = ta.value;
+    const pos = val.indexOf(token.word);
+    if (pos !== -1) {
+      try {
+        ta.focus();
+        ta.setSelectionRange(pos, pos + token.word.length);
+      } catch (e) {}
+    }
+  }
+}
+
+function autoFixWordInInput() {
+  const g = state.gameplay;
+  const token = g ? g.active_detective_token : null;
+  if (!token) return;
+
+  const target = token.expected || token.word;
+  if (!target) return;
+
+  if (token.slotEl) {
+    token.slotEl.value = target;
+    token.slotEl.classList.remove('incorrect');
+    token.slotEl.classList.add('correct');
+  } else {
+    const ta = document.getElementById('writing-input-area');
+    if (ta) {
+      if (token.word && ta.value.includes(token.word)) {
+        ta.value = ta.value.replace(token.word, target);
+      } else {
+        ta.value = ta.value ? (ta.value.trim() + ' ' + target) : target;
+      }
+      updateWritingWordCount();
+    }
+  }
+
+  if (g) g.writing_autofix_used = true;
+  playSound('click');
+  closeDetectiveInspection();
 }
 
 // -------------------------------------------------------------------------
@@ -4481,6 +3747,11 @@ async function checkCurrentAnswer() {
   const card = g.current_card;
   const chunks = card.chunks || [];
   const mode = g.effective_mode || g.mode;
+
+  if (mode === 'typing_blanks' || (mode === 'writing' && (g.cloze_level === 1 || g.cloze_level === 2))) {
+    await checkClozeTypingAnswer();
+    return;
+  }
 
   if (mode === 'writing') {
     await checkWritingAnswer();
@@ -4704,7 +3975,7 @@ async function recordCardCompletion(passed, meta = {}) {
   try { triggerConfetti(); } catch (e) {}
   const celebText = document.getElementById('celebration-detail-text');
   if (celebText) {
-    const stageNames = { 1: 'Blanks', 2: 'Jigsaw', 3: 'Listening', 4: 'Voice', 5: 'Speed', 6: 'Written' };
+    const stageNames = { 1: 'Blanks', 2: 'Jigsaw', 3: 'Listening', 4: 'Voice', 5: 'Typing Blanks', 6: 'Written' };
     if (stageAdvanced) {
       const nextSt = card.ladder_stage || 2;
       celebText.textContent = `Great job! Sentence cleared. Learning stage advanced to Stage ${nextSt} (${stageNames[nextSt] || 'Next'}).`;
@@ -4744,6 +4015,14 @@ async function recordCardCompletion(passed, meta = {}) {
   const celebCard = document.getElementById('game-celebration-card');
   if (celebCard) {
     celebCard.classList.remove('hidden');
+  }
+  const jumpWriteBtn = document.getElementById('celeb-jump-to-write-btn');
+  if (jumpWriteBtn) {
+    if (attemptStage !== 6) {
+      jumpWriteBtn.classList.remove('hidden');
+    } else {
+      jumpWriteBtn.classList.add('hidden');
+    }
   }
 }
 

@@ -143,11 +143,11 @@ class TestDeckManager(unittest.TestCase):
 
         ch1_bd = next(c for c in metrics['chapters_breakdown'] if c['chapter_name'] == "Chapter 1: The Wind")
         self.assertTrue(ch1_bd['is_mastered'])
-        self.assertEqual(ch1_bd['status'], "⭐ Mastered")
+        self.assertEqual(ch1_bd['status'], "mastered")
 
         ch2_bd = next(c for c in metrics['chapters_breakdown'] if c['chapter_name'] == "Chapter 2: Ant")
         self.assertFalse(ch2_bd['is_mastered'])
-        self.assertEqual(ch2_bd['status'], "🔄 In Progress")
+        self.assertEqual(ch2_bd['status'], "learning")
 
     def test_multi_exam_selection_and_switching(self):
         # Create Exam 1
@@ -291,7 +291,7 @@ class TestDeckManager(unittest.TestCase):
         metrics = DeckManager.calculate_exam_metrics(exam)
         self.assertEqual(metrics['mastered_cards'], 1)
         self.assertEqual(metrics['daily_quota'], 0)
-        self.assertEqual(metrics['status_tag'], "🚀 Exam Ready")
+        self.assertEqual(metrics['status_tag'], "exam_ready")
 
     def test_import_export_txt_aliases_and_bom_handling(self):
         import tempfile

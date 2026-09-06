@@ -23,6 +23,11 @@
 <body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-100 selection:text-indigo-800 min-h-screen">
   <canvas id="confetti-canvas"></canvas>
 
+  <!-- Floating Exit Pill for Zen Focus Mode -->
+  <button id="zen-focus-exit-btn" onclick="toggleFullscreenMode()" class="hidden fixed top-4 right-4 z-50 px-3.5 py-1.5 bg-slate-900/85 hover:bg-slate-900 text-white rounded-full text-xs font-bold shadow-lg backdrop-blur-sm border border-white/20 transition flex items-center gap-1.5 cursor-pointer animate-fade-in" title="Exit Zen Focus Mode (Esc or F11)">
+    <span>🗗</span> Exit Zen Focus
+  </button>
+
   <!-- Dynamic Celestial Nebula & Starfield Background (Space Explorer Theme) -->
   <div id="space-universe" class="fixed inset-0 pointer-events-none overflow-hidden z-0 hidden" aria-hidden="true">
     <div class="nebula-dust nebula-dust-1"></div>
@@ -81,7 +86,7 @@
   <div class="max-w-6xl mx-auto p-4 md:p-6 space-y-6 relative z-10">
 
     <!-- Top Navigation & Role Bar -->
-    <header class="bg-white border border-slate-200/90 rounded-2xl p-4 md:p-5 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <header id="app-header" class="bg-white border border-slate-200/90 rounded-2xl p-4 md:p-5 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4 transition-all duration-300">
       <div class="flex items-center gap-3 cursor-pointer" onclick="showView('dashboard')">
         <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-2xl shadow-sm shadow-indigo-200 text-white">
           🧩
@@ -110,6 +115,11 @@
         </button>
         <button id="header-shortcuts-btn" onclick="openShortcutsModal()" class="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-xl text-xs font-bold transition" title="Keyboard Shortcuts Reference">
           <span>⌨️</span>
+        </button>
+        <!-- Fullscreen / Zen Focus Quick Access -->
+        <button id="btn-toggle-fullscreen" onclick="toggleFullscreenMode()" class="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer" title="Toggle Fullscreen & Zen Focus (F11)">
+          <span id="fullscreen-icon">⛶</span>
+          <span id="fullscreen-text" class="hidden sm:inline">Fullscreen</span>
         </button>
 
         <!-- Exam Countdown Pill -->
@@ -327,6 +337,10 @@
           <button onclick="playCardTTS()" id="game-tts-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl text-xs transition" title="Listen to Native Pronunciation">
             🔊
           </button>
+          <button onclick="toggleFullscreenMode()" id="game-zen-toggle-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer" title="Toggle Fullscreen & Zen Focus Mode (F11)">
+            <span>⛶</span>
+            <span class="hidden sm:inline">Zen Focus</span>
+          </button>
         </div>
       </div>
 
@@ -436,6 +450,79 @@
 
         <!-- Dedicated Active Writing Studio Box -->
         <div id="game-writing-box" class="hidden space-y-4">
+          <!-- Pedagogical Scaffolding Bar (Look-Cover-Write, Ghost Peek, Sentence Starter, Word Bank) -->
+          <div class="p-3 bg-gradient-to-r from-indigo-50/80 via-purple-50/80 to-amber-50/80 border border-indigo-100/80 rounded-2xl flex flex-wrap items-center justify-between gap-2 shadow-2xs">
+            <div class="flex items-center gap-2">
+              <span class="text-xs font-black text-indigo-900 flex items-center gap-1">
+                <span>🪜</span> Ladders:
+              </span>
+              <!-- Progressive Cloze Ladder Level Switcher -->
+              <div class="flex items-center gap-1 bg-white/80 p-0.5 rounded-xl border border-indigo-200 text-xs">
+                <button type="button" onclick="setWritingLadderLevel(1)" id="writing-ladder-level-1" class="px-2 py-0.5 rounded-lg font-bold transition text-slate-600 hover:text-slate-900 cursor-pointer" title="Step 1: Type 1 missing word">1 Blank</button>
+                <button type="button" onclick="setWritingLadderLevel(2)" id="writing-ladder-level-2" class="px-2 py-0.5 rounded-lg font-bold transition text-slate-600 hover:text-slate-900 cursor-pointer" title="Step 2: Type 2 missing words">2 Blanks</button>
+                <button type="button" onclick="setWritingLadderLevel(3)" id="writing-ladder-level-3" class="px-2 py-0.5 rounded-lg font-bold transition bg-indigo-600 text-white shadow-2xs cursor-pointer" title="Step 3: Type full sentence from memory">Full Scribe</button>
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center gap-1.5">
+              <button type="button" onclick="startWritingLookCoverWrite()" id="writing-lcwc-btn" class="px-2.5 py-1 bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-200 hover:border-indigo-300 rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1 cursor-pointer" title="Look at the sentence for 5s, rehearse aloud, then write when curtain closes">
+                <span>👀</span> 5s Memorize
+              </button>
+              <button type="button" onmousedown="showWritingGhostPeek()" onmouseup="hideWritingGhostPeek()" onmouseleave="hideWritingGhostPeek()" onclick="toggleWritingGhostPeekClick()" id="writing-peek-btn" class="px-2.5 py-1 bg-white hover:bg-amber-50 text-amber-700 border border-amber-200 hover:border-amber-300 rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1 cursor-pointer" title="Hold or click for a translucent watermark peek of the answer (Ctrl+P)">
+                <span>👻</span> Ghost Peek
+              </button>
+              <button type="button" onclick="insertWritingSentenceStarter()" id="writing-starter-btn" class="px-2.5 py-1 bg-white hover:bg-purple-50 text-purple-700 border border-purple-200 hover:border-purple-300 rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1 cursor-pointer" title="Insert the first word/starter to get momentum">
+                <span>💡</span> Starter
+              </button>
+              <button type="button" onclick="toggleWritingWordBank()" id="writing-toggle-wordbank-btn" class="px-2.5 py-1 bg-white hover:bg-emerald-50 text-emerald-700 border border-emerald-200 hover:border-emerald-300 rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1 cursor-pointer" title="Toggle scrambled reference word chips to relieve spelling anxiety">
+                <span>🧩</span> Word Bank
+              </button>
+            </div>
+          </div>
+
+          <!-- Look-Cover-Write-Check (LCWC) Animated Curtain Banner -->
+          <div id="writing-memorize-curtain" class="hidden p-5 bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 text-white rounded-2xl shadow-lg space-y-3.5 transition-all">
+            <div class="flex justify-between items-center border-b border-white/20 pb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">👀</span>
+                <div>
+                  <h4 class="text-sm font-black tracking-wide">Look & Rehearse Aloud</h4>
+                  <p class="text-[11px] text-indigo-100">Read the sentence aloud 2-3 times while it's on screen!</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <div class="px-2.5 py-1 rounded-full bg-white/20 font-mono font-black text-xs text-amber-200 flex items-center gap-1">
+                  <span>⏱️</span> <span id="writing-curtain-countdown">5s</span>
+                </div>
+                <button type="button" onclick="dismissWritingCurtain()" id="writing-curtain-ready-btn" class="px-3 py-1 bg-white hover:bg-amber-300 text-indigo-950 rounded-xl text-xs font-black transition shadow-xs cursor-pointer">
+                  I'm Ready to Write ✍️
+                </button>
+              </div>
+            </div>
+            <div class="py-2 text-center">
+              <p id="writing-curtain-target-text" class="font-hindi text-xl md:text-2xl font-black text-white leading-relaxed drop-shadow-xs"></p>
+              <p id="writing-curtain-meaning-text" class="text-xs text-indigo-200 italic mt-1"></p>
+            </div>
+            <div class="flex justify-center gap-2 pt-1 border-t border-white/10">
+              <button type="button" onclick="playAnswerTTS()" id="writing-curtain-speak-btn" class="px-3 py-1 bg-white/15 hover:bg-white/25 text-white rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+                <span>🔊</span> Listen Pronunciation
+              </button>
+            </div>
+          </div>
+
+          <!-- Faded Word Bank Reference Drawer -->
+          <div id="writing-word-bank-container" class="hidden p-3 bg-emerald-50/70 border border-emerald-200/80 rounded-2xl space-y-2 transition-all">
+            <div class="flex justify-between items-center text-xs">
+              <span class="font-bold text-emerald-900 flex items-center gap-1.5">
+                <span>🧩</span> Scrambled Word Bank Reference:
+                <span class="text-[11px] font-normal text-emerald-700">(Click a word to insert at cursor, or use as a spelling guide)</span>
+              </span>
+              <button type="button" onclick="toggleWritingWordBank()" id="writing-wordbank-close-btn" class="text-emerald-700 hover:text-emerald-900 text-xs font-bold px-2 py-0.5 rounded-lg hover:bg-emerald-100 transition">&times; Hide</button>
+            </div>
+            <div id="writing-word-bank-tray" class="flex flex-wrap gap-1.5 font-hindi text-sm py-1">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
           <!-- Virtual Hindi Helper Toolbar -->
           <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
             <div class="flex justify-between items-center text-[11px] font-bold text-slate-600">
@@ -447,18 +534,37 @@
             </div>
           </div>
 
-          <!-- Typing Area -->
-          <div class="space-y-1">
+          <!-- Inline Cloze Typing Board (for Level 1 & Level 2 Progressive Blanks) -->
+          <div id="writing-cloze-board" class="hidden p-4 bg-white border border-slate-200 rounded-2xl space-y-3 shadow-2xs">
+            <div class="flex justify-between items-center text-xs font-bold text-slate-600">
+              <span id="writing-cloze-prompt">Type the missing word(s) in the boxes:</span>
+              <span id="writing-cloze-pass-pill" class="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-[11px] font-bold">1 Blank</span>
+            </div>
+            <div id="writing-cloze-slots-row" class="flex flex-wrap items-center gap-2 font-hindi text-base md:text-lg leading-loose py-2">
+              <!-- Rendered dynamically: static chunks + inline input boxes -->
+            </div>
+          </div>
+
+          <!-- Full Typing Area with Ghost Watermark (for Level 3 / Full Scribe) -->
+          <div id="writing-full-textarea-container" class="space-y-1">
             <div class="flex justify-between items-center text-[11px] font-bold text-slate-500 pb-0.5">
-              <label for="writing-input-area">Type answer from memory:</label>
+              <label for="writing-input-area" class="flex items-center gap-1.5">
+                <span>Type answer from memory:</span>
+                <span id="writing-scaffold-status-badge" class="hidden px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md text-[10px] font-bold"></span>
+              </label>
               <button onclick="playAnswerTTS()" id="writing-hear-answer-btn" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200 transition cursor-pointer" title="Listen to audio prompt of the answer">
                 <span>🔊</span> Hear Audio Prompt
               </button>
             </div>
-            <textarea id="writing-input-area" rows="4" oninput="updateWritingWordCount()" placeholder="Type the complete answer sentence here from memory..." class="w-full p-4 font-hindi text-base md:text-lg bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed"></textarea>
+            <div class="relative">
+              <textarea id="writing-input-area" rows="4" oninput="updateWritingWordCount()" placeholder="Type the complete answer sentence here from memory..." class="w-full p-4 font-hindi text-base md:text-lg bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed relative z-10 bg-transparent"></textarea>
+              <div id="writing-ghost-watermark" class="hidden absolute inset-0 p-4 font-hindi text-base md:text-lg text-slate-400 select-none pointer-events-none z-0 overflow-hidden leading-relaxed opacity-40 italic bg-amber-50/40 rounded-2xl border border-amber-300">
+                <!-- Watermark shown when Peek is activated -->
+              </div>
+            </div>
             <div class="flex justify-between text-[11px] text-slate-400 px-1">
               <span id="writing-word-count">0 words typed</span>
-              <span>Punctuation and spelling evaluated word-by-word</span>
+              <span id="writing-hint-tip">Press Ctrl+P for Ghost Peek • Enter to Check</span>
             </div>
           </div>
 
@@ -470,6 +576,49 @@
             </div>
             <div id="writing-tokens-row" class="flex flex-wrap gap-1.5 font-hindi text-sm py-1">
               <!-- Colored pills: green match, red typo, amber missing -->
+            </div>
+          </div>
+
+          <!-- Interactive Detective Self-Correction Inspector Card -->
+          <div id="writing-detective-card" class="hidden p-4 bg-gradient-to-br from-amber-50/90 via-orange-50/80 to-indigo-50/90 border border-amber-300 rounded-2xl space-y-3 shadow-md">
+            <div class="flex justify-between items-center border-b border-amber-200/80 pb-2">
+              <div class="flex items-center gap-2">
+                <span class="text-xl">🕵️</span>
+                <div>
+                  <h4 class="text-xs font-black text-amber-950 uppercase tracking-wide">Detective Clue & Correction</h4>
+                  <p class="text-[11px] text-amber-700">Inspect the word and fix it with one click</p>
+                </div>
+              </div>
+              <button type="button" onclick="closeDetectiveInspection()" id="detective-close-btn" class="text-amber-800 hover:text-amber-950 font-black text-base px-2 py-0.5 rounded-lg hover:bg-amber-100 transition cursor-pointer" title="Close Detective Clue">&times;</button>
+            </div>
+            
+            <div class="flex flex-wrap items-center justify-between gap-3 bg-white/80 p-3 rounded-xl border border-amber-200/60">
+              <div class="flex items-center gap-2 font-hindi text-base">
+                <div class="space-y-0.5">
+                  <span class="text-[10px] uppercase font-bold text-slate-400 block">You Typed</span>
+                  <span id="detective-typed-word" class="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg border border-rose-200 line-through">--</span>
+                </div>
+                <span class="text-slate-400 font-bold">➔</span>
+                <div class="space-y-0.5">
+                  <span class="text-[10px] uppercase font-bold text-slate-400 block">Target Word</span>
+                  <span id="detective-target-word" class="font-black text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-lg border border-emerald-200">--</span>
+                </div>
+              </div>
+              <p id="detective-clue-text" class="text-xs text-slate-700 font-medium flex-1 min-w-[200px] leading-relaxed">
+                Look closely at the differences between the letters and matras.
+              </p>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-end gap-2 pt-1">
+              <button type="button" onclick="speakDetectiveWord()" id="detective-speak-word-btn" class="px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1 cursor-pointer" title="Hear exact pronunciation of target word">
+                <span>🔊</span> Hear Word
+              </button>
+              <button type="button" onclick="locateAndEditWordInInput()" id="detective-locate-btn" class="px-3 py-1.5 bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition shadow-2xs flex items-center gap-1 cursor-pointer" title="Highlight this word in typing box for manual editing">
+                <span>🎯</span> Locate in Text
+              </button>
+              <button type="button" onclick="autoFixWordInInput()" id="detective-autofix-btn" class="px-3.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-black transition shadow-xs flex items-center gap-1.5 cursor-pointer" title="Automatically fix this word in your answer">
+                <span>✨</span> Auto-Fix Word
+              </button>
             </div>
           </div>
         </div>
@@ -558,6 +707,9 @@
           </button>
           <button id="celeb-retry-btn" onclick="retryGameplayCard()" class="bg-white/20 hover:bg-white/30 text-white font-bold text-xs px-4 py-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer" title="Retry this question to practice or improve your time">
             <span>🔄</span> Retry Sentence
+          </button>
+          <button id="celeb-jump-to-write-btn" onclick="jumpFromCelebrationToWriting()" class="bg-amber-400 hover:bg-amber-300 text-amber-950 font-black text-xs px-4 py-3 rounded-xl transition shadow-md flex items-center gap-1.5 cursor-pointer" title="Write this exact sentence from memory now for +50 Bonus XP and 3 Stars!">
+            <span>✍️</span> Write It Now!
           </button>
           <button id="celeb-next-btn" onclick="nextGameplayCard()" class="w-full sm:w-auto bg-white text-emerald-950 font-black text-sm px-6 py-3 rounded-xl shadow-md hover:bg-emerald-50 transition active:scale-95 cursor-pointer">
             Next Sentence →
@@ -939,6 +1091,10 @@ Example:
           <span class="font-medium text-slate-700">🔢 Pick Word by Badge Number</span>
           <kbd class="px-2.5 py-1 bg-white border border-slate-300 rounded-md font-mono text-[11px] font-bold text-slate-800 shadow-2xs">1 - 9</kbd>
         </div>
+        <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl">
+          <span class="font-medium text-slate-700">⛶ Fullscreen / Zen Focus</span>
+          <kbd class="px-2.5 py-1 bg-white border border-slate-300 rounded-md font-mono text-[11px] font-bold text-slate-800 shadow-2xs">F11 or F</kbd>
+        </div>
       </div>
 
       <div class="pt-2 border-t border-slate-100 flex justify-end">
@@ -1059,7 +1215,7 @@ Example:
             <option value="2">🔀 Stage 2: Sentence Jigsaw</option>
             <option value="3">🎧 Stage 3: Listening Comprehension</option>
             <option value="4">🎙️ Stage 4: Voice Mastery</option>
-            <option value="5">⏱️ Stage 5: Speed Run</option>
+            <option value="5">⌨️ Stage 5: Progressive Typing Blanks</option>
             <option value="6">✍️ Stage 6: Written Typing</option>
           </select>
         </div>
@@ -1201,6 +1357,7 @@ Example:
     <div class="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-3 h-3 bg-slate-900/95 rotate-45 border-r border-b border-slate-700/60"></div>
   </div>
 
+  <script src="js/effects/particles.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

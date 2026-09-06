@@ -1,5 +1,8 @@
 import platform
 import threading
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     if platform.system() == 'Windows':
@@ -7,7 +10,7 @@ try:
     else:
         import subprocess
 except ImportError:
-    pass
+    logger.debug("Sound backend unavailable on this platform")
 
 class SoundPlayer:
     """Plays lightweight UI sounds asynchronously without freezing the GUI."""

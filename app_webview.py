@@ -1,7 +1,11 @@
 import os
 import sys
+import logging
+from pathlib import Path
 import webview
 from ui.web_bridge import WebBridgeAPI
+
+logger = logging.getLogger(__name__)
 
 def configure_webview2_permissions():
     """Configures Edge WebView2 on Windows to automatically grant microphone
@@ -45,30 +49,29 @@ def configure_webview2_permissions():
                             try:
                                 p_args.SavesInProfile = True
                             except Exception:
-                                pass
+                                logger.warning("Failed to set SavesInProfile on permission request", exc_info=True)
                             try:
                                 p_args.Handled = True
                             except Exception:
-                                pass
+                                logger.warning("Failed to set Handled on permission request", exc_info=True)
                         else:
                             p_args.State = CoreWebView2PermissionState.Allow
                     except Exception as err:
-                        print(f"Notice: Permission handler error: {err}")
+                        logger.warning(f"Permission handler error: {err}", exc_info=True)
 
                 sender.CoreWebView2.PermissionRequested += on_permission_requested
 
         edge.EdgeChrome.__init__ = patched_init
         edge.EdgeChrome.on_webview_ready = patched_ready
     except Exception as e:
-        print(f"Notice: Could not configure WebView2 auto-permissions ({e})")
+        logger.warning(f"Could not configure WebView2 auto-permissions ({e})", exc_info=True)
 
 def launch_webview_app():
     configure_webview2_permissions()
     api = WebBridgeAPI()
     current_dir = os.path.dirname(os.path.abspath(__file__))
     html_file = os.path.join(current_dir, 'ui', 'web', 'index.html')
-    
-    url = f"file:///{html_file.replace(os.sep, '/')}"
+    url = Path(html_file).as_uri()
     window = webview.create_window(
         title='Sentence Jigsaw 3.0',
         url=url,

@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentence-jigsaw"
+version = "3.0.0"
+description = "Educational sentence scaffolding and exam mastery tool"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "pywebview>=5.0.0",
+    "edge-tts>=7.0.0",
+    "pygame>=2.6.0",
+    "requests>=2.28.0",
+]
+
+[project.optional-dependencies]
+ai = [
+    "faster-whisper>=1.0.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "ruff>=0.5.0",
+]
+
+[project.scripts]
+sentence-jigsaw = "app_webview:launch_webview_app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"

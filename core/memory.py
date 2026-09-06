@@ -3,9 +3,11 @@ import re
 import hashlib
 from typing import Tuple, Dict, Any
 
+from core.config import config
+
 class MemoryManager:
     """Manages persistent mastery levels, intervals, and SM-2 review schedules."""
-    INTERVAL_DAYS = [0, 1, 3, 7, 16, 35]
+    INTERVAL_DAYS = config.sr_interval_days
 
     @classmethod
     def get_sentence_key(cls, question: str, chunks: list) -> str:
@@ -29,8 +31,7 @@ class MemoryManager:
             return 0, now_ts # Lapsed: due immediately
 
     @classmethod
-    def get_memory_profile(cls, question: str, chunks: list, memory_store: dict) -> dict:
-        key = cls.get_sentence_key(question, chunks)
+    def get_memory_profile_by_key(cls, key: str, memory_store: dict) -> dict:
         return memory_store.get(key, {
             'repetition_level': 0,
             'next_review_ts': 0,
@@ -38,6 +39,11 @@ class MemoryManager:
             'lapses': 0,
             'last_reviewed_ts': 0
         })
+
+    @classmethod
+    def get_memory_profile(cls, question: str, chunks: list, memory_store: dict) -> dict:
+        key = cls.get_sentence_key(question, chunks)
+        return cls.get_memory_profile_by_key(key, memory_store)
 
     @classmethod
     def is_due(cls, question: str, chunks: list, memory_store: dict, now_ts: float = None) -> bool:
@@ -49,19 +55,17 @@ class MemoryManager:
         return now_ts >= profile.get('next_review_ts', 0)
 
     @classmethod
-    def record_attempt(
+    def record_attempt_by_key(
         cls,
-        question: str,
-        chunks: list,
-        flawless: bool,
         memory_store: dict,
+        key: str,
+        flawless: bool,
         now_ts: float = None,
         duration_seconds: float = None
     ) -> dict:
         if now_ts is None:
             now_ts = time.time()
-        key = cls.get_sentence_key(question, chunks)
-        profile = cls.get_memory_profile(question, chunks, memory_store).copy()
+        profile = cls.get_memory_profile_by_key(key, memory_store).copy()
 
         profile['total_reviews'] += 1
         profile['last_reviewed_ts'] = now_ts
@@ -81,6 +85,66 @@ class MemoryManager:
 
         memory_store[key] = profile
         return profile
+
+    @classmethod
+    def record_attempt(
+        cls,
+        *args,
+        **kwargs
+    ) -> dict:
+        """Records an attempt on a question or sentence key, updating SM-2 repetition schedule.
+
+        Supports:
+          record_attempt(mem, key, flawless, now_ts=now_ts)
+          record_attempt(key, flawless, memory_store=mem, now_ts=now_ts)
+          record_attempt(question, chunks, flawless, memory_store, now_ts=now_ts, duration_seconds=...)
+        """
+        if args and isinstance(args[0], dict):
+            memory_store = args[0]
+            key = args[1] if len(args) > 1 else kwargs.get('key', '')
+            flawless = args[2] if len(args) > 2 else kwargs.get('flawless', False)
+            now_ts = args[3] if len(args) > 3 else kwargs.get('now_ts')
+            duration_seconds = args[4] if len(args) > 4 else kwargs.get('duration_seconds')
+            return cls.record_attempt_by_key(
+                memory_store=memory_store,
+                key=key,
+                flawless=flawless,
+                now_ts=now_ts,
+                duration_seconds=duration_seconds
+            )
+
+        if args and isinstance(args[0], str) and (
+            (len(args) > 1 and isinstance(args[1], bool)) or
+            ('chunks' not in kwargs and (len(args) < 2 or not isinstance(args[1], (list, tuple))))
+        ):
+            key = args[0]
+            flawless = args[1] if len(args) > 1 else kwargs.get('flawless', False)
+            memory_store = args[2] if len(args) > 2 else kwargs.get('memory_store')
+            now_ts = args[3] if len(args) > 3 else kwargs.get('now_ts')
+            duration_seconds = args[4] if len(args) > 4 else kwargs.get('duration_seconds')
+            return cls.record_attempt_by_key(
+                memory_store=memory_store,
+                key=key,
+                flawless=flawless,
+                now_ts=now_ts,
+                duration_seconds=duration_seconds
+            )
+
+        question = args[0] if len(args) > 0 else kwargs.get('question')
+        chunks = args[1] if len(args) > 1 else kwargs.get('chunks')
+        flawless = args[2] if len(args) > 2 else kwargs.get('flawless', False)
+        memory_store = args[3] if len(args) > 3 else kwargs.get('memory_store')
+        now_ts = args[4] if len(args) > 4 else kwargs.get('now_ts')
+        duration_seconds = args[5] if len(args) > 5 else kwargs.get('duration_seconds')
+
+        key = cls.get_sentence_key(question, chunks)
+        return cls.record_attempt_by_key(
+            memory_store=memory_store,
+            key=key,
+            flawless=flawless,
+            now_ts=now_ts,
+            duration_seconds=duration_seconds
+        )
 
     @classmethod
     def get_status_badge(cls, question: str, chunks: list, memory_store: dict, now_ts: float = None) -> Tuple[str, str]:

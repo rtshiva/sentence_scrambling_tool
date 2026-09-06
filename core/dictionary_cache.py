@@ -4,7 +4,10 @@ import re
 import threading
 import urllib.request
 import urllib.parse
+import logging
 from typing import Optional, Dict
+
+logger = logging.getLogger(__name__)
 
 DICT_FILE = os.path.join(os.path.expanduser('~'), '.sentence_jigsaw_dict.json')
 MAX_CACHE_ENTRIES = 5000
@@ -24,6 +27,7 @@ class DictionaryManager:
                 with open(DICT_FILE, 'r', encoding='utf-8') as f:
                     cls._cache = json.load(f)
             except Exception:
+                logger.debug("Failed to load dictionary cache file", exc_info=True)
                 cls._cache = {}
 
     @classmethod
@@ -33,7 +37,7 @@ class DictionaryManager:
                 with open(DICT_FILE, 'w', encoding='utf-8') as f:
                     json.dump(cls._cache, f, indent=2, ensure_ascii=False)
             except Exception:
-                pass
+                logger.debug("Failed to save dictionary cache file", exc_info=True)
 
     @classmethod
     def clean_text(cls, text: str) -> str:
@@ -96,7 +100,7 @@ class DictionaryManager:
                     cls.set_meaning(text, res)
                     return res
         except Exception:
-            pass
+            logger.debug("Failed to fetch online meaning from API", exc_info=True)
         return None
 
     @classmethod

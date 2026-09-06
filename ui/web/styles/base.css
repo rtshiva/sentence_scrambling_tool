@@ -1,0 +1,205 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap');
+
+:root {
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-hindi: 'Noto Sans Devanagari', 'Inter', sans-serif;
+  --font-display: 'Outfit', 'Inter', sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.font-hindi {
+  font-family: var(--font-hindi);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #f8fafc; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Slot Animations */
+@keyframes slotPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@keyframes shakeError {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.animate-pulse-slot {
+  animation: slotPulse 0.35s ease-in-out;
+}
+
+.animate-shake {
+  animation: shakeError 0.4s ease-in-out;
+}
+
+/* Glassmorphism & Cards */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+}
+
+/* Interactive Chips */
+.chip-btn {
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+}
+
+.chip-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.18);
+}
+
+.chip-btn:active {
+  transform: translateY(0);
+}
+
+.chip-slot {
+  min-height: 48px;
+  transition: all 0.2s ease;
+}
+
+.chip-slot.target-active {
+  border-color: #6366f1;
+  background-color: #eef2ff;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.chip-slot.filled-correct {
+  border-color: #10b981;
+  background-color: #ecfdf5;
+  color: #065f46;
+}
+
+.chip-slot.filled-wrong {
+  border-color: #f43f5e;
+  background-color: #fff1f2;
+  color: #9f1239;
+}
+
+/* ============================================================ */
+/* JIGSAW BETWEEN-BLOCK INSERTION & 3-ZONE APPLE HIG DROP CUES */
+/* ============================================================ */
+
+.insertion-gap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 10px;
+  height: 42px;
+  margin: 0 1px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  position: relative;
+  vertical-align: middle;
+}
+
+.insertion-gap .insertion-cue {
+  width: 4px;
+  height: 24px;
+  background-color: transparent;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.insertion-gap .insertion-icon {
+  display: none;
+  font-size: 10px;
+  font-weight: 900;
+  color: #0284c7;
+}
+
+.insertion-gap:hover,
+.insertion-gap.insertion-gap-hover {
+  min-width: 28px;
+  background-color: #f0f9ff;
+  border: 2px dashed #0284c7;
+  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.15);
+}
+
+.insertion-gap:hover .insertion-cue,
+.insertion-gap.insertion-gap-hover .insertion-cue {
+  width: 16px;
+  height: 24px;
+  background-color: #e0f2fe;
+}
+
+.insertion-gap:hover .insertion-icon,
+.insertion-gap.insertion-gap-hover .insertion-icon {
+  display: inline-block;
+}
+
+.insertion-gap.active {
+  min-width: 32px;
+  background-color: #e0f2fe;
+  border: 2px dashed #0284c7;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.25);
+  animation: slotPulse 0.35s ease-in-out;
+}
+
+/* Dual Sky-Blue Border Cues on adjacent neighbor blocks */
+.chip-btn.insert-between-neighbor {
+  border-color: #0284c7 !important;
+  box-shadow: 0 0 0 3px rgba(2, 132, 199, 0.35) !important;
+  background-color: #f0f9ff !important;
+  transform: scale(1.02);
+}
+
+/* Single Amber Box Highlight for direct Swap/Replace */
+.chip-btn.swap-neighbor {
+  border-color: #eab308 !important;
+  box-shadow: 0 0 0 3px rgba(234, 179, 8, 0.35) !important;
+  background-color: #fefce8 !important;
+  transform: scale(1.03);
+}
+
+/* Dark Mode Overrides for Insertion */
+[data-theme="dark"] .insertion-gap:hover,
+[data-theme="dark"] .insertion-gap.insertion-gap-hover,
+[data-theme="dark"] .insertion-gap.active {
+  background-color: rgba(2, 132, 199, 0.2) !important;
+  border-color: #38bdf8 !important;
+}
+
+[data-theme="dark"] .chip-btn.insert-between-neighbor {
+  border-color: #38bdf8 !important;
+  background-color: rgba(2, 132, 199, 0.25) !important;
+  box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.4) !important;
+}
+
+[data-theme="dark"] .chip-btn.swap-neighbor {
+  border-color: #facc15 !important;
+  background-color: rgba(234, 179, 8, 0.25) !important;
+  box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.4) !important;
+}
+
+/* Confetti Container */
+#confetti-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 100;
+}
+

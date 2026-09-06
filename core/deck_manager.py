@@ -370,7 +370,7 @@ class DeckManager:
                 'mastered_cards': 0,
                 'readiness_percent': 0,
                 'daily_quota': 0,
-                'status_tag': 'No Exam',
+                'status_tag': 'no_exam',
                 'selected_scope': {},
                 'chapters_breakdown': []
             }
@@ -418,11 +418,11 @@ class DeckManager:
                     has_practice = any(c.ladder_stage > 1 for c in q_items)
                     
                     if ch_pct == 100:
-                        st_label = "⭐ Mastered"
+                        st_label = "mastered"
                     elif ch_pct > 0 or has_practice:
-                        st_label = "🔄 In Progress"
+                        st_label = "learning"
                     else:
-                        st_label = "⏳ Not Started"
+                        st_label = "new"
 
                     chapters_breakdown.append({
                         'deck_id': d_id,
@@ -449,7 +449,7 @@ class DeckManager:
                 'mastered_cards': 0,
                 'readiness_percent': 0,
                 'daily_quota': 0,
-                'status_tag': 'Empty Scope',
+                'status_tag': 'empty_scope',
                 'selected_scope': selected_scope,
                 'chapters_breakdown': []
             }
@@ -469,13 +469,13 @@ class DeckManager:
             daily_quota = max(1, min(daily_cap, daily_quota))
 
         if readiness_pct >= 90:
-            status_tag = "🚀 Exam Ready"
+            status_tag = "exam_ready"
         elif readiness_pct >= 70:
-            status_tag = "🟢 On Track"
+            status_tag = "on_track"
         elif days_left <= 5 and readiness_pct < 50:
-            status_tag = "🔴 Urgent Review"
+            status_tag = "urgent_review"
         else:
-            status_tag = "🟡 Steady Progress"
+            status_tag = "steady_progress"
 
         return {
             'id': exam_id,

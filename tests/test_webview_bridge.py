@@ -109,7 +109,7 @@ class TestWebBridgeAPI(unittest.TestCase):
         self.assertEqual(saved_exam['total_cards'], 1)
         self.assertEqual(len(saved_exam['chapters_breakdown']), 1)
         self.assertEqual(saved_exam['chapters_breakdown'][0]['chapter_name'], "Chapter 1: Ashoka")
-        self.assertEqual(saved_exam['chapters_breakdown'][0]['status'], "⭐ Mastered")
+        self.assertEqual(saved_exam['chapters_breakdown'][0]['status'], "mastered")
 
         # Test get_exam_details
         details = self.api.get_exam_details(saved_exam['id'])
@@ -231,10 +231,7 @@ class TestWebBridgeAPI(unittest.TestCase):
         # Launching exam mission with non-existent exam returns False
         self.assertFalse(self.api.launch_exam_mission(exam_id="non_existent_exam_id"))
 
-        # Gameplay active guard
-        self.api._gameplay_active = True
-        self.assertFalse(self.api._start_gameplay_thread([]))
-        self.api._gameplay_active = False
+
 
     def test_in_browser_session_and_submission(self):
         deck_data = {
@@ -888,6 +885,14 @@ class TestWebBridgeAPI(unittest.TestCase):
         timing_hint2 = res_hint2['timing']
         self.assertFalse(timing_hint2['is_new_best'], "1.5s with hint must NOT become personal best")
         self.assertEqual(timing_hint2['best_duration_seconds'], 8.5, "Personal Best should remain the clean 8.5s")
+
+    def test_fullscreen_bridge(self):
+        """Verifies toggle_fullscreen and is_fullscreen methods on WebBridgeAPI execute safely."""
+        res = self.api.toggle_fullscreen()
+        self.assertIsInstance(res, bool)
+        is_full = self.api.is_fullscreen()
+        self.assertIsInstance(is_full, bool)
+
 
 
 

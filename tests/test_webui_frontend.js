@@ -9,16 +9,19 @@ const assert = require('assert');
 const ROOT_DIR = path.resolve(__dirname, '..');
 const HTML_PATH = path.join(ROOT_DIR, 'ui', 'web', 'index.html');
 const JS_PATH = path.join(ROOT_DIR, 'ui', 'web', 'app.js');
+const PARTICLES_PATH = path.join(ROOT_DIR, 'ui', 'web', 'js', 'effects', 'particles.js');
 
 const htmlContent = fs.readFileSync(HTML_PATH, 'utf-8');
 const jsContent = fs.readFileSync(JS_PATH, 'utf-8');
+const particlesContent = fs.existsSync(PARTICLES_PATH) ? fs.readFileSync(PARTICLES_PATH, 'utf-8') : '';
 
 console.log("=== Running WebUI Frontend & Gameplay DOM Comprehensive Test Suite ===");
 
 // -------------------------------------------------------------------------
 // 1. Static Contract: Extract and verify all getElementById calls
 // -------------------------------------------------------------------------
-const jsIdMatches = [...jsContent.matchAll(/document\.getElementById\(['"]([^'"]+)['"]\)/g)].map(m => m[1]);
+const allJsCode = jsContent + '\n' + particlesContent;
+const jsIdMatches = [...allJsCode.matchAll(/document\.getElementById\(['"]([^'"]+)['"]\)/g)].map(m => m[1]);
 const uniqueJsIds = [...new Set(jsIdMatches)];
 
 const htmlIdMatches = [...htmlContent.matchAll(/id=["']([^"']+)["']/g)].map(m => m[1]);
@@ -264,6 +267,11 @@ const mockWindow = {
       get_state: async () => (mockWindow.state || {}),
       get_multi_subject_metrics: async () => ({ subjects: [] }),
       get_all_decks_with_chapters: async () => [],
+      toggle_fullscreen: async () => {
+        mockWindow._mockFullscreen = !mockWindow._mockFullscreen;
+        return mockWindow._mockFullscreen;
+      },
+      is_fullscreen: async () => Boolean(mockWindow._mockFullscreen),
       play_sound: (type) => soundCalls.push(type),
       speak_text: (text, lang, rate) => speakCalls.push({ text, lang, rate }),
       submit_card_result: async (deckId, cardId, attemptStage, passed, score, flawless, duration) => {
@@ -326,10 +334,11 @@ const context = vm.createContext({
   navigator: { userAgent: 'NodeTest' }
 });
 
-// Execute app.js in sandbox
+// Execute particles first, then app.js
+if (particlesContent) vm.runInContext(particlesContent, context);
 vm.runInContext(jsContent, context);
 
-console.log("✓ PASS: app.js loaded and evaluated cleanly in sandbox without errors.");
+console.log("✓ PASS: particles.js and app.js loaded and evaluated cleanly in sandbox without errors.");
 
 const testHindiCard = {
   card_id: 'card_ch1_q1',
@@ -667,6 +676,21 @@ assert.strictEqual(mockDocument.getElementById('view-dashboard').classList.conta
 context.showView('dashboard');
 assert.strictEqual(mockDocument.getElementById('view-dashboard').classList.contains('hidden'), false, "view-dashboard must be active");
 assert.strictEqual(mockDocument.getElementById('view-parent').classList.contains('hidden'), true, "view-parent must be hidden");
+assert.strictEqual(mockDocument.getElementById('app-header').classList.contains('hidden'), false, "app-header must be visible on dashboard");
+
+// Header must be hidden during any gameplay mode
+context.showView('gameplay');
+assert.strictEqual(mockDocument.getElementById('view-gameplay').classList.contains('hidden'), false, "view-gameplay must be active");
+assert.strictEqual(mockDocument.getElementById('app-header').classList.contains('hidden'), true, "app-header must be hidden during gameplay modes");
+
+// Header must be visible during chapter selection section
+context.showView('chapter', { deck_id: 'deck_hindi', chapter_name: 'Ch-1', deck_title: 'Hindi', cards: [] });
+assert.strictEqual(mockDocument.getElementById('view-chapter').classList.contains('hidden'), false, "view-chapter must be active");
+assert.strictEqual(mockDocument.getElementById('app-header').classList.contains('hidden'), false, "app-header must be visible during chapter selection section");
+
+// Returning to dashboard keeps header visible
+context.showView('dashboard');
+assert.strictEqual(mockDocument.getElementById('app-header').classList.contains('hidden'), false, "app-header must be visible on dashboard");
 
 context.switchRole('parent');
 assert.strictEqual(mockWindow.state.role, 'parent');
@@ -1681,6 +1705,63 @@ console.log("✓ PASS: Accessibility global font size scaling across DOM and set
   assert.strictEqual(mockWindow.state.gameplay.placed_chunks[1], chip2Text);
   assert.strictEqual(mockWindow.state.gameplay.placed_chunks[2], chip3Text);
 
+  // 7. Verify Drag & Drop from Tray to Gap Between Two Blocks creates NO DUPLICATES
+  context.setupGameSession([insertionCard], 'jigsaw', 'Insertion Chapter');
+  context.setJigsawWordsPerBlock('orig');
+  // Place 2 chunks: 'पहला' and 'तीसरा'
+  context.insertChunkFromTray(chip1Text, 0);
+  context.insertChunkFromTray(chip3Text, 1);
+  assert.strictEqual(mockWindow.state.gameplay.placed_chunks.length, 2);
+
+  const updatedBoardEl = mockDocument.getElementById('game-assembly-board');
+  const updatedGaps = updatedBoardEl.querySelectorAll('.insertion-gap');
+  const midGap = updatedGaps[1];
+  assert.strictEqual(midGap.dataset.insertIndex, 1);
+
+  let stoppedProp = false;
+  const mockDropEvent = {
+    preventDefault: () => {},
+    stopPropagation: () => { stoppedProp = true; },
+    dataTransfer: {
+      getData: () => JSON.stringify({ source: 'tray', chunk: chip2Text, index: 0 })
+    }
+  };
+  midGap.ondrop(mockDropEvent);
+  assert.strictEqual(stoppedProp, true, "gap.ondrop must call e.stopPropagation() to prevent bubbling to board.ondrop");
+
+  // Verify resulting sequence is ['पहला', 'दूसरा', 'तीसरा'] with NO duplicate
+  assert.strictEqual(mockWindow.state.gameplay.placed_chunks.length, 3, "Exactly 3 placed chunks, no duplicates");
+  assert.strictEqual(mockWindow.state.gameplay.placed_chunks[0], chip1Text);
+  assert.strictEqual(mockWindow.state.gameplay.placed_chunks[1], chip2Text);
+  assert.strictEqual(mockWindow.state.gameplay.placed_chunks[2], chip3Text);
+  assert.strictEqual(mockWindow.state.gameplay.available_chips.length, 0, "Tray is now empty");
+
+  // Even if board.ondrop were somehow triggered, board.ondrop must not duplicate
+  updatedBoardEl.ondrop(mockDropEvent);
+  assert.strictEqual(mockWindow.state.gameplay.placed_chunks.length, 3, "Calling board.ondrop must not create duplicates");
+
+  // 8. Verify Drag & Drop Moving Placed Block Between Two Blocks creates NO DUPLICATES
+  // Move 'तीसरा' (index 2) between 'पहला' and 'दूसरा' (gap at index 1)
+  const currentGaps = updatedBoardEl.querySelectorAll('.insertion-gap');
+  const moveGap = currentGaps[1];
+  let moveStopped = false;
+  moveGap.ondrop({
+    preventDefault: () => {},
+    stopPropagation: () => { moveStopped = true; },
+    dataTransfer: {
+      getData: () => JSON.stringify({ source: 'board', chunk: chip3Text, index: 2 })
+    }
+  });
+  assert.strictEqual(moveStopped, true, "move gap.ondrop must call stopPropagation");
+  assert.strictEqual(mockWindow.state.gameplay.placed_chunks.length, 3, "Still exactly 3 blocks, no duplicates created during move");
+  assert.strictEqual(mockWindow.state.gameplay.placed_chunks[0], chip1Text);
+  assert.strictEqual(mockWindow.state.gameplay.placed_chunks[1], chip3Text);
+  assert.strictEqual(mockWindow.state.gameplay.placed_chunks[2], chip2Text);
+
+  // 9. Verify safety guard: calling insertChunkFromTray with chunk not in tray is rejected
+  context.insertChunkFromTray(chip1Text, 0); // 'पहला' is already placed, not in tray
+  assert.strictEqual(mockWindow.state.gameplay.placed_chunks.length, 3, "insertChunkFromTray must ignore chunks not in tray");
+
   // Verify sequence completion passes
   // -------------------------------------------------------------------------
   // Test 35: Jigsaw Hint Behavior: Non-Finishing & Exclusion from Best Timing and Graduation
@@ -1991,8 +2072,356 @@ console.log("✓ PASS: Accessibility global font size scaling across DOM and set
     console.log("✓ PASS: Card / Question Editor Modal, chunk formatting, saving, and deletion verified!");
   })();
 
+  // -------------------------------------------------------------------------
+  // [Test 41] Active Writing Pedagogical Scaffolding: Look-Cover-Write-Check (LCWC)
+  // -------------------------------------------------------------------------
+  await (async () => {
+    console.log("\n[Test 41] Testing Active Writing Pedagogical Scaffolding: Look-Cover-Write-Check (LCWC)...");
+    const testCard = {
+      card_id: 'card_lcwc_test',
+      question: 'सूरज किधर से निकलता है?',
+      meaning: 'Which direction does the sun rise from?',
+      chunks: ['सूरज', 'पूरब', 'से', 'निकलता', 'है।']
+    };
+
+    context.setupGameSession([testCard], 'writing', 'Chapter Scaffolding Test', 'deck_scaffold');
+    assert.strictEqual(mockWindow.state.gameplay.effective_mode, 'writing', "Must be in writing mode");
+
+    // 1. Trigger LCWC
+    context.startWritingLookCoverWrite();
+    const curtain = mockDocument.getElementById('writing-memorize-curtain');
+    const targetTextEl = mockDocument.getElementById('writing-curtain-target-text');
+    const countdownEl = mockDocument.getElementById('writing-curtain-countdown');
+
+    assert(!curtain.classList.contains('hidden'), "Curtain must be visible when LCWC starts");
+    assert.strictEqual(targetTextEl.textContent, 'सूरज पूरब से निकलता है।', "Target sentence must display in curtain");
+    assert.strictEqual(countdownEl.textContent, '5s', "Countdown must initialize to 5s");
+    assert(mockWindow.state.gameplay.writing_lcwc_active, "LCWC state must be active");
+
+    // 2. Dismiss curtain
+    context.dismissWritingCurtain(true);
+    assert(curtain.classList.contains('hidden'), "Curtain must be hidden after dismissal");
+    assert(!mockWindow.state.gameplay.writing_lcwc_active, "LCWC state must be inactive");
+
+    console.log("✓ PASS: Look-Cover-Write-Check 5s memorize curtain and dismissal verified!");
+  })();
+
+  // -------------------------------------------------------------------------
+  // [Test 42] Active Writing Pedagogical Scaffolding: Ghost Text Watermark Peek
+  // -------------------------------------------------------------------------
+  await (async () => {
+    console.log("\n[Test 42] Testing Active Writing Pedagogical Scaffolding: Ghost Text Watermark Peek...");
+    const watermark = mockDocument.getElementById('writing-ghost-watermark');
+    const scaffoldBadge = mockDocument.getElementById('writing-scaffold-status-badge');
+
+    // 1. Activate Ghost Peek
+    context.showWritingGhostPeek();
+    assert(!watermark.classList.contains('hidden'), "Ghost watermark must be visible during peek");
+    assert(watermark.classList.contains('ghost-watermark-active'), "Watermark must have active CSS class");
+    assert.strictEqual(mockWindow.state.gameplay.writing_peek_used, true, "Attempt must track peek usage as assisted");
+    assert(!scaffoldBadge.classList.contains('hidden'), "Assisted status badge must appear");
+    assert(scaffoldBadge.textContent.includes('Peek Used'), "Badge text must mention peek");
+
+    // 2. Hide Ghost Peek
+    context.hideWritingGhostPeek();
+    assert(watermark.classList.contains('hidden'), "Ghost watermark must hide after peek release");
+
+    // 3. Toggle Ghost Peek click
+    context.toggleWritingGhostPeekClick();
+    assert(!watermark.classList.contains('hidden'), "Watermark must show on click toggle");
+    context.toggleWritingGhostPeekClick();
+    assert(watermark.classList.contains('hidden'), "Watermark must hide on second click toggle");
+
+    console.log("✓ PASS: Ghost Text Watermark Peek activation, release, and assistance tracking verified!");
+  })();
+
+  // -------------------------------------------------------------------------
+  // [Test 43] Active Writing Pedagogical Scaffolding: Sentence Starter Injection
+  // -------------------------------------------------------------------------
+  await (async () => {
+    console.log("\n[Test 43] Testing Active Writing Pedagogical Scaffolding: Sentence Starter Injection...");
+    const ta = mockDocument.getElementById('writing-input-area');
+    ta.value = '';
+
+    context.insertWritingSentenceStarter();
+    assert.strictEqual(ta.value, 'सूरज ', "Sentence starter must insert the first chunk ('सूरज ') into textarea");
+    assert.strictEqual(mockWindow.state.gameplay.writing_starter_used, true, "Starter usage must be logged in gameplay state");
+
+    const scaffoldBadge = mockDocument.getElementById('writing-scaffold-status-badge');
+    assert(!scaffoldBadge.classList.contains('hidden'), "Status badge must reflect starter assistance");
+    assert(scaffoldBadge.textContent.includes('Starter Inserted'), "Badge must reflect starter assistance");
+
+    console.log("✓ PASS: Sentence starter injection and momentum scaffold verified!");
+  })();
+
+  // -------------------------------------------------------------------------
+  // [Test 44] Active Writing Pedagogical Scaffolding: Faded Word Bank Reference
+  // -------------------------------------------------------------------------
+  await (async () => {
+    console.log("\n[Test 44] Testing Active Writing Pedagogical Scaffolding: Faded Word Bank Reference...");
+    const wbContainer = mockDocument.getElementById('writing-word-bank-container');
+    const tray = mockDocument.getElementById('writing-word-bank-tray');
+
+    // 1. Toggle Word Bank on
+    context.toggleWritingWordBank();
+    assert(!wbContainer.classList.contains('hidden'), "Word Bank drawer must open");
+    assert.strictEqual(mockWindow.state.gameplay.writing_wordbank_used, true, "Word bank usage logged");
+    assert(tray.children.length > 0, "Word bank tray must contain word chips");
+
+    // 2. Click a word chip to insert
+    const ta = mockDocument.getElementById('writing-input-area');
+    const firstChip = tray.children[0];
+    const chipText = firstChip.textContent;
+    firstChip.onclick();
+
+    assert(ta.value.includes(chipText), "Clicking word chip must insert word into textarea");
+    assert(firstChip.classList.contains('used'), "Chip must be styled as used");
+
+    // 3. Toggle Word Bank off
+    context.toggleWritingWordBank();
+    assert(wbContainer.classList.contains('hidden'), "Word Bank drawer must close on toggle");
+
+    console.log("✓ PASS: Faded Word Bank drawer toggle, chips, and click insertion verified!");
+  })();
+
+  // -------------------------------------------------------------------------
+  // [Test 45] Post-Jigsaw "Write It Now" Mini-Bridge from Celebration Modal
+  // -------------------------------------------------------------------------
+  await (async () => {
+    console.log("\n[Test 45] Testing Post-Jigsaw 'Write It Now' Mini-Bridge from Celebration Modal...");
+    const jigsawCard = {
+      card_id: 'card_bridge_test',
+      question: 'पेड़ हमें क्या देते हैं?',
+      meaning: 'What do trees give us?',
+      chunks: ['पेड़', 'हमें', 'छाया', 'देते', 'हैं।']
+    };
+
+    context.setupGameSession([jigsawCard], 'jigsaw', 'Chapter 1 Bridge Test', 'deck_bridge');
+    assert.strictEqual(mockWindow.state.gameplay.effective_mode, 'jigsaw', "Must start in jigsaw mode");
+
+    // Simulate completing Jigsaw puzzle
+    await context.recordCardCompletion(true);
+    const celebCard = mockDocument.getElementById('game-celebration-card');
+    const jumpWriteBtn = mockDocument.getElementById('celeb-jump-to-write-btn');
+
+    assert(!celebCard.classList.contains('hidden'), "Celebration card must show after completing jigsaw");
+    assert(!jumpWriteBtn.classList.contains('hidden'), "Post-Jigsaw 'Write It Now' button must be visible");
+
+    // Click "Write It Now" button
+    context.jumpFromCelebrationToWriting();
+
+    assert(celebCard.classList.contains('hidden'), "Celebration card must close");
+    assert.strictEqual(mockWindow.state.gameplay.effective_mode, 'writing', "Mode must dynamically switch to 'writing'");
+    assert.strictEqual(mockWindow.state.gameplay.current_attempt_stage, 6, "Attempt stage must advance to Stage 6 (Writing)");
+    const writeBox = mockDocument.getElementById('game-writing-box');
+    assert(!writeBox.classList.contains('hidden'), "Active Writing Studio box must become visible");
+
+    // LCWC curtain should automatically trigger to prime memory
+    const curtain = mockDocument.getElementById('writing-memorize-curtain');
+    assert(!curtain.classList.contains('hidden'), "LCWC curtain must automatically open to prime memory");
+    context.dismissWritingCurtain(false);
+
+    console.log("✓ PASS: Post-Jigsaw 'Write It Now' bonus bridge transition verified!");
+  })();
+
+  // -------------------------------------------------------------------------
+  // [Test 46] Progressive Typing Blanks (Stage 5 Scaffolding & Ladder Downshift)
+  // -------------------------------------------------------------------------
+  await (async () => {
+    console.log("\n[Test 46] Testing Progressive Typing Blanks (Stage 5 Scaffolding & Ladder Downshift)...");
+    const clozeCard = {
+      card_id: 'card_cloze_test',
+      question: 'सूरज किस दिशा से निकलता है?',
+      meaning: 'From which direction does the sun rise?',
+      chunks: ['सूरज', 'पूरब से', 'निकलता', 'है।'],
+      ladder_stage: 5
+    };
+
+    // 1. Launch in Guided Mission Stage 5
+    context.setupGameSession([clozeCard], 'guided_mission', 'Chapter 1 Cloze Test', 'deck_cloze');
+    assert.strictEqual(mockWindow.state.gameplay.effective_mode, 'typing_blanks', "Stage 5 must map to typing_blanks");
+    assert.strictEqual(mockWindow.state.gameplay.current_attempt_stage, 5, "Attempt stage must be 5");
+
+    const clozeBoard = mockDocument.getElementById('writing-cloze-board');
+    const fullContainer = mockDocument.getElementById('writing-full-textarea-container');
+    const passPill = mockDocument.getElementById('writing-cloze-pass-pill');
+    const slotsRow = mockDocument.getElementById('writing-cloze-slots-row');
+
+    assert(!clozeBoard.classList.contains('hidden'), "Cloze typing board must be visible");
+    assert(fullContainer.classList.contains('hidden'), "Full textarea must be hidden for Level 1");
+    assert.strictEqual(mockWindow.state.gameplay.cloze_level, 1, "Should start at Cloze Level 1");
+    assert.strictEqual(passPill.textContent, '1 Blank', "Pass pill must display '1 Blank'");
+
+    // Level 1: exactly 1 slot input, 3 static spans
+    const level1Slots = slotsRow.querySelectorAll('.cloze-typing-slot');
+    assert.strictEqual(level1Slots.length, 1, "Level 1 must render exactly 1 typing input slot");
+    const expectedChunk = level1Slots[0].dataset.expected;
+    assert(expectedChunk, "Slot must have expected chunk attribute");
+
+    // 2. Test incorrect submission
+    level1Slots[0].value = 'गलत';
+    await context.checkClozeTypingAnswer();
+    assert(level1Slots[0].classList.contains('incorrect'), "Slot must be marked incorrect on mismatch");
+    const detectiveCard = mockDocument.getElementById('writing-detective-card');
+    assert(!detectiveCard.classList.contains('hidden'), "Detective inspector must open on slot typo");
+
+    // 3. Test correct submission for Level 1 -> advances to Level 2
+    level1Slots[0].value = expectedChunk;
+    await context.checkClozeTypingAnswer();
+
+    assert.strictEqual(mockWindow.state.gameplay.cloze_level, 2, "Must advance to Level 2 (2 blanks)");
+    assert.strictEqual(passPill.textContent, '2 Blanks', "Pass pill must show '2 Blanks'");
+    const level2Slots = slotsRow.querySelectorAll('.cloze-typing-slot');
+    assert.strictEqual(level2Slots.length, 2, "Level 2 must render 2 typing input slots");
+
+    // 4. Test correct submission for Level 2 -> completes card and advances Stage 5 to 6
+    level2Slots.forEach(s => {
+      s.value = s.dataset.expected;
+    });
+    await context.checkClozeTypingAnswer();
+
+    const celebCard = mockDocument.getElementById('game-celebration-card');
+    assert(!celebCard.classList.contains('hidden'), "Celebration card must show after completing level 2");
+    assert.strictEqual(clozeCard.ladder_stage, 6, "Card should advance to Stage 6 (Writing)");
+
+    // 5. Test manual ladder switcher downshift & upshift
+    context.setWritingLadderLevel(1);
+    assert.strictEqual(mockWindow.state.gameplay.cloze_level, 1);
+    assert(!clozeBoard.classList.contains('hidden'), "Cloze board visible on downshift to Level 1");
+
+    context.setWritingLadderLevel(3);
+    assert.strictEqual(mockWindow.state.gameplay.cloze_level, 3);
+    assert(clozeBoard.classList.contains('hidden'), "Cloze board hidden on upshift to Level 3");
+    assert(!fullContainer.classList.contains('hidden'), "Full textarea visible on Level 3");
+
+    console.log("✓ PASS: Progressive Typing Blanks (Stage 5) multi-level slot typing, ladder progression, and manual switcher verified!");
+  })();
+
+  // -------------------------------------------------------------------------
+  // [Test 47] Interactive Detective Self-Correction System
+  // -------------------------------------------------------------------------
+  await (async () => {
+    console.log("\n[Test 47] Testing Interactive Detective Self-Correction System...");
+    const writingCard = {
+      card_id: 'card_detective_test',
+      question: 'पेड़ हमें क्या देते हैं?',
+      meaning: 'What do trees give us?',
+      chunks: ['पेड़', 'हमें', 'छाया', 'देते', 'हैं।'],
+      ladder_stage: 6
+    };
+
+    context.setupGameSession([writingCard], 'writing', 'Chapter 1 Detective Test', 'deck_detective');
+    const ta = mockDocument.getElementById('writing-input-area');
+    const detectiveCard = mockDocument.getElementById('writing-detective-card');
+    const typedWordEl = mockDocument.getElementById('detective-typed-word');
+    const targetWordEl = mockDocument.getElementById('detective-target-word');
+    const clueTextEl = mockDocument.getElementById('detective-clue-text');
+
+    // 1. Student writes sentence with a typo: 'पेड' instead of 'पेड़'
+    ta.value = 'पेड हमें छाया देते हैं।';
+    await context.checkWritingAnswer();
+
+    // Detective card must automatically open for the typo
+    assert(!detectiveCard.classList.contains('hidden'), "Detective card must open on typo");
+    assert.strictEqual(typedWordEl.textContent, 'पेड', "Detective must show typed word");
+    assert.strictEqual(targetWordEl.textContent, 'पेड़', "Detective must show target word");
+    assert(clueTextEl.textContent.length > 0, "Detective must provide a diagnostic clue");
+
+    // Diff pill must be clickable
+    const diffRow = mockDocument.getElementById('writing-tokens-row');
+    const typoPills = diffRow.querySelectorAll('.writing-diff-pill-interactive');
+    assert(typoPills.length > 0, "Typo pills must have .writing-diff-pill-interactive class");
+    assert(typoPills[0].textContent.includes('🔍'), "Interactive diff pill must display 🔍 icon");
+
+    // 2. Test Audio Trigger (Hear Word)
+    speakCalls.length = 0;
+    context.speakDetectiveWord();
+    assert.strictEqual(speakCalls.length, 1, "Speak target word must be called");
+    assert.strictEqual(speakCalls[0].text, 'पेड़', "Must speak target word 'पेड़'");
+
+    // 3. Test 1-Click Auto-Fix
+    context.autoFixWordInInput();
+    assert(ta.value.includes('पेड़'), "Auto-Fix must replace 'पेड' with 'पेड़' in textarea");
+    assert.strictEqual(mockWindow.state.gameplay.writing_autofix_used, true, "Auto-Fix assistance tracked");
+    assert(detectiveCard.classList.contains('hidden'), "Detective card must close after auto-fix");
+
+    // 4. Test manual click on diff pill opens Detective
+    context.closeDetectiveInspection();
+    assert(detectiveCard.classList.contains('hidden'));
+    typoPills[0].onclick();
+    assert(!detectiveCard.classList.contains('hidden'), "Clicking interactive diff pill must reopen Detective");
+    context.closeDetectiveInspection();
+
+    console.log("✓ PASS: Interactive Detective diagnosis, word audio playback, interactive pills, and 1-click auto-fix verified!");
+  })();
+
+  // -------------------------------------------------------------------------
+  // [Test 48] Fullscreen Kiosk & Zen Focus Immersion Engine
+  // -------------------------------------------------------------------------
+  await (async () => {
+    console.log("\n[Test 48] Testing Fullscreen Kiosk & Zen Focus Immersion Engine...");
+
+    const headerBtn = mockDocument.getElementById('btn-toggle-fullscreen');
+    const zenBtn = mockDocument.getElementById('game-zen-toggle-btn');
+    const exitPill = mockDocument.getElementById('zen-focus-exit-btn');
+    const iconEl = mockDocument.getElementById('fullscreen-icon');
+    const textEl = mockDocument.getElementById('fullscreen-text');
+
+    assert(headerBtn, "Header fullscreen button must exist");
+    assert(zenBtn, "In-game Zen Focus button must exist");
+    assert(exitPill, "Floating Zen exit pill must exist");
+
+    // 1. Initial State: Normal Windowed Mode
+    assert.strictEqual(Boolean(mockWindow.state.is_fullscreen), false, "Initial fullscreen state must be false");
+    assert.strictEqual(iconEl.textContent, '⛶', "Initial icon must be ⛶");
+    assert.strictEqual(textEl.textContent, 'Fullscreen', "Initial label must be Fullscreen");
+    assert(!mockDocument.body.classList.contains('zen-focus-active'), "Zen focus must be inactive initially");
+    assert(exitPill.classList.contains('hidden'), "Floating exit pill must be hidden initially");
+
+    // 2. Launch Gameplay Session
+    const testCard = {
+      card_id: 'card_zen_test',
+      question: 'सूरज किस दिशा से निकलता है?',
+      meaning: 'From which direction does the sun rise?',
+      chunks: ['सूरज', 'पूरब से', 'निकलता है।'],
+      ladder_stage: 2
+    };
+    context.setupGameSession([testCard], 'jigsaw', 'Zen Chapter', 'deck_zen');
+    assert.strictEqual(mockWindow.state.current_view, 'gameplay');
+
+    // 3. Toggle Fullscreen ON
+    await context.toggleFullscreenMode();
+    assert.strictEqual(mockWindow.state.is_fullscreen, true, "State must be fullscreen");
+    assert.strictEqual(iconEl.textContent, '🗗', "Icon must toggle to 🗗 (Exit Full)");
+    assert.strictEqual(textEl.textContent, 'Exit Full', "Label must toggle to Exit Full");
+    assert(mockDocument.body.classList.contains('zen-focus-active'), "Body must have .zen-focus-active class during gameplay");
+    assert(!exitPill.classList.contains('hidden'), "Floating exit pill must be visible in Zen Focus");
+
+    // 4. Test View Router integration: navigating away to dashboard suspends Zen Focus on body
+    context.showView('dashboard');
+    assert(!mockDocument.body.classList.contains('zen-focus-active'), "Dashboard view must not hide header even if fullscreen");
+    assert(exitPill.classList.contains('hidden'), "Exit pill must be hidden on dashboard");
+
+    // Returning to gameplay restores Zen Focus
+    context.showView('gameplay');
+    assert(mockDocument.body.classList.contains('zen-focus-active'), "Returning to gameplay in fullscreen restores Zen Focus");
+    assert(!exitPill.classList.contains('hidden'), "Exit pill restored in gameplay");
+
+    // 5. Toggle Fullscreen OFF via exit pill
+    exitPill.onclick();
+    await new Promise(r => setImmediate(r));
+
+    assert.strictEqual(mockWindow.state.is_fullscreen, false, "Fullscreen must toggle off");
+    assert(!mockDocument.body.classList.contains('zen-focus-active'), "Zen focus removed on exit");
+    assert(exitPill.classList.contains('hidden'), "Floating exit pill must hide");
+    assert.strictEqual(iconEl.textContent, '⛶', "Icon restored to ⛶");
+    assert.strictEqual(textEl.textContent, 'Fullscreen', "Label restored to Fullscreen");
+
+    console.log("✓ PASS: Fullscreen desktop kiosk toggle, Zen Focus auto-activation in gameplay, and floating exit verified!");
+  })();
+
   console.log("\n========================================================");
-  console.log("=== ALL 40 USE CASE & GAMEPLAY SCENARIOS PASSED (40/40) ===");
+  console.log("=== ALL 48 USE CASE & GAMEPLAY SCENARIOS PASSED (48/48) ===");
   console.log("========================================================");
 })().catch(err => {
   console.error("Test failed:", err);

@@ -1,6 +1,9 @@
 import os
 import re
+import logging
 from typing import Optional, Dict, Any
+
+logger = logging.getLogger(__name__)
 
 class SpeechTranscriber:
     """Provides speech-to-text transcription with pluggable local backends (faster-whisper, whisper, or system)."""
@@ -15,13 +18,13 @@ class SpeechTranscriber:
             import faster_whisper
             return True
         except ImportError:
-            pass
+            logger.warning("faster_whisper is not available")
 
         try:
             import whisper
             return True
         except ImportError:
-            pass
+            logger.warning("whisper is not available")
 
         return False
 
@@ -71,7 +74,7 @@ class SpeechTranscriber:
             transcribed = " ".join([seg.text for seg in segments]).strip()
             return {'text': transcribed, 'confidence': 0.95, 'backend': 'faster-whisper', 'error': None}
         except ImportError:
-            pass
+            logger.warning("faster_whisper module not installed for transcription")
         except Exception as e:
             return {'text': '', 'confidence': 0.0, 'backend': 'faster-whisper', 'error': str(e)}
 
@@ -86,7 +89,7 @@ class SpeechTranscriber:
             result = cls._whisper_model.transcribe(audio_filepath, **transcribe_kwargs)
             return {'text': result.get('text', '').strip(), 'confidence': 0.90, 'backend': 'whisper', 'error': None}
         except ImportError:
-            pass
+            logger.warning("whisper module not installed for transcription")
         except Exception as e:
             return {'text': '', 'confidence': 0.0, 'backend': 'whisper', 'error': str(e)}
 

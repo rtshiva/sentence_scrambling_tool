@@ -1,0 +1,214 @@
+/* Print Optimization */
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+  header, #confetti-canvas, #chunk-hover-tooltip {
+    display: none !important;
+  }
+}
+
+/* ========================================================================= */
+/* ACCESSIBILITY: GLOBAL FONT SIZE SCALING                                   */
+/* ========================================================================= */
+
+html[data-font-size="normal"], html {
+  font-size: 16px;
+}
+
+html[data-font-size="medium"] {
+  font-size: 18.5px; /* ~115% scale */
+}
+
+html[data-font-size="large"] {
+  font-size: 21px; /* ~130% scale */
+}
+
+html[data-font-size="xlarge"] {
+  font-size: 24px; /* ~150% scale */
+}
+
+/* Enhanced legibility for Hindi passages and arena items */
+html[data-font-size="medium"] #game-question-text {
+  font-size: 1.4rem;
+  line-height: 1.4;
+}
+html[data-font-size="large"] #game-question-text {
+  font-size: 1.65rem;
+  line-height: 1.4;
+}
+html[data-font-size="xlarge"] #game-question-text {
+  font-size: 1.95rem;
+  line-height: 1.4;
+}
+
+html[data-font-size="medium"] .font-hindi {
+  letter-spacing: 0.01em;
+}
+html[data-font-size="large"] .font-hindi {
+  letter-spacing: 0.02em;
+}
+html[data-font-size="xlarge"] .font-hindi {
+  letter-spacing: 0.025em;
+}
+
+/* ========================================================================= */
+/* ACTIVE WRITING STUDIO PEDAGOGICAL SCAFFOLDING                             */
+/* ========================================================================= */
+
+#writing-memorize-curtain {
+  animation: curtainSlideIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes curtainSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.ghost-watermark-active {
+  display: block !important;
+  animation: watermarkFadeIn 0.2s ease-out forwards;
+}
+
+@keyframes watermarkFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.99);
+  }
+  to {
+    opacity: 0.45;
+    transform: scale(1);
+  }
+}
+
+.writing-word-chip {
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+  user-select: none;
+}
+.writing-word-chip:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.08);
+}
+.writing-word-chip:active {
+  transform: scale(0.96);
+}
+.writing-word-chip.used {
+  opacity: 0.45;
+  background-color: #f1f5f9 !important;
+  color: #94a3b8 !important;
+  border-color: #e2e8f0 !important;
+  text-decoration: line-through;
+}
+
+/* Inline Cloze Typing Input Slots */
+.cloze-typing-slot {
+  display: inline-block;
+  min-width: 110px;
+  max-width: 220px;
+  padding: 4px 10px;
+  margin: 0 4px;
+  background-color: #ffffff;
+  border: 2px dashed #6366f1;
+  border-radius: 10px;
+  text-align: center;
+  font-weight: 700;
+  color: #1e1b4b;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+  vertical-align: middle;
+}
+.cloze-typing-slot:focus {
+  border-style: solid;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25);
+  background-color: #f5f3ff;
+}
+.cloze-typing-slot.correct {
+  border-style: solid;
+  border-color: #10b981;
+  background-color: #ecfdf5;
+  color: #065f46;
+}
+.cloze-typing-slot.incorrect {
+  border-style: solid;
+  border-color: #f43f5e;
+  background-color: #fff1f2;
+  color: #9f1239;
+}
+
+/* Detective Clue Card Animation */
+#writing-detective-card {
+  animation: detectiveCardSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes detectiveCardSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.writing-diff-pill-interactive {
+  cursor: pointer;
+  transition: all 0.15s ease-out;
+}
+.writing-diff-pill-interactive:hover {
+  transform: translateY(-1px) scale(1.02);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* -------------------------------------------------------------------------
+   Fullscreen & Zen Focus Mode (Distraction-Free Immersion)
+   ------------------------------------------------------------------------- */
+body.zen-focus-active #app-header {
+  display: none !important;
+}
+
+body.zen-focus-active #zen-focus-exit-btn {
+  display: inline-flex !important;
+}
+
+body.zen-focus-active .max-w-6xl {
+  max-width: 100% !important;
+  padding: 1.5rem 2.5rem !important;
+}
+
+body.zen-focus-active #view-gameplay {
+  min-height: calc(100vh - 3rem);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+body.zen-focus-active #game-question-text {
+  font-size: 1.6rem !important;
+  line-height: 2.3rem !important;
+}
+
+@media (min-width: 768px) {
+  body.zen-focus-active #game-question-text {
+    font-size: 2.1rem !important;
+    line-height: 3.1rem !important;
+  }
+}
+
+#zen-focus-exit-btn {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#zen-focus-exit-btn:hover {
+  transform: translateY(-2px) scale(1.05);
+}
+
+
+

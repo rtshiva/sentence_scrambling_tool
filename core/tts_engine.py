@@ -4,6 +4,11 @@ import hashlib
 import tempfile
 import threading
 import asyncio
+import logging
+
+from core.config import config
+
+logger = logging.getLogger(__name__)
 
 try:
     import edge_tts
@@ -11,6 +16,7 @@ try:
     pygame.mixer.init()
     HAS_TTS = True
 except Exception:
+    logger.warning("Edge-TTS or Pygame initialization failed, TTS will be disabled", exc_info=True)
     HAS_TTS = False
 
 class TTSManager:
@@ -19,11 +25,7 @@ class TTSManager:
     _lock = threading.Lock()
     _is_playing = False
 
-    VOICES = {
-        'hi': 'hi-IN-SwaraNeural',
-        'ja': 'ja-JP-NanamiNeural',
-        'en': 'en-IN-NeerjaNeural'
-    }
+    VOICES = config.tts_voices
 
     @classmethod
     def init(cls):
@@ -95,7 +97,7 @@ class TTSManager:
                     while pygame.mixer.music.get_busy():
                         pygame.time.Clock().tick(10)
             except Exception:
-                pass
+                logger.warning("TTS audio playback failed", exc_info=True)
             finally:
                 cls._is_playing = False
                 if on_finish_callback:
@@ -127,9 +129,9 @@ class TTSManager:
                 try:
                     pygame.mixer.music.unload()
                 except Exception:
-                    pass
+                    logger.warning("Failed to unload pygame mixer music in stop()", exc_info=True)
             except Exception:
-                pass
+                logger.warning("Failed to stop pygame mixer music in stop()", exc_info=True)
             cls._is_playing = False
 
     @classmethod
@@ -144,6 +146,6 @@ class TTSManager:
                         try:
                             os.remove(f)
                         except Exception:
-                            pass
+                            logger.warning("Failed to remove cached TTS audio file", exc_info=True)
         except Exception:
-            pass
+            logger.warning("Failed to cleanup TTS audio cache directory", exc_info=True)

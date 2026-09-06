@@ -1,6 +1,8 @@
 from typing import List, Dict, Any, Tuple, Optional
 from core.models import QuestionItem, ExamGoal
 from core.memory import MemoryManager
+from core.profile_manager import ProfileManager
+from core.deck_manager import DeckManager
 
 STAGE_DEFINITIONS = {
     1: {
@@ -36,12 +38,12 @@ STAGE_DEFINITIONS = {
         'passing_hint': 'Pass with score >= 80%'
     },
     5: {
-        'mode': 'speed_run',
-        'title': 'Stage 5: Speed Run Fluency',
-        'icon': '⏱️',
-        'short_name': 'Speed Run',
-        'goal': 'Rapid recall and assembly under light time pressure',
-        'passing_hint': 'Solve quickly without errors'
+        'mode': 'typing_blanks',
+        'title': 'Stage 5: Progressive Typing Blanks',
+        'icon': '⌨️',
+        'short_name': 'Typing Blanks',
+        'goal': 'Type missing target words into inline blanks before writing the full sentence',
+        'passing_hint': 'Pass with score >= 85%'
     },
     6: {
         'mode': 'writing',
@@ -76,7 +78,7 @@ class MissionEngine:
         passed = False
         new_stage = clamped_stage
 
-        if clamped_stage in (1, 2, 3, 5):
+        if clamped_stage in (1, 2, 3):
             flawless = result.get('flawless', False)
             if flawless:
                 passed = True
@@ -87,6 +89,12 @@ class MissionEngine:
             if flawless or score >= 80:
                 passed = True
                 new_stage = min(6, clamped_stage + 1)
+        elif clamped_stage == 5: # Progressive Typing Blanks
+            score = result.get('score', 0)
+            flawless = result.get('flawless', False)
+            if flawless or score >= 85:
+                passed = True
+                new_stage = 6
         elif clamped_stage == 6: # Writing
             score = result.get('score', 0)
             flawless = result.get('flawless', False)
@@ -96,10 +104,10 @@ class MissionEngine:
 
         if passed:
             if clamped_stage == 6:
-                msg = "🎓 Full Mastery Achieved! Card is 100% Exam Ready!"
+                msg = "Full Mastery Achieved! Card is 100% Exam Ready!"
             else:
                 next_info = cls.get_stage_info(new_stage)
-                msg = f"🎉 Stage Cleared! Graduated to {next_info['title']} {next_info['icon']}"
+                msg = f"Stage Cleared! Graduated to {next_info['title']}"
         else:
             msg = "Practice needed. Card will be reviewed again soon."
 
@@ -109,9 +117,10 @@ class MissionEngine:
     def build_mission_queue(
         cls, 
         items: List[QuestionItem], 
-        memory_store: dict = None, 
-        now_ts: float = None,
-        daily_target: int = 10
+        memory_store: Optional[dict] = None, 
+        now_ts: Optional[float] = None,
+        daily_target: int = 10,
+        deck_manager: Any = None
     ) -> List[QuestionItem]:
         """Builds an optimized daily study queue prioritizing:
 
@@ -123,11 +132,7 @@ class MissionEngine:
             return []
 
         if memory_store is None:
-            try:
-                from core.profile_manager import ProfileManager
-                memory_store = ProfileManager.get_active_memory_store()
-            except Exception:
-                memory_store = {}
+            memory_store = ProfileManager.get_active_memory_store()
 
         due_cards = []
         frontier_cards = []
@@ -151,9 +156,20 @@ class MissionEngine:
         return combined
 
     @classmethod
-    def get_daily_mission_queue(cls, decks: list, memory_store: dict = None, max_count: int = 15) -> List[QuestionItem]:
-        from core.deck_manager import DeckManager
+    def get_daily_mission_queue(
+        cls, 
+        decks: list, 
+        memory_store: Optional[dict] = None, 
+        max_count: int = 15,
+        deck_manager: Any = None
+    ) -> List[QuestionItem]:
+        dm = deck_manager or DeckManager
         all_items = []
         for d in decks:
-            all_items.extend(DeckManager.get_deck_questions(d.get('id', '')))
-        return cls.build_mission_queue(all_items, memory_store=memory_store, daily_target=max_count)
+            all_items.extend(dm.get_deck_questions(d.get('id', '')))
+        return cls.build_mission_queue(
+            all_items, 
+            memory_store=memory_store, 
+            daily_target=max_count, 
+            deck_manager=dm
+        )

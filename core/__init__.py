@@ -9,6 +9,7 @@ from core.sound_player import SoundPlayer
 from core.dictionary_cache import DictionaryManager
 from core.voice_recorder import VoiceRecorder
 from core.game_engine import GameEngine
+from core.app_context import AppContext
 
 __all__ = [
     'QuestionItem',
@@ -21,5 +22,6 @@ __all__ = [
     'SoundPlayer',
     'DictionaryManager',
     'VoiceRecorder',
-    'GameEngine'
+    'GameEngine',
+    'AppContext'
 ]

@@ -53,29 +53,29 @@ class ProgressTracker:
         w_count = rec.get('writing_count', 0)
 
         # Learning Step calculation (1 to 6)
-        # Step 1: 🌱 Guided Assembly
-        # Step 2: 🧩 Blanks Recall
-        # Step 3: 🎧 Auditory Training
-        # Step 4: 🎙️ Speaking Practice
-        # Step 5: 🎓 Voice Mastery
-        # Step 6: ✍️ Written Mastery
+        # Step 1: Guided Assembly
+        # Step 2: Blanks Recall
+        # Step 3: Auditory Training
+        # Step 4: Speaking Practice
+        # Step 5: Voice Mastery
+        # Step 6: Written Mastery
         step = 1
-        step_label = "🌱 Step 1: Assembly"
+        step_label = "assembly"
         if m_count >= 1 and b_count == 0:
             step = 2
-            step_label = "🧩 Step 2: Blanks"
+            step_label = "blanks"
         elif b_count >= 1 and l_count == 0:
             step = 3
-            step_label = "🎧 Step 3: Listening"
+            step_label = "listening"
         elif l_count >= 1 and v_count == 0:
             step = 4
-            step_label = "🎙️ Step 4: Voice"
+            step_label = "voice"
         elif v_count >= 1 and w_count == 0:
             step = 5
-            step_label = "🎓 Step 5: Mastered"
+            step_label = "mastered"
         elif w_count >= 1:
             step = 6
-            step_label = "✍️ Step 6: Written Mastered"
+            step_label = "written_mastered"
 
         return {
             'has_mastery': m_count > 0,
@@ -97,7 +97,7 @@ class ProgressTracker:
             return {
                 'total': 0, 'mastered_count': 0, 'due_today_count': 0,
                 'step1_count': 0, 'step2_count': 0, 'step3_count': 0, 'step4_count': 0, 'step5_count': 0, 'step6_count': 0,
-                'overall_pct': 0, 'recommended_mode': 'mastery', 'recommended_label': '🎯 Mastery Assembly'
+                'overall_pct': 0, 'recommended_mode': 'mastery', 'recommended_label': 'guided_assembly'
             }
 
         counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}
@@ -117,25 +117,25 @@ class ProgressTracker:
         # Smart Recommendation
         if counts[1] > 0:
             rec_mode = 'mastery'
-            rec_label = f"🌱 Phase 1: Guided Assembly ({counts[1]} New Sentences)"
+            rec_label = "guided_assembly"
         elif counts[2] > 0:
             rec_mode = 'fill_blanks'
-            rec_label = f"🧩 Phase 2: Active Recall ({counts[2]} Sentences Ready)"
+            rec_label = "active_recall"
         elif counts[3] > 0:
             rec_mode = 'listening'
-            rec_label = f"🎧 Phase 3: Auditory Training ({counts[3]} Sentences Ready)"
+            rec_label = "auditory_training"
         elif counts[4] > 0:
             rec_mode = 'voice_mastery'
-            rec_label = f"🎙️ Phase 4: Voice Recording ({counts[4]} Sentences to Practice)"
+            rec_label = "voice_recording"
         elif counts[5] > 0:
             rec_mode = 'writing'
-            rec_label = f"✍️ Phase 5: Writing Practice ({counts[5]} Sentences to Practice)"
+            rec_label = "writing_practice"
         elif due_count > 0:
             rec_mode = 'mastery'
-            rec_label = f"🎯 Daily Spaced Review ({due_count} Due Today!)"
+            rec_label = "daily_spaced_review"
         else:
             rec_mode = 'speed_run'
-            rec_label = "⚡ Phase 6: Speed Run Fluency Challenge!"
+            rec_label = "speed_run_fluency_challenge"
 
         return {
             'total': total,

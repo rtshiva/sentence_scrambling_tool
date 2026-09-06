@@ -7,7 +7,8 @@ from core.text_parser import TextParser
 
 class LessonDeck:
     """Manages active session queue, deck progression, and spaced repetition prioritization."""
-    def __init__(self):
+    def __init__(self, memory_store: Optional[dict] = None):
+        self._injected_memory_store = memory_store
         self.filename: Optional[str] = None
         self.qa_data: List[QuestionItem] = []
         self.deck: List[int] = []
@@ -81,7 +82,7 @@ class LessonDeck:
             return
 
         if memory_store is None:
-            memory_store = ProfileManager.get_active_memory_store()
+            memory_store = self._injected_memory_store if self._injected_memory_store is not None else ProfileManager.get_active_memory_store()
 
         if shuffle_deck:
             ordered_indices = list(active_indices)
@@ -153,12 +154,13 @@ class LessonDeck:
         if not self.deck:
             return
         if memory_store is None:
-            memory_store = ProfileManager.get_active_memory_store()
+            memory_store = self._injected_memory_store if self._injected_memory_store is not None else ProfileManager.get_active_memory_store()
 
         curr_idx = self.deck[0]
         curr_q = self.qa_data[curr_idx]
         MemoryManager.record_attempt(curr_q.question, curr_q.chunks, flawless, memory_store, now_ts=now_ts)
-        ProfileManager._save()
+        if self._injected_memory_store is None:
+            ProfileManager._save()
 
         curr_stage = self.question_stages.get(curr_idx, 1)
 

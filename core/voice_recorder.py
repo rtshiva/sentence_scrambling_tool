@@ -3,6 +3,9 @@ import platform
 import tempfile
 import threading
 import time
+import logging
+
+logger = logging.getLogger(__name__)
 
 try:
     import pygame
@@ -45,9 +48,9 @@ class VoiceRecorder:
                         try:
                             os.remove(full_p)
                         except Exception:
-                            pass
+                            logger.warning(f"Failed to remove old recording {full_p}", exc_info=True)
         except Exception:
-            pass
+            logger.warning("Failed to cleanup old voice recordings", exc_info=True)
 
     @classmethod
     def start_recording(cls) -> bool:
@@ -63,7 +66,7 @@ class VoiceRecorder:
                     pygame.mixer.music.stop()
                     pygame.mixer.music.unload()
                 except Exception:
-                    pass
+                    logger.warning("Failed to stop/unload pygame music before recording", exc_info=True)
 
             # Cycle temp wav path to prevent file lock collisions
             cls._record_count += 1
@@ -73,8 +76,10 @@ class VoiceRecorder:
             )
 
             if os.path.exists(cls._temp_wav):
-                try: os.remove(cls._temp_wav)
-                except Exception: pass
+                try:
+                    os.remove(cls._temp_wav)
+                except Exception:
+                    logger.warning("Failed to remove existing temp wav recording", exc_info=True)
 
             if sys_name == 'Windows' and winmm is not None:
                 # Stop any previous capture
@@ -95,7 +100,7 @@ class VoiceRecorder:
                 cls._is_recording = True
                 return True
         except Exception:
-            pass
+            logger.warning("Failed to start voice recording", exc_info=True)
         cls._is_recording = False
         return False
 
@@ -115,10 +120,10 @@ class VoiceRecorder:
                     cls._mac_process.terminate()
                     cls._mac_process.wait(timeout=2)
                 except Exception:
-                    pass
+                    logger.warning("Failed to terminate Mac afrecord process", exc_info=True)
                 cls._mac_process = None
         except Exception:
-            pass
+            logger.warning("Failed to stop voice recording", exc_info=True)
         finally:
             cls._is_recording = False
         return cls.has_recording()
@@ -137,12 +142,12 @@ class VoiceRecorder:
                 while pygame.mixer.music.get_busy():
                     time.sleep(0.1)
             except Exception:
-                pass
+                logger.warning("Failed to play student voice recording", exc_info=True)
             finally:
                 try:
                     pygame.mixer.music.unload()
                 except Exception:
-                    pass
+                    logger.warning("Failed to unload pygame music after playback", exc_info=True)
                 if on_finish_callback:
                     on_finish_callback()
 

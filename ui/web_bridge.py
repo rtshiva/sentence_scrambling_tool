@@ -1,10 +1,6 @@
 import os
 import sys
-# LEGACY-ONLY: tkinter is used solely by deprecated bridge methods below
-# (import_deck_file / export_deck_file / _start_gameplay_thread). The
-# in-browser WebUI gameplay does NOT use tkinter. Marked for removal later.
-import tkinter as tk
-from tkinter import filedialog
+
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, Any, List, Optional
 
@@ -20,7 +16,7 @@ from core.models import QuestionItem, ExamGoal
 
 class WebBridgeAPI:
     def __init__(self):
-        self._gameplay_active = False
+        pass
 
     def get_state(self) -> Dict[str, Any]:
         active_prof = ProfileManager.get_active_profile_name()
@@ -64,6 +60,28 @@ class WebBridgeAPI:
         """Resets spaced repetition memory and mastery history for the active profile."""
         ProfileManager.reset_active_memory()
         return True
+
+    def toggle_fullscreen(self) -> bool:
+        """Toggles fullscreen state on the active pywebview desktop window."""
+        try:
+            import webview
+            if hasattr(webview, 'windows') and webview.windows:
+                win = webview.windows[0]
+                win.toggle_fullscreen()
+                return bool(win.fullscreen)
+        except Exception as e:
+            print(f"Notice: toggle_fullscreen ({e})")
+        return False
+
+    def is_fullscreen(self) -> bool:
+        """Returns whether the active pywebview window is in fullscreen."""
+        try:
+            import webview
+            if hasattr(webview, 'windows') and webview.windows:
+                return bool(webview.windows[0].fullscreen)
+        except Exception:
+            pass
+        return False
 
     def test_ollama_connection(self, url: Optional[str] = None) -> Dict[str, Any]:
         """Tests connectivity to local Ollama server and lists installed models."""
@@ -207,60 +225,11 @@ class WebBridgeAPI:
         return DeckManager.delete_deck(deck_id)
 
     def import_deck_file(self) -> Optional[Dict[str, Any]]:
-        """DEPRECATED legacy Tkinter filedialog path (not called by WebUI JS)."""
-        try:
-            ProfileManager.record_tkinter_launch('bridge_import_deck_file')
-        except Exception:
-            pass
-        root = None
-        try:
-            root = tk.Tk()
-            root.withdraw()
-            root.attributes('-topmost', True)
-            filepath = filedialog.askopenfilename(
-                title='Import Questions (.txt) to Deck',
-                filetypes=[('Text Files', '*.txt'), ('All Files', '*.*')]
-            )
-            if filepath and os.path.exists(filepath):
-                name = os.path.splitext(os.path.basename(filepath))[0].replace('_', ' ').title()
-                deck = DeckManager.import_deck_from_txt(filepath, title=name)
-                return deck
-        except Exception as e:
-            print(f'Error importing deck: {e}')
-        finally:
-            if root:
-                try:
-                    root.destroy()
-                except Exception:
-                    pass
+        """No longer supported — use the in-browser file picker instead."""
         return None
 
     def export_deck_file(self, deck_id: str) -> bool:
-        """DEPRECATED legacy Tkinter filedialog path (not called by WebUI JS)."""
-        try:
-            ProfileManager.record_tkinter_launch('bridge_export_deck_file')
-        except Exception:
-            pass
-        root = None
-        try:
-            root = tk.Tk()
-            root.withdraw()
-            root.attributes('-topmost', True)
-            filepath = filedialog.asksaveasfilename(
-                title='Export Deck to Text File',
-                defaultextension='.txt',
-                filetypes=[('Text Files', '*.txt')]
-            )
-            if filepath:
-                return DeckManager.export_deck_to_txt(deck_id, filepath)
-        except Exception as e:
-            print(f'Error exporting deck: {e}')
-        finally:
-            if root:
-                try:
-                    root.destroy()
-                except Exception:
-                    pass
+        """No longer supported — use the in-browser export instead."""
         return False
 
     def get_exam_metrics(self, exam_id: Optional[str] = None) -> Dict[str, Any]:
@@ -405,61 +374,13 @@ class WebBridgeAPI:
 
 
     def launch_gameplay(self, deck_id: Optional[str] = None, mode_name: str = 'guided_mission') -> bool:
-        """DEPRECATED: old Tkinter-window gameplay (WebUI uses get_active_session_cards instead)."""
-        cards = []
-        if deck_id:
-            deck = DeckManager.get_deck(deck_id)
-            if deck:
-                cards = [QuestionItem.from_dict(c) for c in deck.get('cards', [])]
-        else:
-            decks = DeckManager.list_decks()
-            cards = MissionEngine.get_daily_mission_queue(decks, max_count=15)
-
-        if not cards:
-            return False
-
-        return self._start_gameplay_thread(cards, mode_name=mode_name, deck_id=deck_id)
+        """Removed — use get_active_session_cards for in-browser gameplay."""
+        return False
 
     def launch_exam_mission(self, exam_id: Optional[str] = None) -> bool:
-        """DEPRECATED: old Tkinter-window gameplay (WebUI uses get_active_session_cards instead)."""
-        if not exam_id:
-            exam_id = DeckManager.get_selected_exam_id()
-        if not exam_id:
-            return False
+        """Removed — use get_active_session_cards for in-browser gameplay."""
+        return False
 
-        cards = DeckManager.get_exam_cards(exam_id)
-        if not cards:
-            return False
-
-        return self._start_gameplay_thread(cards, mode_name='guided_mission', deck_id=None)
-
-    def _start_gameplay_thread(self, cards: list, mode_name: str = 'guided_mission', deck_id: Optional[str] = None) -> bool:
-        if self._gameplay_active:
-            print("Notice: A gameplay session is already active.")
-            return False
-        try:
-            ProfileManager.record_tkinter_launch('bridge_gameplay_thread')
-        except Exception:
-            pass
-
-        self._gameplay_active = True
-        import threading
-
-        def _run_tkinter():
-            try:
-                from ui.main_window import SentenceJigsawApp
-                root = tk.Tk()
-                app = SentenceJigsawApp(root)
-                app.start_session_from_home(cards, mode_name=mode_name, deck_id=deck_id)
-                root.mainloop()
-            except Exception as e:
-                print(f"Gameplay session error: {e}")
-            finally:
-                self._gameplay_active = False
-
-        th = threading.Thread(target=_run_tkinter, daemon=True)
-        th.start()
-        return True
 
     # ---------------------------------------------------------
     # Modern WebUI In-Browser Gameplay & Direct Session APIs

@@ -3,7 +3,10 @@ import re
 import threading
 import urllib.request
 import urllib.error
+import logging
 from typing import Dict, Any, Optional, List, Callable
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_OLLAMA_URL = "http://127.0.0.1:11434"
 DEFAULT_MODEL = "qwen3.5:9b"
@@ -20,6 +23,7 @@ class AIEvaluator:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 return resp.status == 200
         except Exception:
+            logger.warning("Ollama connection check failed", exc_info=True)
             return False
 
     @staticmethod
@@ -33,6 +37,7 @@ class AIEvaluator:
                 models = [m.get('name') for m in data.get('models', []) if m.get('name')]
                 return models
         except Exception:
+            logger.warning("Failed to fetch available Ollama models", exc_info=True)
             return []
 
     @staticmethod
@@ -206,6 +211,7 @@ Task:
                 'word_diffs': word_diffs
             }
         except Exception:
+            logger.warning("Failed to parse Ollama response JSON, falling back to similarity baseline", exc_info=True)
             # Deterministic fallback when JSON parsing fails: use calculated similarity!
             if baseline_score >= 90:
                 quality = 'exact' if student_answer.strip().lower() == expected_answer.strip().lower() else 'close'
@@ -312,10 +318,12 @@ Task:
                 if on_success:
                     on_success(result)
             except urllib.error.URLError as e:
+                logger.warning("URLError connecting to Ollama", exc_info=True)
                 err_msg = f"Cannot connect to local Ollama at {base_url}. Please ensure Ollama is running."
                 if on_error:
                     on_error(err_msg)
             except Exception as e:
+                logger.warning("AI Evaluation worker failed", exc_info=True)
                 err_msg = f"AI Evaluation error: {str(e)}"
                 if on_error:
                     on_error(err_msg)
