@@ -189,13 +189,13 @@ class SettingsDialog(tk.Toplevel):
         ttk.Label(theme_group, text='Theme Style:').pack(anchor=tk.W, pady=(0, 2))
         self.theme_var = tk.StringVar()
         curr_theme = self.current_settings.get('theme', 'pastel')
-        theme_map_rev = {'pastel': '🌈 Pastel Classroom (Default)', 'dark': '🌙 Cozy Dark Mode', 'space': '🚀 Space Explorer'}
+        theme_map_rev = {'pastel': '🌈 Pastel Classroom (Default)', 'dark': '🌙 Cozy Dark Mode', 'space': '🚀 Space Explorer', 'lava': '🌋 Lava Forge', 'anime': '⚔️ Anime Action', 'sky': '🌤️ Sunny Sky', 'ocean': '🌊 Deep Ocean', 'sakura': '🌸 Sakura Princess', 'fairy': '🦋 Fairy Garden'}
         self.theme_var.set(theme_map_rev.get(curr_theme, '🌈 Pastel Classroom (Default)'))
         
         self.theme_cb = ttk.Combobox(
             theme_group,
             textvariable=self.theme_var,
-            values=['🌈 Pastel Classroom (Default)', '🌙 Cozy Dark Mode', '🚀 Space Explorer'],
+            values=['🌈 Pastel Classroom (Default)', '🌙 Cozy Dark Mode', '🚀 Space Explorer', '🌋 Lava Forge', '⚔️ Anime Action', '🌤️ Sunny Sky', '🌊 Deep Ocean', '🌸 Sakura Princess', '🦋 Fairy Garden'],
             state='readonly',
             font=('', 10)
         )
@@ -393,6 +393,18 @@ class SettingsDialog(tk.Toplevel):
             th_val = 'dark'
         elif 'Space' in th_str:
             th_val = 'space'
+        elif 'Lava' in th_str:
+            th_val = 'lava'
+        elif 'Anime' in th_str:
+            th_val = 'anime'
+        elif 'Sunny Sky' in th_str or th_str.strip().endswith('Sky'):
+            th_val = 'sky'
+        elif 'Ocean' in th_str:
+            th_val = 'ocean'
+        elif 'Sakura' in th_str:
+            th_val = 'sakura'
+        elif 'Fairy' in th_str:
+            th_val = 'fairy'
         else:
             th_val = 'pastel'
 
@@ -1000,12 +1012,13 @@ class ProgressDashboardDialog(tk.Toplevel):
         # Header row
         hdr = tk.Frame(content, bg='#eaecee', padx=5, pady=4)
         hdr.pack(fill=tk.X, pady=(0, 4))
-        tk.Label(hdr, text='Sentence', font=('', 10, 'bold'), width=32, anchor=tk.W, bg='#eaecee').pack(side=tk.LEFT)
-        tk.Label(hdr, text='1. 🎯 Assembly', font=('', 9, 'bold'), width=12, bg='#eaecee').pack(side=tk.LEFT)
-        tk.Label(hdr, text='2. 🧩 Blanks', font=('', 9, 'bold'), width=12, bg='#eaecee').pack(side=tk.LEFT)
-        tk.Label(hdr, text='3. 🎧 Listen', font=('', 9, 'bold'), width=12, bg='#eaecee').pack(side=tk.LEFT)
-        tk.Label(hdr, text='4. 🎙️ Voice', font=('', 9, 'bold'), width=12, bg='#eaecee').pack(side=tk.LEFT)
-        tk.Label(hdr, text='5. 🎓 Status', font=('', 9, 'bold'), width=14, bg='#eaecee').pack(side=tk.LEFT)
+        tk.Label(hdr, text='Sentence', font=('', 10, 'bold'), width=26, anchor=tk.W, bg='#eaecee').pack(side=tk.LEFT)
+        tk.Label(hdr, text='1. 🎯 Assembly', font=('', 9, 'bold'), width=11, bg='#eaecee').pack(side=tk.LEFT)
+        tk.Label(hdr, text='2. 🧩 Blanks', font=('', 9, 'bold'), width=11, bg='#eaecee').pack(side=tk.LEFT)
+        tk.Label(hdr, text='3. 🎧 Listen', font=('', 9, 'bold'), width=11, bg='#eaecee').pack(side=tk.LEFT)
+        tk.Label(hdr, text='4. 🎙️ Voice', font=('', 9, 'bold'), width=11, bg='#eaecee').pack(side=tk.LEFT)
+        tk.Label(hdr, text='5. ✍️ Writing', font=('', 9, 'bold'), width=11, bg='#eaecee').pack(side=tk.LEFT)
+        tk.Label(hdr, text='6. 🎓 SRS Status', font=('', 9, 'bold'), width=13, bg='#eaecee').pack(side=tk.LEFT)
 
         current_lvl = None
         for i, item in enumerate(self.lesson_deck.qa_data, 1):
@@ -1023,32 +1036,37 @@ class ProgressDashboardDialog(tk.Toplevel):
             row = tk.Frame(content, bg=row_bg, padx=5, pady=6, bd=1, relief=tk.GROOVE)
             row.pack(fill=tk.X, pady=2)
 
-            q_short = item.question[:28] + '...' if len(item.question) > 28 else item.question
-            tk.Label(row, text=f"{i}. {q_short}", font=('', 10), width=32, anchor=tk.W, bg=row_bg).pack(side=tk.LEFT)
+            q_short = item.question[:24] + '...' if len(item.question) > 24 else item.question
+            tk.Label(row, text=f"{i}. {q_short}", font=('', 10), width=26, anchor=tk.W, bg=row_bg).pack(side=tk.LEFT)
 
             # Step 1
             t1 = "✅ Done" if info['has_mastery'] else "⚪ Pending"
             c1 = "#27ae60" if info['has_mastery'] else "#95a5a6"
-            tk.Label(row, text=t1, font=('', 9, 'bold'), width=12, fg=c1, bg=row_bg).pack(side=tk.LEFT)
+            tk.Label(row, text=t1, font=('', 9, 'bold'), width=11, fg=c1, bg=row_bg).pack(side=tk.LEFT)
 
             # Step 2
             t2 = "✅ Done" if info['has_blanks'] else ("⏳ Next" if info['step'] == 2 else "⚪ Pending")
             c2 = "#27ae60" if info['has_blanks'] else ("#d35400" if info['step'] == 2 else "#95a5a6")
-            tk.Label(row, text=t2, font=('', 9, 'bold'), width=12, fg=c2, bg=row_bg).pack(side=tk.LEFT)
+            tk.Label(row, text=t2, font=('', 9, 'bold'), width=11, fg=c2, bg=row_bg).pack(side=tk.LEFT)
 
             # Step 3
             t3 = "✅ Done" if info['has_listening'] else ("⏳ Next" if info['step'] == 3 else "⚪ Pending")
             c3 = "#27ae60" if info['has_listening'] else ("#d35400" if info['step'] == 3 else "#95a5a6")
-            tk.Label(row, text=t3, font=('', 9, 'bold'), width=12, fg=c3, bg=row_bg).pack(side=tk.LEFT)
+            tk.Label(row, text=t3, font=('', 9, 'bold'), width=11, fg=c3, bg=row_bg).pack(side=tk.LEFT)
 
             # Step 4
             t4 = "✅ Done" if info['has_voice'] else ("⏳ Next" if info['step'] == 4 else "⚪ Pending")
             c4 = "#27ae60" if info['has_voice'] else ("#d35400" if info['step'] == 4 else "#95a5a6")
-            tk.Label(row, text=t4, font=('', 9, 'bold'), width=12, fg=c4, bg=row_bg).pack(side=tk.LEFT)
+            tk.Label(row, text=t4, font=('', 9, 'bold'), width=11, fg=c4, bg=row_bg).pack(side=tk.LEFT)
 
-            # Step 5
-            t5, color5 = MemoryManager.get_status_badge(item.question, item.chunks, memory_store)
-            tk.Label(row, text=t5, font=('', 9, 'bold'), width=14, fg=color5, bg=row_bg).pack(side=tk.LEFT)
+            # Step 5 Writing
+            t5 = "✅ Done" if info.get('has_writing') else ("⏳ Next" if info['step'] == 5 else "⚪ Pending")
+            c5 = "#27ae60" if info.get('has_writing') else ("#d35400" if info['step'] == 5 else "#95a5a6")
+            tk.Label(row, text=t5, font=('', 9, 'bold'), width=11, fg=c5, bg=row_bg).pack(side=tk.LEFT)
+
+            # Step 6 Memory Status
+            t6, color6 = MemoryManager.get_status_badge(item.question, item.chunks, memory_store)
+            tk.Label(row, text=t6, font=('', 9, 'bold'), width=13, fg=color6, bg=row_bg).pack(side=tk.LEFT)
 
         # Bottom Close Button
         btn_box = ttk.Frame(main_frame)

@@ -78,7 +78,7 @@ class DeckManager:
         subject: str = "General", 
         tags: List[str] = None
     ) -> Dict[str, Any]:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, 'r', encoding='utf-8-sig', errors='replace') as f:
             raw = f.read()
         items = TextParser.parse_lesson_text(raw)
         if not items:
@@ -91,7 +91,17 @@ class DeckManager:
         return cls.create_deck(title=title, subject=subject, items=items, tags=tags)
 
     @classmethod
-    def export_to_txt_file(cls, deck_id: str, filepath: str):
+    def import_deck_from_txt(
+        cls, 
+        filepath: str, 
+        title: Optional[str] = None, 
+        subject: str = "General", 
+        tags: List[str] = None
+    ) -> Dict[str, Any]:
+        return cls.import_from_txt_file(filepath, title=title, subject=subject, tags=tags)
+
+    @classmethod
+    def export_to_txt_file(cls, deck_id: str, filepath: str) -> bool:
         deck = cls.get_deck(deck_id)
         if not deck:
             raise ValueError(f"Deck {deck_id} not found!")
@@ -99,6 +109,11 @@ class DeckManager:
         text = TextParser.serialize_lesson_text(items)
         with open(filepath, 'w', encoding='utf-8') as f:
             f.write(text)
+        return True
+
+    @classmethod
+    def export_deck_to_txt(cls, deck_id: str, filepath: str) -> bool:
+        return cls.export_to_txt_file(deck_id, filepath)
 
     @classmethod
     def get_deck_questions(cls, deck_id: str) -> List[QuestionItem]:
@@ -108,21 +123,115 @@ class DeckManager:
         return [QuestionItem.from_dict(c) for c in deck.get('cards', [])]
 
     @classmethod
-    def update_card_stage(cls, deck_id: str, card_id: str, new_stage: int, passed: bool):
+    def update_card_stage(
+        cls,
+        deck_id: str,
+        card_id: str,
+        new_stage: int,
+        passed: bool,
+        duration_seconds: Optional[float] = None,
+        score: int = 100,
+        flawless: bool = True,
+        current_stage: Optional[int] = None,
+        hint_used: bool = False,
+        hints_used: int = 0
+    ):
         deck = cls.get_deck(deck_id)
         if not deck:
             return
         cards = deck.get('cards', [])
         for c in cards:
             if c.get('card_id') == card_id:
-                c['ladder_stage'] = max(1, min(6, new_stage))
-                c.setdefault('stage_history', []).append({
+                curr_st = current_stage if current_stage is not None else c.get('ladder_stage', 1)
+                c['ladder_stage'] = max(c.get('ladder_stage', 1), max(1, min(6, new_stage)))
+                record = {
                     'timestamp': time.time(),
-                    'stage': new_stage,
-                    'passed': passed
-                })
+                    'stage': curr_st,
+                    'passed': passed,
+                    'score': score,
+                    'flawless': flawless,
+                    'hint_used': bool(hint_used or hints_used > 0),
+                    'hints_used': int(hints_used)
+                }
+                if duration_seconds is not None:
+                    record['duration_seconds'] = round(float(duration_seconds), 1)
+                c.setdefault('stage_history', []).append(record)
                 cls.save_deck(deck)
                 break
+
+    @classmethod
+    def reset_card_stage(
+        cls,
+        deck_id: str,
+        card_id: str,
+        target_stage: int = 1,
+        clear_history: bool = False
+    ) -> Optional[Dict[str, Any]]:
+        """Explicitly resets or changes the learning stage for a specific question card."""
+        deck = cls.get_deck(deck_id)
+        if not deck:
+            return None
+        target_card = None
+        for c in deck.get('cards', []):
+            if c.get('card_id') == card_id:
+                c['ladder_stage'] = max(1, min(6, int(target_stage)))
+                if clear_history:
+                    c['stage_history'] = []
+                else:
+                    c.setdefault('stage_history', []).append({
+                        'timestamp': time.time(),
+                        'stage': c['ladder_stage'],
+                        'passed': False,
+                        'score': 0,
+                        'flawless': False,
+                        'action': 'stage_reset'
+                    })
+                target_card = dict(c)
+                cls.save_deck(deck)
+                break
+        return target_card
+
+    @classmethod
+    def reset_chapter_stages(
+        cls,
+        deck_id: str,
+        chapter_name: str,
+        target_stage: int = 1,
+        clear_history: bool = False
+    ) -> Dict[str, Any]:
+        """Resets the learning stage for all cards in a chapter (or the whole deck if chapter_name is 'All')."""
+        deck = cls.get_deck(deck_id)
+        if not deck:
+            return {'success': False, 'updated_count': 0}
+        updated_count = 0
+        clamped_stage = max(1, min(6, int(target_stage)))
+        for c in deck.get('cards', []):
+            match = False
+            if chapter_name in ('All', '', None):
+                match = True
+            elif (c.get('lesson_name') or '').strip() == chapter_name.strip():
+                match = True
+            elif not c.get('lesson_name') and chapter_name.strip() == (deck.get('title') or '').strip():
+                match = True
+
+            if match:
+                c['ladder_stage'] = clamped_stage
+                if clear_history:
+                    c['stage_history'] = []
+                else:
+                    c.setdefault('stage_history', []).append({
+                        'timestamp': time.time(),
+                        'stage': clamped_stage,
+                        'passed': False,
+                        'score': 0,
+                        'flawless': False,
+                        'action': 'chapter_stage_reset'
+                    })
+                updated_count += 1
+
+        if updated_count > 0:
+            cls.save_deck(deck)
+        return {'success': True, 'updated_count': updated_count, 'target_stage': clamped_stage}
 
     # --- Exam Goals & Pacing Management ---
 
@@ -180,6 +289,13 @@ class DeckManager:
             tot = len(ch_cards)
             mst = sum(1 for c in ch_cards if c.get('ladder_stage', 1) >= 6)
             pct = int(round((mst / tot) * 100)) if tot > 0 else 0
+            stage_prog_sum = sum(
+                min(100, max(0, int(round(((c.get('ladder_stage', 1) - 1) / 5.0) * 100))))
+                for c in ch_cards
+            )
+            prog_pct = int(round(stage_prog_sum / tot)) if tot > 0 else 0
+            stages = [c.get('ladder_stage', 1) for c in ch_cards]
+            min_st = min(stages) if stages else 1
             result.append({
                 'chapter_name': ch_name,
                 'deck_id': deck_id,
@@ -187,6 +303,8 @@ class DeckManager:
                 'total_cards': tot,
                 'mastered_cards': mst,
                 'readiness_percent': pct,
+                'learning_progress_percent': prog_pct,
+                'current_stage_num': min_st,
                 'cards': ch_cards
             })
         return result
@@ -344,8 +462,11 @@ class DeckManager:
         cards_needing_work = total_cards - mastered_cards
 
         # Calculate daily target quota
-        daily_quota = math.ceil(cards_needing_work / max(1, days_left))
-        daily_quota = max(3, min(daily_cap, daily_quota))
+        if cards_needing_work == 0:
+            daily_quota = 0
+        else:
+            daily_quota = math.ceil(cards_needing_work / max(1, days_left))
+            daily_quota = max(1, min(daily_cap, daily_quota))
 
         if readiness_pct >= 90:
             status_tag = "🚀 Exam Ready"

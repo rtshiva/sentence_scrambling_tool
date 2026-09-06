@@ -261,34 +261,35 @@ class TestUIModes(unittest.TestCase):
 
         hub_dlg = MissionHubDialog(self.root)
         self.assertTrue(hub_dlg.winfo_exists())
-        self.assertEqual(len(hub_dlg.notebook.tabs()), 3)
-    def test_home_dashboard_landing_and_transitions(self):
-        # 1. On launch, HomeDashboardView must be packed by default
-        self.assertEqual(self.app.home_view.winfo_manager(), 'pack')
-        self.assertEqual(self.app.gameplay_container.winfo_manager(), '')
+        hub_dlg.destroy()
 
-        # 2. Deck Repository is Tab 1 (index 0) of notebook
-        tabs = self.app.home_view.notebook.tabs()
-        self.assertEqual(len(tabs), 3)
-        tab1_text = self.app.home_view.notebook.tab(0, 'text')
-        self.assertIn('Deck Repository', tab1_text)
+        # Test backward-compatible kwargs for MissionHubDialog and ExamGoalDialog
+        hub_dlg_legacy = MissionHubDialog(self.root, on_start_mission=lambda cards, mode, deck_id: None)
+        self.assertIsNotNone(hub_dlg_legacy.on_start_cards_callback)
+        hub_dlg_legacy.destroy()
 
-        # 3. Starting a session transitions from home_view to gameplay_container
+        exam_dlg_legacy = ExamGoalDialog(self.root, on_start_exam_callback=lambda cards: None)
+        self.assertIsNotNone(exam_dlg_legacy.on_start_exam_mission_callback)
+        exam_dlg_legacy.destroy()
+
+        # Test app launcher methods
+        self.app.open_mission_hub()
+        self.app.open_deck_library()
+        self.app.open_exam_dialog()
+
+    def test_gameplay_container_landing_and_session_start(self):
+        # 1. On launch, gameplay_container is packed directly
+        self.assertEqual(self.app.gameplay_container.winfo_manager(), 'pack')
+
+        # 2. Starting a session configures cards and mode cleanly
         sample_cards = [
             QuestionItem("Home Q1", ["Alpha", "Beta"]),
             QuestionItem("Home Q2", ["Gamma", "Delta"])
         ]
         self.app.start_session_from_home(sample_cards, 'guided_mission', deck_id='sample_deck')
-        self.assertEqual(self.app.home_view.winfo_manager(), '')
         self.assertEqual(self.app.gameplay_container.winfo_manager(), 'pack')
         self.assertEqual(self.app.game_mode, 'guided_mission')
         self.assertEqual(self.app.active_deck_id, 'sample_deck')
-
-        # 4. Navigating back to home switches views and updates data
-        self.app.show_home_view(tab_index=2)
-        self.assertEqual(self.app.gameplay_container.winfo_manager(), '')
-        self.assertEqual(self.app.home_view.winfo_manager(), 'pack')
-        self.assertEqual(self.app.home_view.notebook.index(self.app.home_view.notebook.select()), 2)
 
     def test_round_controller_instantiation_and_delegation(self):
         from ui.modes import (
@@ -341,6 +342,40 @@ class TestUIModes(unittest.TestCase):
         fallback = create_round_controller('unknown_mode_name', self.app)
         self.assertIsInstance(fallback, JigsawRoundController)
 
+    def test_jigsaw_insert_between_blocks_and_swap(self):
+        """Verifies inserting chunks between blocks and swapping chunks in Jigsaw mode."""
+        from ui.modes import JigsawRoundController
+        from ui.widgets import AnswerChip
+        self.app.model.qa_data = [QuestionItem("Q_Insert", ["First", "Second", "Third"])]
+        self.app.model.reset_deck()
+        self.app.mode_var.set('🧩 Sentence Jigsaw')
+        self.app.on_mode_change()
+        controller = self.app.active_controller
+        self.assertIsInstance(controller, JigsawRoundController)
+
+        # 1. Select 'First' and 'Third'
+        controller.on_chunk_selected('First')
+        controller.on_chunk_selected('Third')
+        self.assertEqual(self.app.user_selected_chunks, ['First', 'Third'])
+
+        # 2. Insert 'Second' between 'First' and 'Third' (insert_index = 1)
+        controller.on_chunk_selected('Second', insert_index=1)
+        self.assertEqual(self.app.user_selected_chunks, ['First', 'Second', 'Third'])
+
+        # 3. Test on_swap_chunks (swap 'First' and 'Second')
+        chips = [w for w in self.app.answer_flow.winfo_children() if isinstance(w, AnswerChip)]
+        self.assertEqual(len(chips), 3)
+        chip_first = next(c for c in chips if c.text == 'First')
+        chip_second = next(c for c in chips if c.text == 'Second')
+
+        controller.on_swap_chunks(chip_first, chip_second, mode='swap')
+        self.assertEqual(self.app.user_selected_chunks, ['Second', 'First', 'Third'])
+
+        # Swap back
+        controller.on_swap_chunks(chip_second, chip_first, mode='swap')
+        self.assertEqual(self.app.user_selected_chunks, ['First', 'Second', 'Third'])
+
 if __name__ == '__main__':
     unittest.main()
+
 

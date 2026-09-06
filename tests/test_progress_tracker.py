@@ -32,8 +32,11 @@ class TestProgressTracker(unittest.TestCase):
         # After voice -> Step 5 Mastered
         ProgressTracker.record_mode_activity(store, key, 'voice')
         s5 = ProgressTracker.get_milestone_summary(store, key)
-        self.assertEqual(s5['step'], 5)
-        self.assertTrue(s5['has_voice'])
+        # After writing -> Step 6 Written Mastered
+        ProgressTracker.record_mode_activity(store, key, 'writing')
+        s6 = ProgressTracker.get_milestone_summary(store, key)
+        self.assertEqual(s6['step'], 6)
+        self.assertTrue(s6['has_writing'])
 
     def test_aggregate_stats_and_smart_recommendation(self):
         qa = [
@@ -56,6 +59,23 @@ class TestProgressTracker(unittest.TestCase):
         ProgressTracker.record_mode_activity(tracker, k2, 'mastery')
         stats2 = ProgressTracker.calculate_stats(qa, tracker, memory)
         self.assertEqual(stats2['recommended_mode'], 'fill_blanks')
+
+        # When at Step 4 (voice), should recommend voice_mastery
+        ProgressTracker.record_mode_activity(tracker, k1, 'fill_blanks')
+        ProgressTracker.record_mode_activity(tracker, k1, 'listening')
+        ProgressTracker.record_mode_activity(tracker, k2, 'fill_blanks')
+        ProgressTracker.record_mode_activity(tracker, k2, 'listening')
+        stats3 = ProgressTracker.calculate_stats(qa, tracker, memory)
+        self.assertEqual(stats3['recommended_mode'], 'voice_mastery')
+
+        # When both have writing activity, step 6 is handled without KeyError
+        ProgressTracker.record_mode_activity(tracker, k1, 'voice')
+        ProgressTracker.record_mode_activity(tracker, k1, 'writing')
+        ProgressTracker.record_mode_activity(tracker, k2, 'voice')
+        ProgressTracker.record_mode_activity(tracker, k2, 'writing')
+        stats4 = ProgressTracker.calculate_stats(qa, tracker, memory)
+        self.assertEqual(stats4['step6_count'], 2)
+        self.assertGreaterEqual(stats4['overall_pct'], 90)
 
 if __name__ == '__main__':
     unittest.main()

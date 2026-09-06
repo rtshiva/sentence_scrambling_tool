@@ -1,6 +1,7 @@
 import os
 import json
 import threading
+import datetime
 from typing import List, Dict, Any, Optional
 from core.models import DEFAULT_SETTINGS
 
@@ -60,6 +61,7 @@ class ProfileManager:
 
             cls._data = {
                 'active_profile': 'Default',
+                'legacy_tkinter_usage': {'count': 0, 'first_seen': None, 'last_seen': None, 'sources': {}},
                 'profiles': {
                     'Default': {
                         'avatar': '👤',
@@ -202,11 +204,19 @@ class ProfileManager:
         return profile['memory']
 
     @classmethod
+    def get_active_memory(cls) -> Dict[str, Any]:
+        return cls.get_active_memory_store()
+
+    @classmethod
     def save_active_memory_store(cls, memory_store: dict):
         cls._load()
         profile = cls.get_active_profile()
         profile['memory'] = memory_store
         cls._save()
+
+    @classmethod
+    def save_active_memory(cls, memory_store: dict):
+        cls.save_active_memory_store(memory_store)
 
     @classmethod
     def get_active_tracker_store(cls) -> Dict[str, Any]:
@@ -329,3 +339,57 @@ class ProfileManager:
             cls._save()
             return True
         return False
+
+    # ---------------------------------------------------------
+    # Legacy Tkinter usage flag (removal telemetry).
+    # Set on every Tkinter launch; scan after ~1 week of usage:
+    #   python -c "from core.profile_manager import ProfileManager; print(ProfileManager.get_tkinter_usage())"
+    # If count == 0, Tkinter was never used and is safe to remove.
+    # ---------------------------------------------------------
+    @classmethod
+    def _ensure_legacy_usage(cls) -> Dict[str, Any]:
+        cls._load()
+        usage = cls._data.get('legacy_tkinter_usage')
+        if not isinstance(usage, dict):
+            usage = {'count': 0, 'first_seen': None, 'last_seen': None, 'sources': {}}
+            cls._data['legacy_tkinter_usage'] = usage
+        usage.setdefault('count', 0)
+        usage.setdefault('first_seen', None)
+        usage.setdefault('last_seen', None)
+        if not isinstance(usage.get('sources'), dict):
+            usage['sources'] = {}
+        return usage
+
+    @classmethod
+    def record_tkinter_launch(cls, source: str = 'unknown') -> Dict[str, Any]:
+        """Flag setter: call on every Tkinter window launch. Never raises."""
+        try:
+            with cls._lock:
+                usage = cls._ensure_legacy_usage()
+                now = datetime.datetime.now().isoformat(timespec='seconds')
+                usage['count'] = int(usage.get('count', 0)) + 1
+                if not usage.get('first_seen'):
+                    usage['first_seen'] = now
+                usage['last_seen'] = now
+                sources = usage['sources']
+                sources[source] = int(sources.get(source, 0)) + 1
+                cls._save()
+                return dict(usage)
+        except Exception:
+            return {'count': 0, 'first_seen': None, 'last_seen': None, 'sources': {}}
+
+    @classmethod
+    def get_tkinter_usage(cls) -> Dict[str, Any]:
+        """Scan target: returns {'count', 'first_seen', 'last_seen', 'sources'}."""
+        with cls._lock:
+            usage = cls._ensure_legacy_usage()
+            return {
+                'count': int(usage.get('count', 0)),
+                'first_seen': usage.get('first_seen'),
+                'last_seen': usage.get('last_seen'),
+                'sources': dict(usage.get('sources', {})),
+            }
+
+    @classmethod
+    def was_tkinter_ever_used(cls) -> bool:
+        return cls.get_tkinter_usage().get('count', 0) > 0

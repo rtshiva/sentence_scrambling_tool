@@ -49,8 +49,14 @@ class TTSManager:
         return cls.VOICES.get(lang, 'hi-IN-SwaraNeural')
 
     @classmethod
-    def speak(cls, text: str, rate_str: str = '+0%', override_voice: str = None, on_finish_callback = None):
-        if not HAS_TTS or not text or not text.strip():
+    def speak(cls, text: str, rate_str: str = '+0%', override_voice: str = None, lang: str = None, on_finish_callback = None):
+        if not HAS_TTS or not text or not str(text).strip():
+            if on_finish_callback:
+                on_finish_callback()
+            return
+
+        clean_text = cls.clean_for_speech(str(text))
+        if not clean_text:
             if on_finish_callback:
                 on_finish_callback()
             return
@@ -58,17 +64,24 @@ class TTSManager:
         def run():
             cls._is_playing = True
             cls.init()
-            voice = cls.get_voice_for_text(text, override_voice)
-            cache_key = hashlib.md5(f'{text}_{voice}_{rate_str}'.encode('utf-8')).hexdigest()
+            if override_voice and override_voice != 'auto':
+                voice = override_voice
+            elif lang and lang in cls.VOICES:
+                voice = cls.VOICES[lang]
+            else:
+                voice = cls.get_voice_for_text(clean_text, override_voice)
+
+            cache_key = hashlib.md5(f'{clean_text}_{voice}_{rate_str}'.encode('utf-8')).hexdigest()
             cached_file = os.path.join(cls._cache_dir, f'{cache_key}.mp3')
 
             if not os.path.exists(cached_file):
                 try:
                     async def fetch():
-                        comm = edge_tts.Communicate(text, voice, rate=rate_str)
+                        comm = edge_tts.Communicate(clean_text, voice, rate=rate_str)
                         await comm.save(cached_file)
                     asyncio.run(fetch())
-                except Exception:
+                except Exception as e:
+                    print(f"Edge-TTS synthesis error: {e}")
                     cls._is_playing = False
                     if on_finish_callback:
                         on_finish_callback()
@@ -76,6 +89,7 @@ class TTSManager:
 
             try:
                 with cls._lock:
+                    cls.stop()
                     pygame.mixer.music.load(cached_file)
                     pygame.mixer.music.play()
                     while pygame.mixer.music.get_busy():

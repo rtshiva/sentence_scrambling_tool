@@ -96,22 +96,23 @@ class ProgressTracker:
         if total == 0:
             return {
                 'total': 0, 'mastered_count': 0, 'due_today_count': 0,
-                'step1_count': 0, 'step2_count': 0, 'step3_count': 0, 'step4_count': 0, 'step5_count': 0,
+                'step1_count': 0, 'step2_count': 0, 'step3_count': 0, 'step4_count': 0, 'step5_count': 0, 'step6_count': 0,
                 'overall_pct': 0, 'recommended_mode': 'mastery', 'recommended_label': '🎯 Mastery Assembly'
             }
 
-        counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        counts = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0}
         due_count = 0
 
         for item in qa_data:
             key = MemoryManager.get_sentence_key(item.question, item.chunks)
             info = ProgressTracker.get_milestone_summary(tracker_store, key)
-            counts[info['step']] += 1
+            step = min(max(info.get('step', 1), 1), 6)
+            counts[step] += 1
             if MemoryManager.is_due(item.question, item.chunks, memory_store):
                 due_count += 1
 
-        mastered = counts[5]
-        overall_pct = int(round((sum(info_step * counts[info_step] for info_step in counts) / (total * 5)) * 100))
+        mastered = counts[5] + counts[6]
+        overall_pct = int(round((sum(s * counts[s] for s in counts) / (total * 6)) * 100))
 
         # Smart Recommendation
         if counts[1] > 0:
@@ -124,14 +125,17 @@ class ProgressTracker:
             rec_mode = 'listening'
             rec_label = f"🎧 Phase 3: Auditory Training ({counts[3]} Sentences Ready)"
         elif counts[4] > 0:
-            rec_mode = 'listening'
+            rec_mode = 'voice_mastery'
             rec_label = f"🎙️ Phase 4: Voice Recording ({counts[4]} Sentences to Practice)"
+        elif counts[5] > 0:
+            rec_mode = 'writing'
+            rec_label = f"✍️ Phase 5: Writing Practice ({counts[5]} Sentences to Practice)"
         elif due_count > 0:
             rec_mode = 'mastery'
             rec_label = f"🎯 Daily Spaced Review ({due_count} Due Today!)"
         else:
             rec_mode = 'speed_run'
-            rec_label = "⚡ Phase 5: Speed Run Fluency Challenge!"
+            rec_label = "⚡ Phase 6: Speed Run Fluency Challenge!"
 
         return {
             'total': total,
@@ -142,6 +146,7 @@ class ProgressTracker:
             'step3_count': counts[3],
             'step4_count': counts[4],
             'step5_count': counts[5],
+            'step6_count': counts[6],
             'overall_pct': overall_pct,
             'recommended_mode': rec_mode,
             'recommended_label': rec_label

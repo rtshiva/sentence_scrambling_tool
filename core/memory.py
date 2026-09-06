@@ -44,10 +44,20 @@ class MemoryManager:
         if now_ts is None:
             now_ts = time.time()
         profile = cls.get_memory_profile(question, chunks, memory_store)
+        if profile.get('total_reviews', 0) == 0:
+            return False
         return now_ts >= profile.get('next_review_ts', 0)
 
     @classmethod
-    def record_attempt(cls, question: str, chunks: list, flawless: bool, memory_store: dict, now_ts: float = None) -> dict:
+    def record_attempt(
+        cls,
+        question: str,
+        chunks: list,
+        flawless: bool,
+        memory_store: dict,
+        now_ts: float = None,
+        duration_seconds: float = None
+    ) -> dict:
         if now_ts is None:
             now_ts = time.time()
         key = cls.get_sentence_key(question, chunks)
@@ -55,6 +65,13 @@ class MemoryManager:
 
         profile['total_reviews'] += 1
         profile['last_reviewed_ts'] = now_ts
+
+        if duration_seconds is not None:
+            dur = round(float(duration_seconds), 1)
+            profile['last_duration_seconds'] = dur
+            best = profile.get('best_duration_seconds')
+            if best is None or (flawless and dur < best):
+                profile['best_duration_seconds'] = dur
 
         new_level, next_ts = cls.calculate_next_review(profile.get('repetition_level', 0), flawless, now_ts)
         if not flawless:

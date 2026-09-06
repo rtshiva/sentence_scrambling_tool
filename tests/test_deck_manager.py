@@ -272,6 +272,52 @@ class TestDeckManager(unittest.TestCase):
         # Verify no exam was saved or left on disk
         self.assertEqual(len(DeckManager.list_exams()), initial_exams_count)
 
+    def test_daily_quota_zero_when_mastered(self):
+        d_id = DeckManager.save_deck({
+            'title': 'Mastered Deck',
+            'cards': [
+                {'question': 'Q1', 'chunks': ['Q1'], 'ladder_stage': 6}
+            ]
+        })
+        exam = {
+            'id': 'exam_mastered',
+            'title': 'Mastered Exam',
+            'target_date': (date.today() + timedelta(days=10)).strftime('%Y-%m-%d'),
+            'target_stage': 6,
+            'daily_max_cap': 10,
+            'deck_ids': [d_id],
+            'selected_scope': {}
+        }
+        metrics = DeckManager.calculate_exam_metrics(exam)
+        self.assertEqual(metrics['mastered_cards'], 1)
+        self.assertEqual(metrics['daily_quota'], 0)
+        self.assertEqual(metrics['status_tag'], "🚀 Exam Ready")
+
+    def test_import_export_txt_aliases_and_bom_handling(self):
+        import tempfile
+        content = "\ufeff=== Chapter 1 ===\nWhat is water? ||| Water ||| is life.\n"
+        with tempfile.NamedTemporaryFile('w', encoding='utf-8', delete=False, suffix='.txt') as f:
+            f.write(content)
+            temp_path = f.name
+
+        try:
+            # Test import_deck_from_txt alias with BOM
+            deck = DeckManager.import_deck_from_txt(temp_path, title="Hydrology")
+            self.assertEqual(deck['title'], "Hydrology")
+            self.assertEqual(len(deck['cards']), 1)
+            self.assertEqual(deck['cards'][0]['question'], "What is water?")
+
+            # Test export_deck_to_txt alias
+            out_path = temp_path + ".out.txt"
+            res = DeckManager.export_deck_to_txt(deck['id'], out_path)
+            self.assertTrue(res)
+            self.assertTrue(os.path.exists(out_path))
+            if os.path.exists(out_path):
+                os.remove(out_path)
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
 if __name__ == '__main__':
     unittest.main()
 

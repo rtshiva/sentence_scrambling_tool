@@ -37,6 +37,12 @@ def check_and_install_dependencies():
             print("Please run manually: pip install -r requirements.txt\n")
 
 def launch_tkinter():
+    print("Notice: Tkinter UI is deprecated (legacy --classic/--tkinter fallback, marked for removal).")
+    try:
+        from core.profile_manager import ProfileManager
+        ProfileManager.record_tkinter_launch('run_app_launch_tkinter')
+    except Exception:
+        pass
     import tkinter as tk
     from ui.main_window import SentenceJigsawApp
 
@@ -54,6 +60,11 @@ def launch_app():
         launch_webview_app()
     except Exception as e:
         print(f"Notice: Launching standard GUI ({e})...")
+        try:
+            from core.profile_manager import ProfileManager
+            ProfileManager.record_tkinter_launch('run_app_webview_fallback')
+        except Exception:
+            pass
         launch_tkinter()
 
 if __name__ == '__main__':

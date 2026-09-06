@@ -3,287 +3,666 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sentence Jigsaw 3.0</title>
+  <title>Sentence Jigsaw 3.0 • Multi-Subject Learning & Exam Mastery</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="styles.css">
   <script>
     tailwind.config = {
       theme: {
         extend: {
           colors: {
-            brand: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
+            brand: { 50: '#eef2ff', 100: '#e0e7ff', 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' },
+            hindi: { 50: '#fff7ed', 100: '#ffedd5', 500: '#f97316', 600: '#ea580c', 700: '#c2410c' },
+            science: { 50: '#ecfdf5', 100: '#d1fae5', 500: '#10b981', 600: '#059669', 700: '#047857' }
           }
         }
       }
     }
   </script>
-  <style>
-    .tab-active {
-      border-color: #4f46e5;
-      color: #4f46e5;
-      background-color: #ffffff;
-    }
-    .ladder-step.active {
-      border-color: #4f46e5;
-      background-color: #eef2ff;
-      color: #3730a3;
-      transform: translateY(-2px);
-    }
-    .ladder-step.completed {
-      border-color: #10b981;
-      background-color: #ecfdf5;
-      color: #065f46;
-    }
-    ::-webkit-scrollbar { width: 8px; height: 8px; }
-    ::-webkit-scrollbar-track { background: #f1f5f9; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-  </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-100 selection:text-indigo-800 p-4 md:p-8 min-h-screen">
+<body class="bg-slate-50 text-slate-800 antialiased selection:bg-indigo-100 selection:text-indigo-800 min-h-screen">
+  <canvas id="confetti-canvas"></canvas>
 
-  <div class="max-w-6xl mx-auto space-y-6">
+  <!-- Dynamic Celestial Nebula & Starfield Background (Space Explorer Theme) -->
+  <div id="space-universe" class="fixed inset-0 pointer-events-none overflow-hidden z-0 hidden" aria-hidden="true">
+    <div class="nebula-dust nebula-dust-1"></div>
+    <div class="nebula-dust nebula-dust-2"></div>
+    <div class="nebula-dust nebula-dust-3"></div>
+    <canvas id="space-stars-canvas" class="absolute inset-0 w-full h-full"></canvas>
+  </div>
 
-    <!-- Top Header & Student Banner -->
-    <header class="bg-white border border-slate-200 rounded-2xl p-5 md:p-6 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-      <div class="flex items-center gap-3">
-        <span class="text-3xl">🧩</span>
+  <!-- Dynamic Volcanic Magma & Rising Embers Background (Lava Forge Theme) -->
+  <div id="lava-universe" class="fixed inset-0 pointer-events-none overflow-hidden z-0 hidden" aria-hidden="true">
+    <div class="magma-glow magma-glow-1"></div>
+    <div class="magma-glow magma-glow-2"></div>
+    <div class="magma-glow magma-glow-3"></div>
+    <canvas id="lava-canvas" class="absolute inset-0 w-full h-full"></canvas>
+  </div>
+
+  <!-- Dynamic Manga Chakra & Solar Aura Background (Anime Action Theme) -->
+  <div id="anime-universe" class="fixed inset-0 pointer-events-none overflow-hidden z-0 hidden" aria-hidden="true">
+    <div class="anime-aura anime-aura-flame"></div>
+    <div class="anime-aura anime-aura-chakra"></div>
+    <canvas id="anime-canvas" class="absolute inset-0 w-full h-full"></canvas>
+  </div>
+
+  <!-- Dynamic Sunny Sky & Moving Clouds Background (Blue Sky Theme) -->
+  <div id="sky-universe" class="fixed inset-0 pointer-events-none overflow-hidden z-0 hidden" aria-hidden="true">
+    <div class="sky-sun-glow"></div>
+    <div class="sky-cloud-layer sky-cloud-layer-1"></div>
+    <div class="sky-cloud-layer sky-cloud-layer-2"></div>
+    <div class="sky-cloud-layer sky-cloud-layer-3"></div>
+    <canvas id="sky-canvas" class="absolute inset-0 w-full h-full"></canvas>
+  </div>
+
+  <!-- Dynamic Deep Ocean & Swimming Fishes Background (Ocean Blue Theme) -->
+  <div id="ocean-universe" class="fixed inset-0 pointer-events-none overflow-hidden z-0 hidden" aria-hidden="true">
+    <div class="ocean-sunrays"></div>
+    <div class="ocean-caustic ocean-caustic-1"></div>
+    <div class="ocean-caustic ocean-caustic-2"></div>
+    <canvas id="ocean-canvas" class="absolute inset-0 w-full h-full"></canvas>
+  </div>
+
+  <!-- Dynamic Falling Sakura Petals Background (Sakura Princess Theme) -->
+  <div id="sakura-universe" class="fixed inset-0 pointer-events-none overflow-hidden z-0 hidden" aria-hidden="true">
+    <div class="sakura-glow sakura-glow-1"></div>
+    <div class="sakura-glow sakura-glow-2"></div>
+    <canvas id="sakura-canvas" class="absolute inset-0 w-full h-full"></canvas>
+  </div>
+
+  <!-- Dynamic Butterfly Meadow Background (Fairy Garden Theme) -->
+  <div id="fairy-universe" class="fixed inset-0 pointer-events-none overflow-hidden z-0 hidden" aria-hidden="true">
+    <div class="fairy-glow fairy-glow-1"></div>
+    <div class="fairy-glow fairy-glow-2"></div>
+    <div class="fairy-glow fairy-glow-3"></div>
+    <canvas id="fairy-canvas" class="absolute inset-0 w-full h-full"></canvas>
+  </div>
+
+  <div class="max-w-6xl mx-auto p-4 md:p-6 space-y-6 relative z-10">
+
+    <!-- Top Navigation & Role Bar -->
+    <header class="bg-white border border-slate-200/90 rounded-2xl p-4 md:p-5 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div class="flex items-center gap-3 cursor-pointer" onclick="showView('dashboard')">
+        <div class="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center text-2xl shadow-sm shadow-indigo-200 text-white">
+          🧩
+        </div>
         <div>
-          <h1 class="text-2xl font-black tracking-tight text-slate-900">Sentence Jigsaw 3.0</h1>
-          <p class="text-xs text-slate-500 font-medium">Student Deck Repository • Guided Learning Ladder • Exam Readiness</p>
+          <div class="flex items-center gap-2">
+            <h1 class="text-xl font-black tracking-tight text-slate-900 font-display">Sentence Jigsaw 3.0</h1>
+            <span class="text-[10px] font-bold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-100">WebUI SPA</span>
+          </div>
+          <p class="text-xs text-slate-500 font-medium">Multi-Subject Mastery • Hindi & Science • Exam Readiness</p>
         </div>
       </div>
-      <div class="flex flex-wrap items-center gap-3">
-        <!-- Profile Switcher Pill -->
-        <div class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-1.5 rounded-xl text-sm font-semibold transition cursor-pointer" onclick="showProfileModal()">
-          <span>👤 Student: <strong id="active-student-name" class="text-indigo-600">Arya</strong></span>
-          <span class="text-xs text-slate-400">▼</span>
+
+      <!-- Right Controls: Profile, Exam, and Parent Toggle -->
+      <div class="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-between md:justify-end">
+        <!-- Profile Switcher -->
+        <button onclick="showProfileModal()" class="flex items-center gap-2 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition">
+          <span>👤 <span id="header-student-name" class="text-indigo-600">Arya</span></span>
+          <span class="text-[10px] text-slate-400">▼</span>
+        </button>
+
+        <!-- Settings & Shortcuts Quick Access -->
+        <button id="header-settings-btn" onclick="openSettingsModal()" class="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl text-xs font-bold transition" title="App Settings & Customization">
+          <span>⚙️</span>
+          <span class="hidden sm:inline">Settings</span>
+        </button>
+        <button id="header-shortcuts-btn" onclick="openShortcutsModal()" class="flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 px-2.5 py-1.5 rounded-xl text-xs font-bold transition" title="Keyboard Shortcuts Reference">
+          <span>⌨️</span>
+        </button>
+
+        <!-- Exam Countdown Pill -->
+        <div onclick="openExamScopeModal(false)" class="flex items-center gap-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 px-3.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-2xs">
+          <span>🎯</span>
+          <span id="header-exam-pill">Mid-Term: 14 Days</span>
+          <span id="header-readiness-badge" class="bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-md">0%</span>
         </div>
-        <!-- Target Exam Badge -->
-        <div id="exam-countdown-badge" class="flex items-center gap-2 bg-indigo-50 border border-indigo-200 text-indigo-700 px-4 py-1.5 rounded-xl text-sm font-semibold shadow-xs">
-          <span>🎯 Target Exam: <strong id="target-exam-text">Class 4 Mid-Term (14 Days)</strong></span>
+
+        <!-- Role Toggle (Student Mode vs Parent Portal) -->
+        <div class="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-bold">
+          <button id="role-btn-student" onclick="switchRole('student')" class="px-3 py-1 rounded-lg bg-white text-indigo-700 shadow-2xs transition">
+            🧑‍🎓 Student
+          </button>
+          <button id="role-btn-parent" onclick="switchRole('parent')" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900 transition">
+            👨‍🏫 Parent
+          </button>
         </div>
       </div>
     </header>
 
-    <!-- Navigation Tabs -->
-    <nav class="flex border-b border-slate-200 gap-2 overflow-x-auto pb-1">
-      <button onclick="switchTab('tab-decks')" id="btn-tab-decks" class="tab-btn px-4 py-2.5 font-bold text-sm rounded-t-lg border-b-2 tab-active transition-all flex items-center gap-1.5">
-        <span>📁</span> 1. Student Deck Repository
-      </button>
-      <button onclick="switchTab('tab-mission')" id="btn-tab-mission" class="tab-btn px-4 py-2.5 font-semibold text-sm rounded-t-lg border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all flex items-center gap-1.5">
-        <span>🧭</span> 2. Guided Mission Mode & Ladder
-      </button>
-      <button onclick="switchTab('tab-exam')" id="btn-tab-exam" class="tab-btn px-4 py-2.5 font-semibold text-sm rounded-t-lg border-b-2 border-transparent text-slate-500 hover:text-slate-800 transition-all flex items-center gap-1.5">
-        <span>🎯</span> 3. Exam Readiness & Daily Pacing
-      </button>
-    </nav>
+    <!-- ============================================================= -->
+    <!-- VIEW 1: STUDENT DASHBOARD (Learning Hub & Multi-Subject Cards) -->
+    <!-- ============================================================= -->
+    <main id="view-dashboard" class="space-y-6">
 
-    <!-- ==================== TAB 1: DECK REPOSITORY ==================== -->
-    <section id="tab-decks" class="tab-content space-y-6">
-      <!-- Filter Bar -->
-      <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
-        <div class="flex flex-wrap items-center gap-3 flex-1">
-          <!-- Search Box -->
-          <div class="relative flex-1 min-w-[220px]">
-            <span class="absolute left-3.5 top-2.5 text-slate-400 text-sm">🔍</span>
-            <input type="text" id="deck-search" oninput="filterDecks()" placeholder="Search decks by name, subject, or tag..." class="w-full pl-9 pr-4 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+      <!-- Hero Banner: Daily Guided Mission & Multi-Subject Streak -->
+      <div class="bg-gradient-to-r from-indigo-900 via-indigo-800 to-indigo-700 rounded-3xl p-6 md:p-8 text-white shadow-md relative overflow-hidden flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div class="space-y-2.5 max-w-xl z-10">
+          <div class="inline-flex items-center gap-2 bg-indigo-800/80 text-indigo-200 text-xs font-bold px-3.5 py-1 rounded-full uppercase tracking-wider border border-indigo-700/50">
+            <span>✨</span> Daily Learning Journey
           </div>
-          <!-- Subject Dropdown -->
-          <select id="deck-subject-filter" onchange="filterDecks()" class="px-3.5 py-2 text-sm bg-slate-50 border border-slate-200 rounded-xl text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="All">All Subjects</option>
-          </select>
-          <!-- Scope Filter Chips -->
-          <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
-            <button onclick="setScope('all')" id="scope-all" class="px-3 py-1 rounded-lg bg-white shadow-xs text-indigo-700">All Decks</button>
-            <button onclick="setScope('exam')" id="scope-exam" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900">Exam Decks</button>
-            <button onclick="setScope('due')" id="scope-due" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900">Due Today</button>
-          </div>
-        </div>
-        <!-- Actions -->
-        <div class="flex items-center gap-2">
-          <button onclick="openImportDeckDialog()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2 rounded-xl transition flex items-center gap-1.5">
-            <span>📥</span> Import (.txt)
-          </button>
-          <button onclick="showCreateDeckModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl shadow-sm transition flex items-center gap-1.5">
-            <span>+</span> New Deck
-          </button>
-        </div>
-      </div>
-
-      <!-- Decks Grid -->
-      <div id="decks-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        <!-- Rendered dynamically via JS -->
-      </div>
-    </section>
-
-    <!-- ==================== TAB 2: GUIDED MISSION MODE ==================== -->
-    <section id="tab-mission" class="tab-content hidden space-y-6">
-      <!-- Mission Mode Header Banner -->
-      <div class="bg-gradient-to-r from-indigo-900 to-indigo-700 rounded-2xl p-6 md:p-8 text-white shadow-md flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div class="space-y-2 max-w-xl">
-          <div class="inline-flex items-center gap-1.5 bg-indigo-800/80 text-indigo-200 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">
-            <span>🧭</span> Automated Mastery Progression
-          </div>
-          <h2 class="text-2xl font-black">Daily Guided Mission Ladder</h2>
-          <p class="text-indigo-100 text-xs leading-relaxed">
-            Every sentence advances through 6 pedagogical stages—from fill-in-blanks to auditory recall, voice fluency, and writing. Sentences automatically advance when mastered!
+          <h2 class="text-2xl md:text-3xl font-black font-display tracking-tight">Ready for Today's Challenge, <span id="hero-student-name">Arya</span>?</h2>
+          <p class="text-indigo-100/90 text-xs md:text-sm leading-relaxed">
+            Practice Hindi chapters and Science concepts with adaptive fill-in-the-blanks, jigsaw sentence building, and spoken phonics.
           </p>
-        </div>
-        <button onclick="launchMissionGameplay()" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-sm px-6 py-3.5 rounded-xl shadow-lg transition-transform active:scale-95 flex items-center gap-2 shrink-0">
-          <span>🚀</span> Start Today's Mission
-        </button>
-      </div>
-
-      <!-- 6-Stage Interactive Ladder Steps -->
-      <div class="space-y-3">
-        <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider">Mastery Ladder Stages (Click stage to preview)</h3>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          <div onclick="selectStep(1)" id="step-card-1" class="step-card border-2 border-indigo-600 bg-indigo-50/50 p-3 rounded-xl cursor-pointer transition">
-            <div class="text-xl mb-1">🧩</div>
-            <div class="text-xs font-bold text-slate-900">Stage 1</div>
-            <div class="text-[11px] text-slate-500">Fill-in-Blank</div>
-          </div>
-          <div onclick="selectStep(2)" id="step-card-2" class="step-card border border-slate-200 bg-white p-3 rounded-xl cursor-pointer hover:border-indigo-300 transition">
-            <div class="text-xl mb-1">🔀</div>
-            <div class="text-xs font-bold text-slate-900">Stage 2</div>
-            <div class="text-[11px] text-slate-500">Jigsaw Scramble</div>
-          </div>
-          <div onclick="selectStep(3)" id="step-card-3" class="step-card border border-slate-200 bg-white p-3 rounded-xl cursor-pointer hover:border-indigo-300 transition">
-            <div class="text-xl mb-1">🎧</div>
-            <div class="text-xs font-bold text-slate-900">Stage 3</div>
-            <div class="text-[11px] text-slate-500">Listening</div>
-          </div>
-          <div onclick="selectStep(4)" id="step-card-4" class="step-card border border-slate-200 bg-white p-3 rounded-xl cursor-pointer hover:border-indigo-300 transition">
-            <div class="text-xl mb-1">🎙️</div>
-            <div class="text-xs font-bold text-slate-900">Stage 4</div>
-            <div class="text-[11px] text-slate-500">Voice Mastery</div>
-          </div>
-          <div onclick="selectStep(5)" id="step-card-5" class="step-card border border-slate-200 bg-white p-3 rounded-xl cursor-pointer hover:border-indigo-300 transition">
-            <div class="text-xl mb-1">⚡</div>
-            <div class="text-xs font-bold text-slate-900">Stage 5</div>
-            <div class="text-[11px] text-slate-500">Speed Run</div>
-          </div>
-          <div onclick="selectStep(6)" id="step-card-6" class="step-card border border-slate-200 bg-white p-3 rounded-xl cursor-pointer hover:border-indigo-300 transition">
-            <div class="text-xl mb-1">✍️</div>
-            <div class="text-xs font-bold text-slate-900">Stage 6</div>
-            <div class="text-[11px] text-slate-500">Active Writing</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Stage Detail Information Card -->
-      <div id="step-detail-box" class="bg-white border border-slate-200 rounded-xl p-5 space-y-2">
-        <h4 id="step-detail-title" class="font-bold text-slate-900 text-sm">Stage 1: Fill-in-the-Blanks Scaffolding</h4>
-        <p id="step-detail-goal" class="text-xs font-semibold text-indigo-600">Goal: Master contextual recognition (1-2 key words hidden)</p>
-        <p id="step-detail-desc" class="text-xs text-slate-500 leading-relaxed">
-          The sentence is presented with 1-2 chunks hidden as slots. The student chooses the correct missing chunk from candidate chips.
-        </p>
-      </div>
-
-      <!-- Today's Queue Card -->
-      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-        <div class="flex justify-between items-center">
-          <div>
-            <h3 class="text-base font-bold text-slate-900">📋 Today's Multi-Stage Mission Queue</h3>
-            <p class="text-xs text-slate-500">Cards due for practice today across all your decks.</p>
-          </div>
-          <span id="queue-count-badge" class="bg-indigo-50 text-indigo-700 font-bold text-xs px-3 py-1 rounded-full border border-indigo-200">
-            0 Cards Due
-          </span>
-        </div>
-        <div id="mission-queue-list" class="divide-y divide-slate-100 max-h-64 overflow-y-auto">
-          <!-- Populated dynamically via JS -->
-        </div>
-      </div>
-    </section>
-
-    <!-- ==================== TAB 3: EXAM READINESS & PACING ==================== -->
-    <section id="tab-exam" class="tab-content hidden space-y-6">
-      <!-- Exam Header & Configuration Controls -->
-      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-        <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div class="flex-1">
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-xs font-bold uppercase tracking-wider text-indigo-600">Active Exam Goal</span>
-              <span id="exam-status-tag" class="text-[11px] bg-emerald-100 text-emerald-800 font-bold px-2.5 py-0.5 rounded-full">On Track</span>
+          <div class="flex flex-wrap items-center gap-3 pt-2 text-xs">
+            <div class="bg-white/10 px-3 py-1.5 rounded-xl flex items-center gap-1.5 border border-white/10">
+              <span>🔥</span> <strong id="hero-streak-count">1</strong> Day Streak
             </div>
-            
-            <!-- Exam Selector Dropdown -->
-            <div class="flex flex-wrap items-center gap-3">
-              <select id="exam-selector" onchange="switchExam(this.value)" class="text-base md:text-lg font-black text-slate-900 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer max-w-md">
-                <!-- Populated dynamically via JS -->
-              </select>
+            <div class="bg-white/10 px-3 py-1.5 rounded-xl flex items-center gap-1.5 border border-white/10">
+              <span>📋</span> <strong id="hero-due-count">5</strong> Cards Due Today
             </div>
-            <p id="exam-meta" class="text-xs text-slate-500 mt-1.5">Exam Date: In 14 Days &bull; Tagged Chapters Scope</p>
+            <div class="bg-emerald-400/20 text-emerald-200 px-3 py-1.5 rounded-xl flex items-center gap-1.5 border border-emerald-400/30">
+              <span>🎯</span> Exam Goal: <strong id="hero-daily-quota">3</strong> Cards/Day
+            </div>
           </div>
+        </div>
 
-          <div class="flex flex-wrap items-center gap-2">
-            <button onclick="openExamScopeModal(false)" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-sm transition flex items-center gap-1.5">
-              <span>✏️</span> Edit Scope & Chapters
-            </button>
-            <button onclick="openCreateExamModal()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold px-3.5 py-2.5 rounded-xl transition flex items-center gap-1.5">
-              <span>➕</span> New Exam
-            </button>
-            <button onclick="deleteCurrentExam()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-semibold px-3 py-2.5 rounded-xl transition flex items-center gap-1.5" title="Delete this Exam">
-              <span>🗑️</span>
-            </button>
-          </div>
+        <div class="flex flex-col sm:flex-row md:flex-col gap-2.5 z-10 w-full md:w-auto shrink-0">
+          <button onclick="startDailyMission()" class="bg-emerald-400 hover:bg-emerald-300 text-slate-950 font-black text-sm px-6 py-3.5 rounded-2xl shadow-lg transition-transform active:scale-95 flex items-center justify-center gap-2">
+            <span>🚀</span> Start Daily Mission
+          </button>
+          <button onclick="startExamPrepSession()" class="bg-white/15 hover:bg-white/25 text-white font-bold text-xs px-5 py-3 rounded-xl transition flex items-center justify-center gap-2 border border-white/20">
+            <span>🎯</span> Practice Exam Scope
+          </button>
         </div>
       </div>
 
-      <!-- Readiness Gauge & Pacing Cards -->
-      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
-        <div>
-          <div class="flex justify-between text-xs font-bold text-slate-600 mb-2">
-            <span>Overall Exam Readiness (Across Tagged Chapters)</span>
-            <span id="exam-readiness-val">0% Complete</span>
-          </div>
-          <div class="w-full bg-slate-100 h-3.5 rounded-full overflow-hidden">
-            <div id="exam-progress-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-          </div>
+      <!-- Dashboard Quick Utilities Toolbar -->
+      <div class="flex flex-wrap items-center justify-between gap-3 bg-white border border-slate-200/90 rounded-2xl p-3.5 px-5 shadow-xs">
+        <div class="flex items-center gap-2 text-xs font-bold text-slate-700">
+          <span class="text-indigo-600 text-sm">⚡</span>
+          <span>Quick Utilities:</span>
         </div>
-
-        <!-- 3 Stats Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-            <div class="text-xs text-slate-500 font-medium">Days Remaining</div>
-            <div id="stat-days-left" class="text-2xl font-black text-slate-900 mt-1">14</div>
-          </div>
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-center">
-            <div class="text-xs text-slate-500 font-medium">Mastered / Total Tagged Cards</div>
-            <div id="stat-cards-count" class="text-2xl font-black text-indigo-600 mt-1">0 / 0</div>
-          </div>
-          <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
-            <div class="text-xs text-emerald-800 font-medium">Recommended Daily Goal</div>
-            <div id="stat-daily-quota" class="text-2xl font-black text-emerald-700 mt-1">3 Cards/Day</div>
-          </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="dash-worksheet-btn" onclick="openWorksheetModal()" class="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 px-3 py-1.5 rounded-xl text-xs font-bold transition shadow-2xs">
+            <span>🖨️</span> Printable Worksheets
+          </button>
         </div>
-
-        <button onclick="launchExamMission()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm py-3 rounded-xl shadow-sm transition flex items-center justify-center gap-2">
-          <span>🎯</span> Start Today's Exam Mission (Practice Tagged Chapters)
-        </button>
       </div>
 
-      <!-- Chapter-by-Chapter Mastery Breakdown ("Mastered vs Not Yet") -->
-      <div class="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-4">
-        <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-3">
-          <div>
-            <h3 class="text-base font-bold text-slate-900">Chapter Mastery Breakdown</h3>
-            <p class="text-xs text-slate-500">Track which specific chapters are fully mastered vs. needing practice before exam day.</p>
-          </div>
-          <div class="flex items-center gap-1 bg-slate-100 p-1 rounded-xl text-xs font-semibold">
-            <button onclick="filterChapterBreakdown('all')" id="ch-filter-all" class="px-3 py-1 rounded-lg bg-white shadow-xs text-indigo-700">All Tagged</button>
-            <button onclick="filterChapterBreakdown('in_progress')" id="ch-filter-in_progress" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900">Needs Work</button>
-            <button onclick="filterChapterBreakdown('mastered')" id="ch-filter-mastered" class="px-3 py-1 rounded-lg text-slate-600 hover:text-slate-900">Mastered</button>
-          </div>
+      <!-- Subject Filter & Search Bar -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="setSubjectFilter('All')" id="filter-subj-all" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-indigo-600 text-white shadow-xs transition">
+            All Lessons
+          </button>
+          <button onclick="setSubjectFilter('Hindi')" id="filter-subj-hindi" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+            📖 Grade 7 Hindi (5 Chapters)
+          </button>
+          <button onclick="setSubjectFilter('Science')" id="filter-subj-science" class="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+            🔬 Science Concepts
+          </button>
         </div>
 
-        <!-- Chapters List / Grid -->
-        <div id="exam-chapters-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+        <div class="relative min-w-[220px]">
+          <span class="absolute left-3.5 top-2.5 text-slate-400 text-xs">🔍</span>
+          <input type="text" id="dashboard-search" oninput="filterDashboardCards()" placeholder="Search chapters or topics..." aria-label="Search chapters or topics" class="w-full pl-8 pr-3 py-1.5 text-xs font-hindi bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        </div>
+      </div>
+
+      <!-- Multi-Subject Chapters Grid -->
+      <div>
+        <div class="flex items-center justify-between mb-3 px-1">
+          <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider">Chapters & Decks</h3>
+          <span id="dashboard-chapters-count" class="text-xs text-slate-500 font-semibold">Loading lessons...</span>
+        </div>
+        <div id="chapters-cards-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <!-- Rendered dynamically via JS -->
         </div>
       </div>
-    </section>
+
+    </main>
+
+    <!-- ============================================================= -->
+    <!-- VIEW 2: CHAPTER DETAIL & QUESTION NAVIGATOR                   -->
+    <!-- ============================================================= -->
+    <main id="view-chapter" class="hidden space-y-6">
+
+      <!-- Breadcrumb & Header Card -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-5 md:p-6 shadow-xs space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <button onclick="showView('dashboard')" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 px-3 py-1.5 rounded-xl transition">
+            <span>←</span> Back to Dashboard
+          </button>
+          <span id="chapter-subject-badge" class="text-xs font-bold font-hindi bg-amber-50 text-amber-800 border border-amber-200 px-3 py-1 rounded-full">
+            Hindi
+          </span>
+        </div>
+
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-1">
+          <div>
+            <h2 id="chapter-view-title" class="text-2xl font-black text-slate-900 font-hindi">Chapter Name</h2>
+            <p id="chapter-view-desc" class="text-xs text-slate-500 mt-1">Practice each question sequentially through the mastery ladder.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 shrink-0">
+            <div class="flex flex-wrap items-center gap-1 bg-slate-100 p-1 rounded-xl border border-slate-200" role="group" aria-label="Practice modes">
+            <button onclick="startChapterPractice('blanks')" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl shadow-xs transition flex items-center gap-1.5" title="Adaptive Multi-Pass Blanks">
+              <span>🧩</span> Blanks
+            </button>
+            <button onclick="startChapterPractice('jigsaw')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5" title="Sentence Jigsaw Puzzle">
+              <span>🔀</span> Jigsaw
+            </button>
+            <button onclick="startChapterPractice('listening')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5" title="Auditory Decoding Mode">
+              <span>🎧</span> Listening
+            </button>
+            <button onclick="startChapterPractice('voice')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5" title="Spoken Voice Phonics">
+              <span>🎙️</span> Voice
+            </button>
+            <button onclick="startChapterPractice('writing')" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5" title="Active Writing & Spelling">
+              <span>✍️</span> Writing
+            </button>
+            </div>
+            <button onclick="startChapterPractice('guided_mission')" class="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-xs px-4 py-2 rounded-xl transition shadow-xs flex items-center gap-1.5">
+              <span>🚀</span> Full Mission
+            </button>
+            <button id="chapter-print-worksheet-btn" onclick="printCurrentChapterWorksheet()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-bold text-xs px-3.5 py-2 rounded-xl transition border border-indigo-200 flex items-center gap-1.5" title="Generate and Print Offline Homework Worksheet">
+              <span>🖨️</span> Worksheet
+            </button>
+            <button id="chapter-reset-stage-btn" onclick="openResetChapterStageModal()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs px-3.5 py-2 rounded-xl transition border border-rose-200 flex items-center gap-1.5" title="Reset learning stages for this chapter to retry">
+              <span>🔄</span> Reset Progress
+            </button>
+          </div>
+        </div>
+
+        <!-- Mastery Progress Bar -->
+        <div class="space-y-1.5 pt-2 border-t border-slate-100">
+          <div class="flex justify-between text-xs font-semibold text-slate-600">
+            <span>Chapter Mastery</span>
+            <span id="chapter-mastery-text" class="font-bold text-indigo-600">0%</span>
+          </div>
+          <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+            <div id="chapter-mastery-bar" class="bg-indigo-600 h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Questions List -->
+      <div class="space-y-3">
+        <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider px-1">Questions in this Chapter</h3>
+        <div id="chapter-questions-list" class="space-y-3">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ============================================================= -->
+    <!-- VIEW 3: IN-BROWSER INTERACTIVE GAMEPLAY ARENA                 -->
+    <!-- ============================================================= -->
+    <main id="view-gameplay" class="hidden space-y-5">
+
+      <!-- Gameplay Top Bar -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <button onclick="exitGameplay()" class="text-xs font-bold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition flex items-center gap-1">
+            <span>✕</span> Exit
+          </button>
+          <div class="text-xs font-bold text-slate-800">
+            <span id="game-card-counter">Question 1 of 5</span>
+          </div>
+          <span id="game-chapter-pill" class="text-[11px] font-semibold font-hindi bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full max-w-[200px] truncate">
+            Chapter
+          </span>
+        </div>
+
+        <!-- Live Question Timer & Personal Best (single stable cluster, no layout shift) -->
+        <div class="flex items-center gap-2 shrink-0">
+          <div id="game-question-timer" class="flex items-center gap-1.5 bg-slate-100 border border-slate-200 text-slate-700 text-xs font-mono font-bold px-2.5 py-1 rounded-xl shadow-2xs whitespace-nowrap min-w-[72px] justify-center" title="Time spent on this question">
+            <span>⏱️</span>
+            <span id="game-timer-display">0:00</span>
+          </div>
+          <div id="game-previous-best-pill" class="flex items-center gap-1 bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-bold px-2.5 py-0.5 rounded-xl shadow-2xs whitespace-nowrap" title="Fastest earlier completion at this stage">
+            <span>⚡ Best:</span>
+            <span id="game-previous-best-text">--</span>
+          </div>
+        </div>
+
+        <!-- Mode Badge & Multi-Pass Indicator -->
+        <div class="flex items-center gap-2">
+          <div id="game-mode-pill" class="flex items-center gap-1.5 bg-amber-50 border border-amber-200 text-amber-800 text-xs font-bold px-3 py-1 rounded-xl">
+            <span>🧩</span> <span id="game-mode-name">Fill-in-the-Blanks</span>
+          </div>
+          <button onclick="playCardTTS()" id="game-tts-btn" class="bg-slate-100 hover:bg-slate-200 text-slate-700 p-2 rounded-xl text-xs transition" title="Listen to Native Pronunciation">
+            🔊
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Game Board Card -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-6 md:p-8 shadow-xs space-y-6">
+
+        <!-- Question Prompt in Large Devanagari Typography -->
+        <div class="space-y-2 border-b border-slate-100 pb-5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">Question Prompt</span>
+            <button onclick="toggleEnglishMeaning()" id="btn-toggle-meaning" class="text-[11px] text-slate-400 hover:text-slate-600 font-semibold underline">
+              Show English Meaning
+            </button>
+          </div>
+          <h2 id="game-question-text" class="text-lg md:text-2xl font-black text-slate-900 leading-relaxed font-hindi">
+            प्रश्न लोड हो रहा है...
+          </h2>
+          <p id="game-meaning-text" class="text-xs text-slate-500 italic hidden pt-1">
+            English translation here...
+          </p>
+        </div>
+
+        <!-- Adaptive Multi-Pass Scaffolding Indicator -->
+        <div id="game-pass-indicator-box" class="p-3.5 bg-gradient-to-r from-indigo-50 to-indigo-50/40 border border-indigo-100 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="flex items-center gap-1.5">
+              <span id="pass-dot-1" class="w-6 h-6 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-[10px] ring-2 ring-indigo-200">1</span>
+              <span class="w-3 h-0.5 bg-slate-300"></span>
+              <span id="pass-dot-2" class="w-6 h-6 rounded-full bg-slate-200 text-slate-500 font-bold flex items-center justify-center text-[10px]">2</span>
+              <span class="w-3 h-0.5 bg-slate-300"></span>
+              <span id="pass-dot-3" class="w-6 h-6 rounded-full bg-slate-200 text-slate-500 font-bold flex items-center justify-center text-[10px]">3</span>
+            </div>
+            <span id="game-pass-description" class="text-xs font-bold text-indigo-900">Pass 1 of 3: Master early contextual recognition</span>
+          </div>
+          <span class="text-[11px] font-semibold text-indigo-600 bg-white px-2.5 py-0.5 rounded-full border border-indigo-200 shadow-2xs self-start sm:self-auto">
+            Adaptive Blanks
+          </span>
+        </div>
+
+        <!-- Dedicated Listening Studio Box -->
+        <div id="game-listening-box" class="hidden p-5 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-100 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl shadow-xs shrink-0">
+              🎧
+            </div>
+            <div>
+              <h4 class="text-sm font-bold text-slate-900">Auditory Decoding Practice</h4>
+              <p class="text-xs text-slate-500">Listen to the spoken sentence and arrange the phrase chips below in the order you hear.</p>
+            </div>
+          </div>
+          <button onclick="playCardTTS()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-4 py-2.5 rounded-xl shadow-xs transition flex items-center gap-2 shrink-0">
+            <span>🔊</span> Replay Audio
+          </button>
+        </div>
+
+        <!-- Dedicated Voice Mastery Studio Box -->
+        <div id="game-voice-box" class="hidden space-y-4 p-5 bg-gradient-to-br from-rose-50/50 via-white to-orange-50/50 border border-rose-100 rounded-2xl">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="w-8 h-8 rounded-lg bg-rose-500 text-white flex items-center justify-center text-sm font-bold">🎙️</span>
+              <h4 class="text-sm font-bold text-slate-900">Voice Pronunciation & Fluency Studio</h4>
+            </div>
+            <span id="voice-status-badge" class="text-xs font-bold bg-slate-100 text-slate-600 px-3 py-1 rounded-full">
+              Ready to Speak
+            </span>
+          </div>
+
+          <!-- Target Sentence Display -->
+          <div class="p-4 bg-white border border-slate-200 rounded-xl space-y-1 text-center">
+            <div class="flex items-center justify-between pb-1">
+              <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Read this sentence aloud:</span>
+              <button onclick="playAnswerTTS()" id="voice-hear-answer-btn" class="text-xs font-bold text-rose-600 hover:text-rose-700 flex items-center gap-1 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg border border-rose-200 transition cursor-pointer" title="Listen to pronunciation of target sentence">
+                <span>🔊</span> Hear Model Answer
+              </button>
+            </div>
+            <p id="voice-target-sentence" class="text-lg md:text-xl font-black text-slate-900 font-hindi leading-relaxed">
+              Target sentence...
+            </p>
+          </div>
+
+          <!-- Big Microphone Interaction Button -->
+          <div class="flex flex-col items-center justify-center gap-2.5 py-2">
+            <button id="btn-mic-record" onclick="toggleVoiceRecording()" aria-label="Start or stop voice recording" aria-pressed="false" class="w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-2xl flex items-center justify-center shadow-lg transition transform active:scale-95 cursor-pointer">
+              🎤
+            </button>
+            <span id="voice-mic-instruction" class="text-xs font-semibold text-slate-500">Click microphone, speak clearly, then click Stop</span>
+          </div>
+
+          <!-- Real-time Transcription & Score Meter -->
+          <div class="space-y-3 bg-white p-4 border border-slate-200 rounded-xl">
+            <div class="flex justify-between items-center text-xs font-bold text-slate-700">
+              <span>What you said:</span>
+              <span id="voice-accuracy-score" class="text-sm font-black text-slate-400">Score: --</span>
+            </div>
+            <p id="voice-transcript-text" aria-live="polite" class="text-sm font-hindi text-slate-800 italic min-h-[24px]">
+              Spoken words will appear here...
+            </p>
+            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div id="voice-score-bar" class="h-full rounded-full transition-all duration-300 bg-rose-500" style="width: 0%"></div>
+            </div>
+            <div class="flex justify-between text-[11px] text-slate-400">
+              <span>Passing Score: ≥ 80%</span>
+              <span id="voice-feedback-msg" class="font-bold text-slate-700"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dedicated Active Writing Studio Box -->
+        <div id="game-writing-box" class="hidden space-y-4">
+          <!-- Virtual Hindi Helper Toolbar -->
+          <div class="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+            <div class="flex justify-between items-center text-[11px] font-bold text-slate-600">
+              <span>Quick Hindi Symbols & Matras (Click to Insert):</span>
+              <span class="text-slate-400">Tap to insert at cursor</span>
+            </div>
+            <div class="flex flex-wrap gap-1 font-hindi text-sm" id="writing-hindi-virtual-keys">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+          <!-- Typing Area -->
+          <div class="space-y-1">
+            <div class="flex justify-between items-center text-[11px] font-bold text-slate-500 pb-0.5">
+              <label for="writing-input-area">Type answer from memory:</label>
+              <button onclick="playAnswerTTS()" id="writing-hear-answer-btn" class="text-xs font-bold text-indigo-600 hover:text-indigo-700 flex items-center gap-1 bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg border border-indigo-200 transition cursor-pointer" title="Listen to audio prompt of the answer">
+                <span>🔊</span> Hear Audio Prompt
+              </button>
+            </div>
+            <textarea id="writing-input-area" rows="4" oninput="updateWritingWordCount()" placeholder="Type the complete answer sentence here from memory..." class="w-full p-4 font-hindi text-base md:text-lg bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed"></textarea>
+            <div class="flex justify-between text-[11px] text-slate-400 px-1">
+              <span id="writing-word-count">0 words typed</span>
+              <span>Punctuation and spelling evaluated word-by-word</span>
+            </div>
+          </div>
+
+          <!-- Token Diff Result Container -->
+          <div id="writing-diff-result" class="hidden p-4 bg-white border border-slate-200 rounded-2xl space-y-2">
+            <div class="flex justify-between items-center text-xs font-bold">
+              <span>Spelling & Word Evaluation:</span>
+              <span id="writing-score-badge" class="px-2.5 py-0.5 rounded-full text-xs"></span>
+            </div>
+            <div id="writing-tokens-row" class="flex flex-wrap gap-1.5 font-hindi text-sm py-1">
+              <!-- Colored pills: green match, red typo, amber missing -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Sentence Workspace (Answer Board / Slots) -->
+        <div class="space-y-3">
+          <div class="flex justify-between items-center text-xs font-bold text-slate-600">
+            <span id="game-board-label">Assemble the answer:</span>
+            <div class="flex items-center gap-2">
+              <button onclick="playAnswerTTS()" id="game-hear-answer-btn" class="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold transition shadow-2xs cursor-pointer" title="Listen to Native Pronunciation of Answer (Ctrl+A)">
+                <span>🔊</span> Hear Answer
+              </button>
+              <span id="game-feedback-badge" class="text-xs font-bold"></span>
+            </div>
+          </div>
+          <div id="game-assembly-board" aria-live="polite" aria-label="Assembled answer" class="min-h-[90px] p-4 md:p-5 bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl flex flex-wrap items-center gap-2.5 transition-colors font-hindi text-base md:text-lg">
+            <!-- Slots or placed chips rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Candidate Chips Tray -->
+        <div class="space-y-3 pt-2">
+          <div class="flex flex-wrap justify-between items-center gap-2 text-xs font-bold text-slate-600">
+            <div class="flex items-center gap-2">
+              <span>Available Words / Phrase Chips (Click to Place):</span>
+              <div id="jigsaw-block-size-container" class="hidden flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl border border-slate-200 text-xs">
+                <span class="text-[10px] font-bold text-slate-500 pl-1.5 pr-0.5">Words/Block:</span>
+                <button type="button" onclick="setJigsawWordsPerBlock(4)" id="jigsaw-size-4-btn" class="px-2 py-0.5 text-[11px] rounded-lg font-bold transition text-slate-600 hover:text-slate-900 cursor-pointer" title="4 words per block">4</button>
+                <button type="button" onclick="setJigsawWordsPerBlock(3)" id="jigsaw-size-3-btn" class="px-2 py-0.5 text-[11px] rounded-lg font-bold transition text-slate-600 hover:text-slate-900 cursor-pointer" title="3 words per block">3</button>
+                <button type="button" onclick="setJigsawWordsPerBlock(2)" id="jigsaw-size-2-btn" class="px-2 py-0.5 text-[11px] rounded-lg font-bold transition text-slate-600 hover:text-slate-900 cursor-pointer" title="2 words per block">2</button>
+                <button type="button" onclick="setJigsawWordsPerBlock('auto')" id="jigsaw-size-auto-btn" class="px-2 py-0.5 text-[11px] rounded-lg font-bold transition bg-indigo-600 text-white cursor-pointer" title="Adaptive Auto (4 -> 2 words)">Auto</button>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <button onclick="gameActionHint()" class="text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer">
+                💡 Hint
+              </button>
+              <button onclick="gameActionUndo()" class="text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer">
+                ↩ Undo
+              </button>
+              <button onclick="gameActionClear()" class="text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 px-2.5 py-1 rounded-lg text-xs font-semibold transition cursor-pointer">
+                🗑️ Clear
+              </button>
+            </div>
+          </div>
+          <div id="game-chips-tray" class="p-4 bg-white border border-slate-200 rounded-2xl flex flex-wrap gap-2.5 min-h-[70px] items-center font-hindi text-base">
+            <!-- Chips rendered dynamically -->
+          </div>
+        </div>
+
+        <!-- Action Footer -->
+        <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+          <div class="text-xs text-slate-500 font-medium">
+            <span id="game-helper-tip">Click chips in order to construct the sentence.</span>
+          </div>
+          <button onclick="checkCurrentAnswer()" id="game-check-btn" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm px-6 py-2.5 rounded-xl shadow-xs transition active:scale-95 flex items-center gap-2">
+            <span>✓</span> Check Sentence
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Round Success Celebration Modal (Embedded) -->
+      <div id="game-celebration-card" class="hidden bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-3xl p-6 md:p-8 shadow-xl text-center space-y-4">
+        <div class="text-4xl animate-bounce">🎉</div>
+        <h3 class="text-2xl font-black font-display">Shabash! Flawless Sentence!</h3>
+        <p id="celebration-detail-text" class="text-emerald-100 text-xs md:text-sm max-w-md mx-auto">
+          You mastered this sentence and advanced to the next learning milestone.
+        </p>
+
+        <!-- Timing & Improvement Banner -->
+        <div id="celebration-timing-badge" class="bg-white/15 border border-white/20 rounded-2xl p-3.5 max-w-md mx-auto flex items-center justify-around text-xs shadow-xs">
+          <div class="flex items-center gap-1.5">
+            <span class="text-emerald-100">⏱️ Time:</span>
+            <strong id="celebration-time-taken" class="text-white font-mono text-base font-black">--</strong>
+          </div>
+          <div class="h-5 w-px bg-white/25"></div>
+          <div id="celebration-comparison-box" class="flex items-center gap-1.5">
+            <span id="celebration-comparison-text" class="text-emerald-100 font-bold">Baseline attempt</span>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap justify-center items-center gap-3 pt-2">
+          <button onclick="playAnswerTTS()" id="celeb-hear-answer-btn" class="bg-white/20 hover:bg-white/30 text-white font-bold text-xs px-4 py-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer" title="Listen to pronunciation of complete sentence">
+            <span>🔊</span> Hear Full Answer
+          </button>
+          <button id="celeb-retry-btn" onclick="retryGameplayCard()" class="bg-white/20 hover:bg-white/30 text-white font-bold text-xs px-4 py-3 rounded-xl transition flex items-center gap-1.5 cursor-pointer" title="Retry this question to practice or improve your time">
+            <span>🔄</span> Retry Sentence
+          </button>
+          <button id="celeb-next-btn" onclick="nextGameplayCard()" class="w-full sm:w-auto bg-white text-emerald-950 font-black text-sm px-6 py-3 rounded-xl shadow-md hover:bg-emerald-50 transition active:scale-95 cursor-pointer">
+            Next Sentence →
+          </button>
+          <button id="celeb-finish-btn" onclick="exitGameplay()" class="bg-white/20 hover:bg-white/30 text-white font-bold text-xs px-4 py-3 rounded-xl transition cursor-pointer">
+            Finish Session
+          </button>
+        </div>
+      </div>
+
+    </main>
+
+    <!-- ============================================================= -->
+    <!-- VIEW 4: PARENT & EDUCATOR STUDIO (Lesson Builder & Analytics)  -->
+    <!-- ============================================================= -->
+    <main id="view-parent" class="hidden space-y-6">
+
+      <!-- Parent Studio Header -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <div class="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider border border-amber-200 mb-1">
+            <span>👨‍🏫</span> Parent & Educator Studio
+          </div>
+          <h2 class="text-xl font-black text-slate-900 font-display">Lesson Creator & Student Progress Analytics</h2>
+          <p class="text-xs text-slate-500 mt-0.5">Easily add new textbook chapters, fine-tune sentence chunks, and track exam readiness.</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="openExamScopeModal(true)" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-xs transition flex items-center gap-1.5">
+            <span>🎯</span> Set New Exam Goal
+          </button>
+        </div>
+      </div>
+
+      <!-- Add New Lesson Card -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-5">
+        <div class="border-b border-slate-100 pb-3">
+          <h3 class="text-base font-bold text-slate-900">Add New Textbook Chapter or Story</h3>
+          <p class="text-xs text-slate-500">Paste questions and answers from school notes, and our engine will automatically format and segment them into learning chunks.</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div class="sm:col-span-2">
+            <label class="block font-bold text-slate-700 mb-1">Chapter / Lesson Title</label>
+            <input type="text" id="parent-new-title" placeholder="e.g. Ch-7 महाभारत की कथा" class="w-full px-3 py-2 font-hindi bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Subject</label>
+            <select id="parent-new-subject" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+              <option value="Hindi">Hindi (हिंदी)</option>
+              <option value="Science">Science (विज्ञान)</option>
+              <option value="English">English</option>
+              <option value="Social Studies">Social Studies</option>
+              <option value="General">General Knowledge</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <div class="flex justify-between items-center mb-1 text-xs">
+            <label class="font-bold text-slate-700">Paste Questions & Answers (or Lesson Text)</label>
+            <div class="flex items-center gap-2">
+              <input type="file" id="parent-file-input" accept=".txt" class="hidden" onchange="parentHandleFileUpload(event)">
+              <button onclick="document.getElementById('parent-file-input').click()" class="bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold px-2.5 py-0.5 rounded-lg transition flex items-center gap-1 text-[11px]">
+                <span>📂</span> Upload .txt File
+              </button>
+              <span class="text-slate-400">Supports Hindi Devanagari & English</span>
+            </div>
+          </div>
+          <textarea id="parent-raw-text" rows="7" placeholder="Paste Q&A notes here...
+Example:
+प्रश्न (क) पक्षी को बचाने के लिए क्या किया गया?
+उत्तर: पक्षी को तुरंत इलाज के लिए ले जाया गया और उसकी जान बचाई गई।" class="w-full p-3 font-hindi text-sm bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed"></textarea>
+        </div>
+
+        <div class="flex items-center justify-between pt-2">
+          <span class="text-xs text-slate-400">Segments into natural 3-5 word phrase chunks automatically.</span>
+          <button onclick="parentAnalyzeAndPreview()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-5 py-2.5 rounded-xl shadow-xs transition flex items-center gap-1.5">
+            <span>✨</span> Auto-Segment & Preview Chunks
+          </button>
+        </div>
+
+        <!-- Live Chunk Preview & Editor -->
+        <div id="parent-chunks-preview-box" class="hidden space-y-4 pt-4 border-t border-slate-100">
+          <div class="flex justify-between items-center">
+            <h4 class="text-sm font-bold text-slate-800">Review & Fine-Tune Chunks</h4>
+            <span class="text-xs text-indigo-600 font-semibold" id="preview-items-count">0 Questions Generated</span>
+          </div>
+          <div id="parent-preview-items-list" class="space-y-4 max-h-96 overflow-y-auto pr-1">
+            <!-- Populated via JS -->
+          </div>
+           <button onclick="parentSaveLesson()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm py-3 rounded-xl shadow-xs transition">
+            Save Chapter to Student Deck
+          </button>
+        </div>
+      </div>
+
+      <!-- Multi-Subject Mastery Heatmap -->
+      <div class="bg-white border border-slate-200/90 rounded-2xl p-6 shadow-xs space-y-4">
+        <h3 class="text-base font-bold text-slate-900">Student Subject Mastery Overview</h3>
+        <div id="parent-subjects-heatmap" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Populated dynamically via JS -->
+        </div>
+      </div>
+
+    </main>
 
   </div>
 
@@ -291,100 +670,535 @@
   <div id="profile-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50">
     <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-sm w-full shadow-xl space-y-4">
       <div class="flex justify-between items-center">
-        <h3 class="text-base font-bold text-slate-900">Switch Student Profile</h3>
+        <h3 class="text-base font-bold text-slate-900">Select Student Profile</h3>
         <button onclick="closeProfileModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
       </div>
-      <div id="profiles-list" class="space-y-1.5 max-h-48 overflow-y-auto">
-        <!-- Populated via JS -->
-      </div>
+      <div id="profiles-list" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
       <div class="pt-2 border-t border-slate-100 flex gap-2">
-        <input type="text" id="new-profile-name" placeholder="New student name..." class="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none">
+        <input type="text" id="new-profile-name" placeholder="New student name..." aria-label="New student name" class="flex-1 px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:outline-none">
         <button onclick="createProfile()" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs px-3.5 py-2 rounded-xl transition">Add</button>
       </div>
     </div>
   </div>
 
-  <!-- Create Deck Modal -->
-  <div id="deck-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50">
-    <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4">
-      <div class="flex justify-between items-center">
-        <h3 class="text-base font-bold text-slate-900" id="deck-modal-title">Create New Deck</h3>
-        <button onclick="closeDeckModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
-      </div>
-      <div class="space-y-3 text-xs">
-        <div>
-          <label class="block font-semibold text-slate-600 mb-1">Deck Title</label>
-          <input type="text" id="new-deck-title" placeholder="e.g. Science Chapter 4" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-        </div>
-        <div>
-          <label class="block font-semibold text-slate-600 mb-1">Subject</label>
-          <input type="text" id="new-deck-subject" placeholder="e.g. Science" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
-        </div>
-        <div>
-          <label class="block font-semibold text-slate-600 mb-1">Description</label>
-          <textarea id="new-deck-desc" rows="2" placeholder="Brief description of this deck..." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none"></textarea>
-        </div>
-        <button onclick="saveNewDeck()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-xl transition">
-          Save Deck
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Exam Configuration & Chapter Scope Modal -->
+  <!-- Exam Scope Modal -->
   <div id="exam-scope-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50 overflow-y-auto">
-    <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-2xl w-full shadow-2xl space-y-5 my-8">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-2xl w-full shadow-xl space-y-5 my-8">
       <div class="flex justify-between items-center border-b border-slate-100 pb-3">
         <div>
-          <h3 class="text-lg font-black text-slate-900" id="exam-scope-modal-title">Configure Exam & Tag Chapters</h3>
-          <p class="text-xs text-slate-500">Select only the specific chapters/lessons required for this exam.</p>
+          <h3 class="text-lg font-black text-slate-900" id="exam-scope-modal-title">Configure Exam Scope</h3>
+          <p class="text-xs text-slate-500">Select which Hindi chapters and Science decks are tested in this exam.</p>
         </div>
         <button onclick="closeExamScopeModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
       </div>
-
-      <!-- Form Inputs -->
       <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
         <div class="sm:col-span-2">
-          <label class="block font-bold text-slate-700 mb-1">Exam Name / Title</label>
-          <input type="text" id="modal-exam-name" placeholder="e.g. Mid-Term Assessment" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
+          <label class="block font-bold text-slate-700 mb-1">Exam Name</label>
+          <input type="text" id="modal-exam-name" placeholder="e.g. Class 7 Term 1 Assessment" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
         </div>
         <div>
-          <label class="block font-bold text-slate-700 mb-1">Exam Target Date</label>
+          <label class="block font-bold text-slate-700 mb-1">Target Date</label>
           <input type="date" id="modal-exam-date" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none">
         </div>
       </div>
-
-      <!-- Decks & Chapters Hierarchy Tree -->
       <div class="space-y-2">
         <div class="flex justify-between items-center">
-          <label class="block text-xs font-bold text-slate-800">Select Chapters Included in Exam Scope:</label>
+          <label class="block text-xs font-bold text-slate-800">Included Chapters:</label>
           <div class="text-[11px] text-slate-500">
             <button onclick="selectAllExamScope(true)" class="text-indigo-600 hover:underline font-semibold">Select All</button> &bull;
             <button onclick="selectAllExamScope(false)" class="text-slate-500 hover:underline font-semibold">Clear All</button>
           </div>
         </div>
-        <div id="modal-exam-tree" class="max-h-72 overflow-y-auto space-y-3 p-3 bg-slate-50 border border-slate-200 rounded-xl">
-          <!-- Rendered dynamically via JS -->
-        </div>
+        <div id="modal-exam-tree" class="max-h-64 overflow-y-auto space-y-3 p-3 bg-slate-50 border border-slate-200 rounded-xl"></div>
       </div>
-
-      <!-- Scope Live Summary Footer -->
       <div class="p-3 bg-indigo-50 border border-indigo-100 rounded-xl flex justify-between items-center text-xs">
         <div>
-          <span class="text-slate-600">Tagged Chapters: <strong id="modal-summary-chaps" class="text-indigo-900">0</strong></span> &bull;
+          <span class="text-slate-600">Chapters Tagged: <strong id="modal-summary-chaps" class="text-indigo-900">0</strong></span> &bull;
           <span class="text-slate-600">Total Cards: <strong id="modal-summary-cards" class="text-indigo-900">0</strong></span>
         </div>
         <span class="bg-white border border-indigo-200 text-indigo-700 font-bold px-3 py-1 rounded-lg">
           Daily Quota: <span id="modal-summary-quota">0</span>/day
         </span>
       </div>
-
-      <!-- Actions -->
       <div class="flex justify-end gap-2 pt-2 border-t border-slate-100">
         <button onclick="closeExamScopeModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
-        <button onclick="saveExamScopeConfig()" class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition">Save Exam Configuration</button>
+        <button onclick="saveExamScopeConfig()" class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition">Save Exam Configuration</button>
       </div>
     </div>
+  </div>
+
+  <!-- Settings Modal (Full Legacy Feature Parity) -->
+  <div id="settings-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50 overflow-y-auto">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-xl w-full shadow-xl space-y-5 my-8 max-h-[90vh] flex flex-col">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3 shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-lg text-indigo-600">
+            ⚙️
+          </div>
+          <div>
+            <h3 class="text-lg font-black text-slate-900">Application & Learning Settings</h3>
+            <p class="text-xs text-slate-500">Visual themes, neural speech, game rules, and AI coach configuration</p>
+          </div>
+        </div>
+        <button id="settings-close-x-btn" onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="space-y-4 overflow-y-auto pr-1 flex-1 text-xs">
+        
+        <!-- Section 1: Appearance & Theme -->
+        <div class="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3">
+          <h4 class="font-black text-slate-800 flex items-center gap-2 text-xs uppercase tracking-wider">
+            <span>🎨</span> Appearance & Theme
+          </h4>
+          <div class="space-y-2">
+            <label class="block font-semibold text-slate-700">Interface Theme</label>
+            <select id="settings-theme-select" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+              <option value="pastel">🌈 Pastel Classroom (Default)</option>
+              <option value="dark">🌙 Cozy Dark Mode</option>
+              <option value="space">🚀 Space Explorer</option>
+              <option value="lava">🌋 Lava Forge (Minecraft Nether & RPG)</option>
+              <option value="anime">⚔️ Anime Action (Demon Slayer & Naruto)</option>
+              <option value="sky">🌤️ Sunny Sky (Drifting Clouds)</option>
+              <option value="ocean">🌊 Deep Ocean (Swimming Fishes & Reef)</option>
+              <option value="sakura">🌸 Sakura Princess (Falling Petals)</option>
+              <option value="fairy">🦋 Fairy Garden (Butterfly Meadow)</option>
+            </select>
+          </div>
+          <div class="space-y-2">
+            <label class="block font-semibold text-slate-700">Text & Interface Font Size</label>
+            <select id="settings-font-size-select" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+              <option value="normal">Default (100% - Normal)</option>
+              <option value="medium">Medium (+15% - 115% Size)</option>
+              <option value="large">Large (+30% - 130% Size)</option>
+              <option value="xlarge">Extra Large (+50% - 150% Size)</option>
+            </select>
+          </div>
+          <div class="pt-1">
+            <label class="flex items-center gap-2.5 cursor-pointer select-none text-slate-700 font-medium">
+              <input type="checkbox" id="settings-hover-check" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500">
+              <span>🔍 Show Word Meaning on Mouse Hover (Disappears on mouse leave)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Section 2: Audio & Speech -->
+        <div class="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3">
+          <h4 class="font-black text-slate-800 flex items-center gap-2 text-xs uppercase tracking-wider">
+            <span>🔊</span> Neural Speech & Sound Effects
+          </h4>
+          <div>
+            <label class="flex items-center gap-2.5 cursor-pointer select-none text-slate-700 font-medium mb-3">
+              <input type="checkbox" id="settings-sound-check" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500">
+              <span>Enable Sound Effects (Card taps, success chimes, hint popups, completion fanfare)</span>
+            </label>
+          </div>
+          <div class="space-y-2">
+            <label class="block font-semibold text-slate-700">Speech Playback Speed</label>
+            <select id="settings-tts-rate-select" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+              <option value="-50%">Extra Slow (0.50x - 50% Speed)</option>
+              <option value="-25%">Slow (0.75x - Ideal for kids)</option>
+              <option value="+0%" selected>Normal (1.0x - Default)</option>
+              <option value="+20%">Fast (1.2x)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Section 3: Gameplay & Learning Modes -->
+        <div class="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3">
+          <h4 class="font-black text-slate-800 flex items-center gap-2 text-xs uppercase tracking-wider">
+            <span>⏱️</span> Practice & Game Rules
+          </h4>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div class="space-y-1.5">
+              <label class="block font-semibold text-slate-700">Jigsaw Words / Block</label>
+              <select id="settings-jigsaw-words-select" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+                <option value="auto">Adaptive Auto (4 -> 2 words)</option>
+                <option value="4">4 Words per block (Easier)</option>
+                <option value="3">3 Words per block (Standard)</option>
+                <option value="2">2 Words per block (Granular)</option>
+              </select>
+            </div>
+            <div class="space-y-1.5">
+              <label class="block font-semibold text-slate-700">Hidden Blanks / Sentence</label>
+              <select id="settings-blanks-mode-select" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+                <option value="auto">Adaptive Auto (1-2 words)</option>
+                <option value="1">1 Blank per sentence</option>
+                <option value="2">2 Blanks per sentence</option>
+                <option value="3">3 Blanks per sentence</option>
+              </select>
+            </div>
+            <div class="space-y-1.5">
+              <label class="block font-semibold text-slate-700">Speed Run Duration</label>
+              <select id="settings-speed-duration-select" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+                <option value="60">1 Minute (60s)</option>
+                <option value="120">2 Minutes (120s)</option>
+                <option value="180">3 Minutes (180s - Default)</option>
+                <option value="300">5 Minutes (300s)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Section 4: AI Voice Coach & Ollama -->
+        <div class="p-4 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-3">
+          <h4 class="font-black text-slate-800 flex items-center gap-2 text-xs uppercase tracking-wider">
+            <span>🤖</span> AI Voice Coach & Local Ollama
+          </h4>
+          <label class="flex items-center gap-2.5 cursor-pointer select-none text-slate-700 font-medium">
+            <input type="checkbox" id="settings-ai-coach-check" class="w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500">
+            <span>Enable AI Voice Coach (Evaluates student spoken answers and provides gentle guidance)</span>
+          </label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div class="space-y-1.5">
+              <label class="block font-semibold text-slate-700">Ollama Base URL</label>
+              <input type="text" id="settings-ollama-url-input" placeholder="http://127.0.0.1:11434" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono text-[11px]">
+            </div>
+            <div class="space-y-1.5">
+              <label class="block font-semibold text-slate-700">Ollama LLM Model</label>
+              <input type="text" id="settings-ollama-model-input" placeholder="gemma4:12b" class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-mono text-[11px]">
+            </div>
+          </div>
+          <div class="flex items-center justify-between pt-1">
+            <span id="settings-ollama-status" class="text-xs font-bold text-slate-500"></span>
+            <button type="button" id="settings-test-ollama-btn" onclick="testOllamaFromSettings()" class="bg-slate-200 hover:bg-slate-300 text-slate-800 font-bold text-xs px-3.5 py-1.5 rounded-xl transition flex items-center gap-1.5">
+              <span>🔌</span> Test Ollama Connection
+            </button>
+          </div>
+        </div>
+
+        <!-- Section 5: Spaced Repetition Memory -->
+        <div class="p-4 bg-rose-50/70 border border-rose-200/80 rounded-2xl space-y-2">
+          <h4 class="font-black text-rose-900 flex items-center gap-2 text-xs uppercase tracking-wider">
+            <span>🧠</span> Learning Progress & Memory Store
+          </h4>
+          <p class="text-[11px] text-rose-700">
+            Current student: <strong id="settings-active-profile-name" class="font-bold">Arya</strong>. Resetting clears all SM-2 spaced repetition memory and mastery history for this student.
+          </p>
+          <button type="button" id="settings-reset-memory-btn" onclick="resetMemoryFromSettings()" class="bg-rose-100 hover:bg-rose-200 text-rose-700 border border-rose-300 font-bold text-xs px-3 py-1.5 rounded-xl transition flex items-center gap-1.5">
+            <span>🗑</span> Reset Spaced Repetition Progress
+          </button>
+        </div>
+
+      </div>
+
+      <div class="flex justify-end gap-2 pt-3 border-t border-slate-100 shrink-0">
+        <button type="button" id="settings-cancel-btn" onclick="closeSettingsModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+        <button type="button" id="settings-save-btn" onclick="saveSettingsFromModal()" class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition flex items-center gap-1.5">
+          <span>💾</span> Save Settings
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Keyboard Shortcuts Modal -->
+  <div id="shortcuts-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-lg text-indigo-600">
+            ⌨️
+          </div>
+          <div>
+            <h3 class="text-base font-black text-slate-900">Keyboard Shortcuts</h3>
+            <p class="text-xs text-slate-500">Quick hotkeys for fast gameplay</p>
+          </div>
+        </div>
+        <button onclick="closeShortcutsModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl">
+          <span class="font-medium text-slate-700">💡 Request Hint</span>
+          <kbd class="px-2.5 py-1 bg-white border border-slate-300 rounded-md font-mono text-[11px] font-bold text-slate-800 shadow-2xs">Ctrl + H</kbd>
+        </div>
+        <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl">
+          <span class="font-medium text-slate-700">🔊 Hear Complete Answer</span>
+          <kbd class="px-2.5 py-1 bg-white border border-slate-300 rounded-md font-mono text-[11px] font-bold text-slate-800 shadow-2xs">Ctrl + A</kbd>
+        </div>
+        <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl">
+          <span class="font-medium text-slate-700">🎧 Hear Target Question</span>
+          <kbd class="px-2.5 py-1 bg-white border border-slate-300 rounded-md font-mono text-[11px] font-bold text-slate-800 shadow-2xs">Ctrl + L</kbd>
+        </div>
+        <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl">
+          <span class="font-medium text-slate-700">⏭ Skip Sentence</span>
+          <kbd class="px-2.5 py-1 bg-white border border-slate-300 rounded-md font-mono text-[11px] font-bold text-slate-800 shadow-2xs">Ctrl + S</kbd>
+        </div>
+        <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl">
+          <span class="font-medium text-slate-700">➔ Check Answer / Next Card</span>
+          <kbd class="px-2.5 py-1 bg-white border border-slate-300 rounded-md font-mono text-[11px] font-bold text-slate-800 shadow-2xs">Enter</kbd>
+        </div>
+        <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl">
+          <span class="font-medium text-slate-700">⟲ Undo Last Selected Word</span>
+          <kbd class="px-2.5 py-1 bg-white border border-slate-300 rounded-md font-mono text-[11px] font-bold text-slate-800 shadow-2xs">Backspace</kbd>
+        </div>
+        <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl">
+          <span class="font-medium text-slate-700">🗑 Clear Board</span>
+          <kbd class="px-2.5 py-1 bg-white border border-slate-300 rounded-md font-mono text-[11px] font-bold text-slate-800 shadow-2xs">Escape</kbd>
+        </div>
+        <div class="flex justify-between items-center p-2.5 bg-slate-50 rounded-xl">
+          <span class="font-medium text-slate-700">🔢 Pick Word by Badge Number</span>
+          <kbd class="px-2.5 py-1 bg-white border border-slate-300 rounded-md font-mono text-[11px] font-bold text-slate-800 shadow-2xs">1 - 9</kbd>
+        </div>
+      </div>
+
+      <div class="pt-2 border-t border-slate-100 flex justify-end">
+        <button onclick="closeShortcutsModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition">Got it!</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Printable Worksheet Modal -->
+  <div id="worksheet-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-lg text-indigo-600">
+            🖨️
+          </div>
+          <div>
+            <h3 class="text-base font-black text-slate-900">Printable Homework Worksheet</h3>
+            <p class="text-xs text-slate-500">Generate scrambled paper worksheets for offline practice</p>
+          </div>
+        </div>
+        <button onclick="closeWorksheetModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="space-y-1">
+          <label class="block font-semibold text-slate-700">Select Deck</label>
+          <select id="worksheet-deck-select" onchange="onWorksheetDeckChanged()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+        <div class="space-y-1">
+          <label class="block font-semibold text-slate-700">Select Chapter / Lesson</label>
+          <select id="worksheet-chapter-select" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+            <!-- Populated via JS -->
+          </select>
+        </div>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+        <button onclick="closeWorksheetModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+        <button id="worksheet-generate-btn" onclick="generateWorksheetFromModal()" class="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition flex items-center gap-1.5">
+          <span>🖨️</span> Generate & Print
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Question Attempt & Timing History Modal -->
+  <div id="timing-history-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50 overflow-y-auto">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-lg w-full shadow-xl space-y-4 my-8">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-lg text-indigo-600">
+            ⏱️
+          </div>
+          <div>
+            <h3 class="text-base font-black text-slate-900">Question Practice & Speed History</h3>
+            <p id="timing-history-question-title" class="text-xs text-slate-500 font-hindi truncate max-w-xs">Question</p>
+          </div>
+        </div>
+        <button onclick="closeTimingHistoryModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <!-- Quick Summary Card -->
+      <div id="timing-history-summary" class="bg-slate-50 border border-slate-200/80 rounded-2xl p-3.5 flex justify-around text-center text-xs">
+        <!-- Populated via JS -->
+      </div>
+
+      <!-- Timeline Table -->
+      <div class="max-h-64 overflow-y-auto overflow-x-auto border border-slate-100 rounded-2xl">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-slate-50 text-slate-600 font-bold border-b border-slate-100 uppercase tracking-wider text-[10px]">
+            <tr>
+              <th class="p-2.5 px-3">#</th>
+              <th class="p-2.5 px-3">Stage</th>
+              <th class="p-2.5 px-3">Time</th>
+              <th class="p-2.5 px-3">Status</th>
+              <th class="p-2.5 px-3">Date</th>
+            </tr>
+          </thead>
+          <tbody id="timing-history-tbody" class="divide-y divide-slate-100 font-medium">
+            <!-- Populated via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-between items-center">
+        <button id="timing-history-reset-btn" onclick="resetCurrentCardFromHistoryModal()" class="px-3.5 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition flex items-center gap-1.5 cursor-pointer" title="Reset this question back to Stage 1 to practice again">
+          <span>🔄</span> Reset to Stage 1
+        </button>
+        <button onclick="closeTimingHistoryModal()" class="px-4 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Chapter Stage Reset Modal -->
+  <div id="chapter-reset-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-md w-full shadow-xl space-y-4">
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-rose-50 border border-rose-100 flex items-center justify-center text-lg text-rose-600">
+            🔄
+          </div>
+          <div>
+            <h3 class="text-base font-black text-slate-900">Reset Chapter Stages</h3>
+            <p class="text-xs text-slate-500">Reset learning milestones so the student can retry stages</p>
+          </div>
+        </div>
+        <button onclick="closeResetChapterStageModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold">&times;</button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div class="space-y-1">
+          <label class="block font-semibold text-slate-700">Target Stage to Reset To</label>
+          <select id="chapter-reset-target-stage-select" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:outline-none font-medium">
+            <option value="1" selected>🧩 Stage 1: Fill in Blanks (Start from Beginning)</option>
+            <option value="2">🔀 Stage 2: Sentence Jigsaw</option>
+            <option value="3">🎧 Stage 3: Listening Comprehension</option>
+            <option value="4">🎙️ Stage 4: Voice Mastery</option>
+            <option value="5">⏱️ Stage 5: Speed Run</option>
+            <option value="6">✍️ Stage 6: Written Typing</option>
+          </select>
+        </div>
+
+        <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 text-amber-900 text-[11px] leading-relaxed">
+          💡 <strong>Tip:</strong> Resetting changes the active learning milestone for all questions in this chapter so you can practice earlier stages.
+        </div>
+
+        <label class="flex items-center gap-2 font-medium text-slate-700 cursor-pointer pt-1">
+          <input type="checkbox" id="chapter-reset-clear-history-chk" class="rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+          <span>Also clear stopwatch attempt history (clean slate)</span>
+        </label>
+      </div>
+
+      <div class="pt-3 border-t border-slate-100 flex justify-end gap-2">
+        <button onclick="closeResetChapterStageModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">Cancel</button>
+        <button id="chapter-reset-confirm-btn" onclick="confirmResetChapterStages()" class="px-5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+          <span>🔄</span> Confirm Reset
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card / Question Editor Modal -->
+  <div id="card-editor-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-xs hidden flex items-center justify-center p-4 z-50 overflow-y-auto">
+    <div class="bg-white border border-slate-200 rounded-2xl p-6 max-w-2xl w-full shadow-xl space-y-5 my-8 max-h-[90vh] flex flex-col">
+      <!-- Modal Header -->
+      <div class="flex justify-between items-center border-b border-slate-100 pb-3 shrink-0">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-lg text-amber-700 shadow-2xs">
+            ✏️
+          </div>
+          <div>
+            <h3 class="text-lg font-black text-slate-900">Edit Question & Puzzle Chunks</h3>
+            <p id="card-editor-subtitle" class="text-xs text-slate-500">Fine-tune question prompt, chunk delimiters (|), and English translations</p>
+          </div>
+        </div>
+        <button onclick="closeCardEditorModal()" class="text-slate-400 hover:text-slate-600 text-xl font-bold p-1 rounded-lg transition" title="Close (Esc)">&times;</button>
+      </div>
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="space-y-4 overflow-y-auto pr-1 flex-1 text-xs">
+        <!-- Lesson / Chapter Name -->
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Lesson / Chapter Name</label>
+          <input type="text" id="edit-card-chapter-input" placeholder="e.g. Chapter 1" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+        </div>
+
+        <!-- Question Prompt -->
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="font-bold text-slate-700">Question Prompt (Shown to student)</label>
+            <button type="button" onclick="testCardEditorAudio('question')" class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 text-[11px]">
+              <span>🔊</span> Test Question Audio
+            </button>
+          </div>
+          <textarea id="edit-card-question-input" rows="2" placeholder="e.g. पेड़ हमें क्या देते हैं?" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-hindi text-sm leading-relaxed"></textarea>
+        </div>
+
+        <!-- Puzzle Answer with Delimiters -->
+        <div class="space-y-2">
+          <div class="flex flex-wrap justify-between items-center gap-2">
+            <label class="font-bold text-slate-700">Sentence Answer (Split chunks with <code class="bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded font-mono text-[11px]">|</code> pipe):</label>
+            <div class="flex items-center gap-1.5">
+              <button type="button" onclick="testCardEditorAudio('answer')" class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 text-[11px] mr-2">
+                <span>🔊</span> Test Answer Audio
+              </button>
+            </div>
+          </div>
+
+          <textarea id="edit-card-answer-input" rows="3" oninput="onCardEditorAnswerInput()" placeholder="पेड़ हमें | शुद्ध हवा, छाया | और मीठे फल | देते हैं।" class="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-hindi text-sm leading-relaxed"></textarea>
+
+          <!-- Quick formatting helpers -->
+          <div class="flex flex-wrap items-center gap-1.5 pt-0.5">
+            <span class="text-[11px] font-semibold text-slate-500 mr-1">Quick Group:</span>
+            <button type="button" onclick="cardEditorAutoGroupWords(2)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition text-[11px]">
+              2 Words/Block
+            </button>
+            <button type="button" onclick="cardEditorAutoGroupWords(3)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition text-[11px]">
+              3 Words/Block
+            </button>
+            <button type="button" onclick="cardEditorAutoGroupWords(4)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition text-[11px]">
+              4 Words/Block
+            </button>
+            <button type="button" onclick="cardEditorAutoGroupWords(1)" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-lg transition text-[11px]">
+              Single Words
+            </button>
+          </div>
+        </div>
+
+        <!-- Live Interactive Puzzle Chunks Preview -->
+        <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3 space-y-2">
+          <div class="flex justify-between items-center">
+            <span class="text-[11px] font-bold text-slate-600 uppercase tracking-wider">Live Puzzle Chunks Preview</span>
+            <span id="edit-card-chunks-count" class="text-[11px] font-semibold text-indigo-600">0 blocks</span>
+          </div>
+          <div id="edit-card-chips-preview" class="flex flex-wrap gap-2 min-h-[36px] items-center">
+            <!-- Populated via JS -->
+          </div>
+          <p class="text-[10px] text-slate-400 italic">Click ✂️ to split a block or 🔗 to join with the following block.</p>
+        </div>
+
+        <!-- Meaning / Translation -->
+        <div>
+          <div class="flex justify-between items-center mb-1">
+            <label class="font-bold text-slate-700">Meaning / English Translation (Optional)</label>
+            <button type="button" id="edit-card-translate-btn" onclick="cardEditorAutoTranslate()" class="text-indigo-600 hover:text-indigo-800 font-semibold flex items-center gap-1 text-[11px]">
+              <span>🌐</span> Auto-Translate
+            </button>
+          </div>
+          <input type="text" id="edit-card-meaning-input" placeholder="e.g. Trees give us clean air, shade and sweet fruits." class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium">
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-3 shrink-0">
+        <button type="button" id="edit-card-delete-btn" onclick="deleteCardFromEditor()" class="px-4 py-2 rounded-xl text-xs font-bold text-rose-600 hover:bg-rose-50 border border-rose-200 transition flex items-center gap-1.5 cursor-pointer">
+          <span>🗑️</span> Delete Question
+        </button>
+
+        <div class="flex items-center gap-2">
+          <button type="button" onclick="closeCardEditorModal()" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition">
+            Cancel
+          </button>
+          <button type="button" id="edit-card-save-btn" onclick="saveCardEditorChanges()" class="px-5 py-2.5 rounded-xl text-xs font-black bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs transition flex items-center gap-1.5 cursor-pointer">
+            <span>💾</span> Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Floating Hover Translation Tooltip (Apple/Notion aesthetic) -->
+  <div id="chunk-hover-tooltip" class="pointer-events-none fixed z-[9999] hidden -translate-x-1/2 -translate-y-full transition-opacity duration-150 opacity-0 bg-slate-900/95 text-white text-xs font-semibold px-3 py-2 rounded-xl shadow-2xl backdrop-blur-md border border-slate-700/60 max-w-xs text-center leading-snug">
+    <div class="flex items-center justify-center gap-1.5 text-indigo-300 text-[10px] font-bold uppercase tracking-wider mb-0.5">
+      <span>📖</span> <span>Meaning / Translation</span>
+    </div>
+    <div id="chunk-hover-tooltip-text" class="text-slate-100 font-medium"></div>
+    <div class="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-3 h-3 bg-slate-900/95 rotate-45 border-r border-b border-slate-700/60"></div>
   </div>
 
   <script src="app.js"></script>

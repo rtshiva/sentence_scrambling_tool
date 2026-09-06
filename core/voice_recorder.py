@@ -34,12 +34,29 @@ class VoiceRecorder:
         return os.path.exists(cls._temp_wav) and os.path.getsize(cls._temp_wav) > 100
 
     @classmethod
+    def cleanup_old_recordings(cls):
+        """Purges previous student recording tempfiles to prevent disk accumulation."""
+        try:
+            temp_dir = tempfile.gettempdir()
+            for fname in os.listdir(temp_dir):
+                if fname.startswith('sentence_jigsaw_student_recording_') and fname.endswith('.wav'):
+                    full_p = os.path.join(temp_dir, fname)
+                    if full_p != cls._temp_wav:
+                        try:
+                            os.remove(full_p)
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
+    @classmethod
     def start_recording(cls) -> bool:
         sys_name = platform.system()
         if sys_name != 'Windows' and sys_name != 'Darwin':
             return False
 
         try:
+            cls.cleanup_old_recordings()
             # Unload any playing audio in pygame to release file locks
             if HAS_PYGAME:
                 try:

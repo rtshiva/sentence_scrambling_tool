@@ -13,10 +13,11 @@ class ExamGoalDialog(tk.Toplevel):
         parent, 
         current_exam: Optional[dict] = None, 
         on_start_exam_mission_callback: Optional[Callable[[list], None]] = None,
-        is_new: bool = False
+        is_new: bool = False,
+        **kwargs
     ):
         super().__init__(parent)
-        self.on_start_exam_mission_callback = on_start_exam_mission_callback
+        self.on_start_exam_mission_callback = on_start_exam_mission_callback or kwargs.get('on_start_exam_callback')
         self.is_new = is_new
         self.current_exam = None if is_new else (current_exam or DeckManager.get_exam())
 

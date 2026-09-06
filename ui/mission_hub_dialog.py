@@ -21,10 +21,11 @@ class MissionHubDialog(tk.Toplevel):
         self, 
         parent, 
         on_start_cards_callback: Optional[Callable[[list, str, Optional[str]], None]] = None,
-        initial_tab: int = 0
+        initial_tab: int = 0,
+        **kwargs
     ):
         super().__init__(parent)
-        self.on_start_cards_callback = on_start_cards_callback
+        self.on_start_cards_callback = on_start_cards_callback or kwargs.get('on_start_mission') or kwargs.get('on_start_cards')
         
         active_name = ProfileManager.get_active_profile_name()
         avatar = ProfileManager.get_active_profile().get('avatar', '👤')

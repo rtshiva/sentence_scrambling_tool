@@ -83,12 +83,14 @@ class MissionEngine:
                 new_stage = min(6, clamped_stage + 1)
         elif clamped_stage == 4: # Voice
             score = result.get('score', 0)
-            if score >= 80:
+            flawless = result.get('flawless', False)
+            if flawless or score >= 80:
                 passed = True
                 new_stage = min(6, clamped_stage + 1)
         elif clamped_stage == 6: # Writing
             score = result.get('score', 0)
-            if score >= 90:
+            flawless = result.get('flawless', False)
+            if flawless or score >= 90:
                 passed = True
                 new_stage = 6
 
@@ -121,7 +123,11 @@ class MissionEngine:
             return []
 
         if memory_store is None:
-            memory_store = {}
+            try:
+                from core.profile_manager import ProfileManager
+                memory_store = ProfileManager.get_active_memory_store()
+            except Exception:
+                memory_store = {}
 
         due_cards = []
         frontier_cards = []

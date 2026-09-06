@@ -8,11 +8,13 @@ DEFAULT_SETTINGS = {
     'sound_enabled': True,
     'tts_speed_rate': '+0%',            # '-25%' (Slow), '+0%' (Normal), '+20%' (Fast)
     'tts_voice_override': 'auto',
-    'theme': 'pastel',                  # 'pastel', 'dark', 'space'
+    'theme': 'pastel',                  # 'pastel', 'dark', 'space', 'lava', 'anime', 'sky', 'ocean', 'sakura', 'fairy'
     'show_hover_meanings': True,        # Hover popup dictionary
     'ai_coach_enabled': True,           # AI Voice Evaluation Coach via Ollama
     'ollama_model': 'gemma4:12b',       # Default model (qwen3.5:9b, gemma4:12b, etc.)
-    'ollama_url': 'http://127.0.0.1:11434' # Local Ollama REST URL
+    'ollama_url': 'http://127.0.0.1:11434', # Local Ollama REST URL
+    'font_size': 'normal',              # 'normal', 'medium', 'large', 'xlarge'
+    'jigsaw_words_per_block': 'auto'    # 'auto', '2', '3', '4'
 }
 
 @dataclasses.dataclass

@@ -56,5 +56,21 @@ class TestMemoryManager(unittest.TestCase):
         badge, _ = MemoryManager.get_status_badge(q, chunks, mem, now_ts=now + 86401)
         self.assertEqual(badge, '🔄 Due for Review')
 
+    def test_is_due_distinguishes_new_and_reviewed_cards(self):
+        mem = {}
+        q = "New Question"
+        chunks = ["New", "Question"]
+        now = 1000000.0
+
+        # Brand new card has not been reviewed yet -> not due
+        self.assertFalse(MemoryManager.is_due(q, chunks, mem, now_ts=now))
+
+        # After review, next review is at now + 86400 (level 1)
+        MemoryManager.record_attempt(q, chunks, flawless=True, memory_store=mem, now_ts=now)
+        # Not due before 1 day
+        self.assertFalse(MemoryManager.is_due(q, chunks, mem, now_ts=now + 3600))
+        # Due after 1 day
+        self.assertTrue(MemoryManager.is_due(q, chunks, mem, now_ts=now + 86401))
+
 if __name__ == '__main__':
     unittest.main()
