@@ -6,6 +6,13 @@ Built with **Apple Human Interface Guidelines (HIG)** aesthetics, modern flat pi
 
 ---
 
+## 📖 Live Interactive Manual & Documentation
+Explore the complete visual guide with interactive screenshots, the 6-stage mastery ladder, and shortcuts rendered live in your browser:
+- 🌐 **[Live Documentation (GitHub Pages)](https://rtshiva.github.io/sentence_scrambling_tool/)**
+- ⚡ **[Instant Direct Preview (HTMLPreview)](https://htmlpreview.github.io/?https://github.com/rtshiva/sentence_scrambling_tool/blob/main/docs/index.html)**
+
+---
+
 ## ✨ Key Features
 
 ### 🎮 4 Distinct Learning Modes

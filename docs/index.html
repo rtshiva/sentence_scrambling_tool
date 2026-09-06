@@ -1,0 +1,1546 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🧩 Sentence Jigsaw 3.0 — Comprehensive User Guide & Visual Feature Manual</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #4f46e5;
+      --primary-hover: #4338ca;
+      --primary-light: #eef2ff;
+      --accent: #0284c7;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+      --dark: #0f172a;
+      --surface: #ffffff;
+      --bg: #f8fafc;
+      --text-main: #1e293b;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 16px;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.02);
+      --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding-bottom: 90px;
+    }
+
+    h1, h2, h3, h4 {
+      font-family: 'Outfit', sans-serif;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    /* Top Sticky Navigation Bar */
+    nav {
+      position: sticky;
+      top: 0;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(14px);
+      border-bottom: 1px solid var(--border);
+      padding: 14px 36px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--dark);
+    }
+
+    .brand-icon {
+      font-size: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      background: var(--primary-light);
+      border-radius: 12px;
+    }
+
+    .brand-text h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--dark);
+      line-height: 1.1;
+    }
+
+    .brand-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      background: #e0e7ff;
+      color: #3730a3;
+      padding: 2px 8px;
+      border-radius: 999px;
+      margin-left: 6px;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 20px;
+      list-style: none;
+      align-items: center;
+    }
+
+    .nav-links a {
+      text-decoration: none;
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: 14px;
+      transition: color 0.15s ease;
+      padding: 6px 12px;
+      border-radius: 8px;
+    }
+
+    .nav-links a:hover {
+      color: var(--primary);
+      background: var(--primary-light);
+    }
+
+    .nav-cta {
+      background: var(--primary);
+      color: white !important;
+      font-weight: 700 !important;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+
+    .nav-cta:hover {
+      background: var(--primary-hover) !important;
+    }
+
+    /* Hero Banner */
+    .hero {
+      text-align: center;
+      padding: 64px 24px 36px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .hero-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #eef2ff;
+      border: 1px solid #c7d2fe;
+      color: #4338ca;
+      padding: 6px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .hero h2 {
+      font-size: 46px;
+      line-height: 1.15;
+      color: var(--dark);
+      margin-bottom: 18px;
+    }
+
+    .hero h2 span {
+      background: linear-gradient(135deg, #4f46e5 0%, #06b6d4 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .hero p {
+      font-size: 18px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      max-width: 800px;
+      margin: 0 auto 30px;
+    }
+
+    .hero-quick-meta {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 20px;
+    }
+
+    .meta-chip {
+      background: white;
+      border: 1px solid var(--border);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* Container */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Section Layout */
+    section {
+      margin-top: 72px;
+      scroll-margin-top: 90px;
+    }
+
+    .section-head {
+      margin-bottom: 32px;
+      text-align: center;
+    }
+
+    .section-head h3 {
+      font-size: 32px;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .section-head p {
+      color: var(--text-muted);
+      font-size: 16px;
+      margin-top: 6px;
+      max-width: 650px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Mockup Screenshot Frame */
+    .window-frame {
+      background: white;
+      border-radius: var(--radius);
+      border: 1px solid #cbd5e1;
+      box-shadow: var(--shadow-lg);
+      overflow: hidden;
+      margin: 28px 0 40px;
+    }
+
+    .window-titlebar {
+      background: #f1f5f9;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .traffic-lights {
+      display: flex;
+      gap: 8px;
+    }
+
+    .light {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .light.red { background: #ef4444; }
+    .light.yellow { background: #f59e0b; }
+    .light.green { background: #10b981; }
+
+    .window-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #64748b;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .window-action-tag {
+      font-size: 11px;
+      font-weight: 700;
+      background: #e2e8f0;
+      color: #475569;
+      padding: 3px 10px;
+      border-radius: 6px;
+    }
+
+    .window-content {
+      padding: 24px;
+      background: #f8fafc;
+    }
+
+    /* Interactive Screenshot Tabs */
+    .screenshot-switcher {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 12px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover {
+      background: #f1f5f9;
+      color: var(--dark);
+    }
+
+    .tab-btn.active {
+      background: var(--primary);
+      border-color: var(--primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.25);
+    }
+
+    .tab-view {
+      display: none;
+    }
+
+    .tab-view.active {
+      display: block;
+      animation: fadeIn 0.25s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* UI Simulation Components */
+    .mock-header {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .mock-profile {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .avatar-circle {
+      width: 38px;
+      height: 38px;
+      background: #eef2ff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      border: 2px solid #c7d2fe;
+    }
+
+    .mock-stages-ladder {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .ladder-pill {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 8px;
+      text-align: center;
+      transition: all 0.2s;
+    }
+
+    .ladder-pill .s-num {
+      font-size: 10px;
+      font-weight: 800;
+      color: #94a3b8;
+      text-transform: uppercase;
+    }
+
+    .ladder-pill .s-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-top: 2px;
+    }
+
+    .ladder-pill.active {
+      border-color: var(--primary);
+      background: #eef2ff;
+      box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
+    }
+
+    .ladder-pill.active .s-num {
+      color: var(--primary);
+    }
+
+    .ladder-pill.passed {
+      border-color: #10b981;
+      background: #f0fdf4;
+    }
+
+    .ladder-pill.passed .s-num {
+      color: #059669;
+    }
+
+    .mock-gameplay-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+      margin-bottom: 16px;
+    }
+
+    .mock-target-bar {
+      font-size: 19px;
+      font-weight: 700;
+      color: var(--dark);
+      border-bottom: 2px dashed #e2e8f0;
+      padding-bottom: 14px;
+      margin-bottom: 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .mock-board {
+      min-height: 80px;
+      background: #f8fafc;
+      border: 2px dashed #cbd5e1;
+      border-radius: 14px;
+      padding: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+
+    .mock-chip {
+      background: white;
+      border: 1.5px solid #cbd5e1;
+      color: var(--dark);
+      padding: 8px 16px;
+      border-radius: 999px;
+      font-weight: 700;
+      font-size: 15px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .mock-chip.correct {
+      border-color: #10b981;
+      background: #ecfdf5;
+      color: #065f46;
+    }
+
+    .mock-chip.pool {
+      cursor: pointer;
+      background: #ffffff;
+      border-color: #94a3b8;
+    }
+
+    .mock-chip.pool:hover {
+      transform: translateY(-2px);
+      border-color: var(--primary);
+    }
+
+    .mock-chip.blank-slot {
+      border: 2px dashed #f59e0b;
+      background: #fffbeb;
+      color: #b45309;
+    }
+
+    .mock-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 12px 18px;
+    }
+
+    .mock-btn-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    .mock-btn {
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: white;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .mock-btn.primary {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+    }
+
+    .mock-btn.success {
+      background: #10b981;
+      color: white;
+      border-color: #10b981;
+    }
+
+    /* Grid Layouts */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+      gap: 24px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    /* Feature Cards */
+    .feature-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: var(--shadow);
+      transition: all 0.2s;
+    }
+
+    .feature-card:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 16px 30px -10px rgba(0,0,0,0.08);
+      border-color: #cbd5e1;
+    }
+
+    .card-badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      padding: 4px 10px;
+      border-radius: 6px;
+      margin-bottom: 14px;
+    }
+
+    .badge-blue { background: #e0f2fe; color: #0369a1; }
+    .badge-purple { background: #f3e8ff; color: #7e22ce; }
+    .badge-amber { background: #fef3c7; color: #b45309; }
+    .badge-green { background: #dcfce7; color: #15803d; }
+    .badge-rose { background: #ffe4e6; color: #be123c; }
+
+    .feature-card h4 {
+      font-size: 20px;
+      color: var(--dark);
+      margin-bottom: 8px;
+    }
+
+    .feature-card p {
+      color: var(--text-muted);
+      font-size: 14.5px;
+      line-height: 1.6;
+    }
+
+    .feature-list {
+      margin-top: 14px;
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .feature-list li {
+      font-size: 13.5px;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .feature-list li::before {
+      content: "✓";
+      color: var(--success);
+      font-weight: 800;
+    }
+
+    /* 6 Stages Timeline */
+    .stage-timeline {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .timeline-item {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px 24px;
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .timeline-num {
+      width: 44px;
+      height: 44px;
+      background: var(--primary-light);
+      border: 2px solid #c7d2fe;
+      color: var(--primary);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 800;
+      flex-shrink: 0;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    .timeline-body h4 {
+      font-size: 18px;
+      color: var(--dark);
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pass-threshold-tag {
+      font-size: 11px;
+      font-weight: 700;
+      background: #ecfdf5;
+      color: #047857;
+      padding: 2px 8px;
+      border-radius: 6px;
+      border: 1px solid #a7f3d0;
+    }
+
+    .timeline-body p {
+      color: var(--text-muted);
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* Keyboard Hotkeys Table */
+    .table-container {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+    }
+
+    th, td {
+      padding: 14px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+    }
+
+    th {
+      background: #f8fafc;
+      font-weight: 700;
+      color: var(--dark);
+      text-transform: uppercase;
+      font-size: 12px;
+      letter-spacing: 0.05em;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .kbd {
+      font-family: 'JetBrains Mono', monospace;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 12.5px;
+      color: #334155;
+      font-weight: 600;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.1);
+      display: inline-block;
+    }
+
+    /* FAQ Accordion */
+    .faq-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .faq-item {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    .faq-q {
+      padding: 18px 24px;
+      font-weight: 700;
+      font-size: 15.5px;
+      color: var(--dark);
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      user-select: none;
+      background: white;
+    }
+
+    .faq-q:hover {
+      background: #f8fafc;
+    }
+
+    .faq-q::after {
+      content: "+";
+      font-size: 20px;
+      font-weight: 400;
+      color: #94a3b8;
+      transition: transform 0.2s;
+    }
+
+    .faq-item.open .faq-q::after {
+      transform: rotate(45deg);
+    }
+
+    .faq-a {
+      padding: 0 24px;
+      max-height: 0;
+      overflow: hidden;
+      transition: all 0.25s ease-out;
+      color: var(--text-muted);
+      font-size: 14.5px;
+      line-height: 1.65;
+    }
+
+    .faq-item.open .faq-a {
+      padding: 0 24px 20px;
+      max-height: 500px;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    /* Launch Command Callout */
+    .launch-box {
+      background: #0f172a;
+      color: #f8fafc;
+      border-radius: 16px;
+      padding: 24px 28px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 28px;
+    }
+
+    .launch-cmd {
+      font-family: 'JetBrains Mono', monospace;
+      background: #1e293b;
+      padding: 12px 18px;
+      border-radius: 8px;
+      border: 1px solid #334155;
+      color: #38bdf8;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: 90px;
+      padding-top: 36px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 13.5px;
+    }
+
+    @media (max-width: 768px) {
+      nav { padding: 14px 20px; }
+      .nav-links { display: none; }
+      .hero h2 { font-size: 32px; }
+      .mock-stages-ladder { grid-template-columns: repeat(3, 1fr); }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 🧭 Navbar -->
+  <nav>
+    <a href="#" class="nav-brand">
+      <div class="brand-icon">🧩</div>
+      <div class="brand-text">
+        <h1>Sentence Jigsaw <span class="brand-badge">v3.0</span></h1>
+      </div>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#visual-tour">Visual Tour</a></li>
+      <li><a href="#ladder">6-Stage Ladder</a></li>
+      <li><a href="#ai-coach">AI Voice Coach</a></li>
+      <li><a href="#deck-exam">Decks & Exams</a></li>
+      <li><a href="#hotkeys">Shortcuts</a></li>
+      <li><a href="#cross-os">OS Setup</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#quickstart" class="nav-cta">🚀 Quick Start</a></li>
+    </ul>
+  </nav>
+
+  <!-- 🌟 Hero Section -->
+  <header class="hero">
+    <div class="hero-pill">
+      <span>✨ Official Interactive Documentation</span>
+    </div>
+    <h2>The Master Blueprint for <span>Sentence Scaffolding & Exam Mastery</span></h2>
+    <p>
+      An interactive, multi-sensory educational desktop app designed for children and language learners. 
+      Master sentence construction, grammar, speaking pronunciation, and written spelling across Hindi, Japanese, and English using scientifically backed spaced repetition (SM-2) and local AI coaching.
+    </p>
+
+    <div class="hero-quick-meta">
+      <div class="meta-chip"><span>🎯</span> 6-Stage Mastery Ladder</div>
+      <div class="meta-chip"><span>🤖</span> Ollama Local AI Coach</div>
+      <div class="meta-chip"><span>🧠</span> SM-2 Spaced Repetition</div>
+      <div class="meta-chip"><span>🔊</span> Edge-TTS Neural Audio</div>
+      <div class="meta-chip"><span>🗂️</span> Anki-Style Deck Hub</div>
+      <div class="meta-chip"><span>💻</span> Windows, macOS & Linux</div>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- 🖼️ Visual Tour & Screenshots Showcase -->
+    <section id="visual-tour">
+      <div class="section-head">
+        <h3><span>📸</span> Interactive Visual Feature Tour</h3>
+        <p>Explore real-time UI views of the application's key game modes and intelligence engines</p>
+      </div>
+
+      <!-- Screenshot Tabs -->
+      <div class="screenshot-switcher">
+        <button class="tab-btn active" onclick="switchScreenshot('tab-jigsaw')">🧩 1. Jigsaw & 3-Zone Board</button>
+        <button class="tab-btn" onclick="switchScreenshot('tab-voice')">🎙️ 2. AI Voice Coach (Ollama)</button>
+        <button class="tab-btn" onclick="switchScreenshot('tab-typing')">✍️ 3. Written & Spelling Studio</button>
+        <button class="tab-btn" onclick="switchScreenshot('tab-decks')">🗂️ 4. Decks & Exam Readiness</button>
+        <button class="tab-btn" onclick="switchScreenshot('tab-themes')">🎨 5. 9 Universe Themes</button>
+      </div>
+
+      <!-- Window 1: Jigsaw & 3-Zone Board -->
+      <div id="tab-jigsaw" class="tab-view active">
+        <div class="window-frame">
+          <div class="window-titlebar">
+            <div class="traffic-lights">
+              <div class="light red"></div>
+              <div class="light yellow"></div>
+              <div class="light green"></div>
+            </div>
+            <div class="window-title">Sentence Jigsaw 3.0 — Stage 2: Sentence Jigsaw</div>
+            <div class="window-action-tag">Interactive Preview</div>
+          </div>
+          <div class="window-content">
+            <!-- Mock Header -->
+            <div class="mock-header">
+              <div class="mock-profile">
+                <div class="avatar-circle" title="Student Avatar">🐺</div>
+                <div>
+                  <strong style="color:#0f172a; font-size:15px;">Student: Arya Stark</strong>
+                  <div style="font-size:12px; color:#64748b;">Deck: General Science & Nature • Card #3 of 12</div>
+                </div>
+              </div>
+              <div style="display:flex; align-items:center; gap:12px;">
+                <span class="meta-chip" style="background:#fef3c7; color:#b45309; border-color:#fde68a;">🔥 Streak x3</span>
+                <span class="meta-chip" style="background:#e0e7ff; color:#4338ca; border-color:#c7d2fe;">⭐ Score: 360 pts</span>
+              </div>
+            </div>
+
+            <!-- 6-Stage Ladder Mini-Bar -->
+            <div class="mock-stages-ladder">
+              <div class="ladder-pill passed">
+                <div class="s-num">Stage 1</div>
+                <div class="s-title">🧩 Blanks</div>
+              </div>
+              <div class="ladder-pill active">
+                <div class="s-num">Stage 2</div>
+                <div class="s-title">🎯 Jigsaw</div>
+              </div>
+              <div class="ladder-pill">
+                <div class="s-num">Stage 3</div>
+                <div class="s-title">🎧 Listening</div>
+              </div>
+              <div class="ladder-pill">
+                <div class="s-num">Stage 4</div>
+                <div class="s-title">🎙️ Voice</div>
+              </div>
+              <div class="ladder-pill">
+                <div class="s-num">Stage 5</div>
+                <div class="s-title">⌨️ Type Blanks</div>
+              </div>
+              <div class="ladder-pill">
+                <div class="s-num">Stage 6</div>
+                <div class="s-title">✍️ Writing</div>
+              </div>
+            </div>
+
+            <!-- Gameplay Board -->
+            <div class="mock-gameplay-card">
+              <div class="mock-target-bar">
+                <span>The solar system consists of eight planets.</span>
+                <button class="mock-btn" style="color:#4f46e5; border-color:#c7d2fe;"><span class="kbd">L</span> 🔊 Hear Teacher Voice</button>
+              </div>
+
+              <div style="font-size:13px; font-weight:700; color:#64748b; margin-bottom:8px;">🎯 ASSEMBLED ANSWER BOARD (Click or Drag Blocks):</div>
+              <div class="mock-board">
+                <span class="mock-chip correct">1. The solar system</span>
+                <span class="mock-chip correct">2. consists of</span>
+                <span style="font-size:14px; color:#94a3b8; font-style:italic; padding:0 8px;">[Drop next block here]</span>
+              </div>
+
+              <div style="font-size:13px; font-weight:700; color:#64748b; margin-bottom:8px;">🎲 WORD POOL (Remaining phrase blocks):</div>
+              <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <span class="mock-chip pool">3. eight planets</span>
+                <span class="mock-chip pool" style="opacity:0.4; pointer-events:none; text-decoration:line-through;">1. The solar system</span>
+                <span class="mock-chip pool" style="opacity:0.4; pointer-events:none; text-decoration:line-through;">2. consists of</span>
+              </div>
+            </div>
+
+            <!-- Docked Action Bar -->
+            <div class="mock-toolbar">
+              <div class="mock-btn-group">
+                <button class="mock-btn"><span class="kbd">H</span> 💡 Hint</button>
+                <button class="mock-btn"><span class="kbd">⌫</span> ⟲ Undo</button>
+                <button class="mock-btn"><span class="kbd">Esc</span> 🗑 Clear</button>
+              </div>
+              <div class="mock-btn-group">
+                <button class="mock-btn"><span class="kbd">S</span> ⏭ Skip</button>
+                <button class="mock-btn success"><span class="kbd">Enter</span> Check & Continue ➔</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Window 2: AI Voice Coach (Ollama) -->
+      <div id="tab-voice" class="tab-view">
+        <div class="window-frame">
+          <div class="window-titlebar">
+            <div class="traffic-lights">
+              <div class="light red"></div>
+              <div class="light yellow"></div>
+              <div class="light green"></div>
+            </div>
+            <div class="window-title">Sentence Jigsaw 3.0 — Stage 4: AI Voice Coach Dialog</div>
+            <div class="window-action-tag">Local Ollama Engine</div>
+          </div>
+          <div class="window-content">
+            <div class="mock-gameplay-card" style="border-left:6px solid #4f46e5;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px;">
+                <div>
+                  <span class="card-badge badge-purple">🤖 AI Coach Evaluation</span>
+                  <h4 style="font-size:22px; color:#0f172a;">Ollama Neural Voice Assessment</h4>
+                  <p style="font-size:13px; color:#64748b;">Model: <code>gemma4:12b</code> • Accuracy Score: <strong>88 / 100</strong> (Passed $\ge 80\%$)</p>
+                </div>
+                <div style="text-align:right;">
+                  <div style="font-size:28px; font-weight:800; color:#10b981;">88%</div>
+                  <span class="pass-threshold-tag">Pass (Stage Graduated)</span>
+                </div>
+              </div>
+
+              <!-- Word Sequence Diff -->
+              <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:16px; margin-bottom:16px;">
+                <div style="font-size:12px; font-weight:700; color:#64748b; margin-bottom:8px; text-transform:uppercase;">Word-Level Speech Alignment:</div>
+                <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                  <span class="mock-chip" style="background:#ecfdf5; border-color:#10b981; color:#065f46;">Plants prepare</span>
+                  <span class="mock-chip" style="background:#ecfdf5; border-color:#10b981; color:#065f46;">food through</span>
+                  <span class="mock-chip" style="background:#ecfdf5; border-color:#10b981; color:#065f46;">photosynthesis</span>
+                  <span class="mock-chip" style="background:#fef2f2; border-color:#ef4444; color:#991b1b; text-decoration:line-through;">with</span>
+                  <span class="mock-chip" style="background:#fffbeb; border-color:#f59e0b; color:#b45309;">➔ expected: "using"</span>
+                  <span class="mock-chip" style="background:#ecfdf5; border-color:#10b981; color:#065f46;">sunlight</span>
+                </div>
+              </div>
+
+              <!-- Gentle Feedback Card -->
+              <div style="background:#eff6ff; border:1px solid #bfdbfe; border-radius:12px; padding:16px; margin-bottom:16px;">
+                <strong style="color:#1e40af; font-size:14px;">👩‍🏫 Teacher's Gentle Feedback:</strong>
+                <p style="color:#1e3a8a; font-size:14px; margin-top:4px;">
+                  "Wonderful job pronouncing photosynthesis! You said <em>'with sunlight'</em>, whereas the textbook uses <em>'using sunlight'</em>. Both communicate the idea, but remember 'using' for your written science exam!"
+                </p>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center;">
+                <button class="mock-btn" style="color:#4f46e5; border-color:#c7d2fe;"><span class="kbd">P</span> ▶️ Play My Spoken Audio</button>
+                <button class="mock-btn primary">Advance to Stage 5 ➔</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Window 3: Written & Spelling Studio -->
+      <div id="tab-typing" class="tab-view">
+        <div class="window-frame">
+          <div class="window-titlebar">
+            <div class="traffic-lights">
+              <div class="light red"></div>
+              <div class="light yellow"></div>
+              <div class="light green"></div>
+            </div>
+            <div class="window-title">Sentence Jigsaw 3.0 — Stage 6: Written Typing Studio</div>
+            <div class="window-action-tag">Real-Time Levenshtein Spellcheck</div>
+          </div>
+          <div class="window-content">
+            <div class="mock-gameplay-card">
+              <div class="mock-target-bar">
+                <span>Stage 6: Written Spelling & Punctuation Practice</span>
+                <button class="mock-btn" style="color:#64748b;"><span class="kbd">Ctrl+P</span> 👻 Peek Ghost Answer</button>
+              </div>
+
+              <div style="margin-bottom:14px;">
+                <label style="display:block; font-size:13px; font-weight:700; color:#64748b; margin-bottom:6px;">Type the complete sentence from memory:</label>
+                <input type="text" value="Water evaporates into vapor when heated." readonly style="width:100%; padding:14px 18px; border-radius:12px; border:2px solid #10b981; font-size:17px; font-weight:600; background:#f0fdf4; color:#065f46; font-family:'Plus Jakarta Sans', sans-serif;">
+              </div>
+
+              <!-- Spelling Radar -->
+              <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:12px; margin-top:18px;">
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; text-align:center;">
+                  <div style="font-size:11px; font-weight:700; color:#64748b;">ACCURACY</div>
+                  <div style="font-size:22px; font-weight:800; color:#10b981;">100%</div>
+                </div>
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; text-align:center;">
+                  <div style="font-size:11px; font-weight:700; color:#64748b;">SPELLING TYPOS</div>
+                  <div style="font-size:22px; font-weight:800; color:#059669;">0</div>
+                </div>
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; text-align:center;">
+                  <div style="font-size:11px; font-weight:700; color:#64748b;">PUNCTUATION</div>
+                  <div style="font-size:22px; font-weight:800; color:#10b981;">Perfect (.)</div>
+                </div>
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:12px; text-align:center;">
+                  <div style="font-size:11px; font-weight:700; color:#64748b;">SM-2 STATUS</div>
+                  <div style="font-size:22px; font-weight:800; color:#4f46e5;">⭐ Mastered</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Window 4: Decks & Exam Readiness -->
+      <div id="tab-decks" class="tab-view">
+        <div class="window-frame">
+          <div class="window-titlebar">
+            <div class="traffic-lights">
+              <div class="light red"></div>
+              <div class="light yellow"></div>
+              <div class="light green"></div>
+            </div>
+            <div class="window-title">Sentence Jigsaw 3.0 — Anki-Style Deck Hub & Exam Goals</div>
+            <div class="window-action-tag">Card Distribution</div>
+          </div>
+          <div class="window-content">
+            <div class="grid-3" style="margin-bottom:16px;">
+              <!-- Deck Card 1 -->
+              <div class="feature-card" style="border-top:5px solid #4f46e5;">
+                <span class="card-badge badge-blue">Science • Class 4</span>
+                <h4>General Science & Nature</h4>
+                <p>Foundational science concepts: states of matter, photosynthesis, planets.</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; font-size:13px; font-weight:700; color:#475569;">
+                  <span>📚 24 Sentences</span>
+                  <span style="color:#10b981;">82% Ready</span>
+                </div>
+              </div>
+
+              <!-- Deck Card 2 -->
+              <div class="feature-card" style="border-top:5px solid #f59e0b;">
+                <span class="card-badge badge-amber">Hindi • Grade 7</span>
+                <h4>कक्षा 7: हिंदी व्याकरण और पाठ</h4>
+                <p>कारक, काल, संधि और मुहावरों पर आधारित वाक्य पहेलियाँ।</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; font-size:13px; font-weight:700; color:#475569;">
+                  <span>📚 36 Sentences</span>
+                  <span style="color:#f59e0b;">64% Ready</span>
+                </div>
+              </div>
+
+              <!-- Deck Card 3 -->
+              <div class="feature-card" style="border-top:5px solid #ec4899;">
+                <span class="card-badge badge-rose">Japanese • N5</span>
+                <h4>日本語 初級 (JLPT N5)</h4>
+                <p>Hiragana, Katakana, and basic SOV grammatical sentence ordering.</p>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; font-size:13px; font-weight:700; color:#475569;">
+                  <span>📚 18 Sentences</span>
+                  <span style="color:#4f46e5;">95% Ready</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Exam Goal Meter -->
+            <div style="background:white; border:1px solid var(--border); border-radius:14px; padding:20px; display:flex; justify-content:space-between; align-items:center;">
+              <div>
+                <strong style="color:#0f172a; font-size:16px;">🎯 Current Exam Goal: Class 4 Science Mid-Term</strong>
+                <p style="font-size:13px; color:#64748b;">Target Date: Oct 15 (14 Days Remaining) • 28 of 35 Cards Mastered</p>
+              </div>
+              <div style="width:240px;">
+                <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; margin-bottom:6px;">
+                  <span>Exam Readiness Gauge</span>
+                  <span style="color:#10b981;">80%</span>
+                </div>
+                <div style="height:10px; background:#e2e8f0; border-radius:999px; overflow:hidden;">
+                  <div style="width:80%; height:100%; background:linear-gradient(90deg, #4f46e5, #10b981);"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Window 5: 9 Universe Themes -->
+      <div id="tab-themes" class="tab-view">
+        <div class="window-frame">
+          <div class="window-titlebar">
+            <div class="traffic-lights">
+              <div class="light red"></div>
+              <div class="light yellow"></div>
+              <div class="light green"></div>
+            </div>
+            <div class="window-title">Sentence Jigsaw 3.0 — 9 Immersive Universe Themes</div>
+            <div class="window-action-tag">Interactive Particle Engine</div>
+          </div>
+          <div class="window-content">
+            <div class="grid-3">
+              <div style="background:#fdf2f8; border:2px solid #fbcfe8; border-radius:12px; padding:16px; text-align:center;">
+                <div style="font-size:28px;">🌸</div>
+                <strong style="color:#831843;">Sakura Blossom</strong>
+                <p style="font-size:12px; color:#9d174d; margin-top:4px;">Gentle drifting cherry blossom petals and spring breeze tones.</p>
+              </div>
+              <div style="background:#090d16; border:2px solid #1e293b; border-radius:12px; padding:16px; text-align:center;">
+                <div style="font-size:28px;">🚀</div>
+                <strong style="color:#38bdf8;">Space Explorer</strong>
+                <p style="font-size:12px; color:#94a3b8; margin-top:4px;">Deep cosmic starfield with twinkling distant galaxies.</p>
+              </div>
+              <div style="background:#18181b; border:2px solid #27272a; border-radius:12px; padding:16px; text-align:center;">
+                <div style="font-size:28px;">🌙</div>
+                <strong style="color:#e4e4e7;">Cozy Dark Mode</strong>
+                <p style="font-size:12px; color:#a1a1aa; margin-top:4px;">Minimalist low-light contrast designed for comfortable night study.</p>
+              </div>
+              <div style="background:#450a0a; border:2px solid #7f1d1d; border-radius:12px; padding:16px; text-align:center;">
+                <div style="font-size:28px;">🌋</div>
+                <strong style="color:#fca5a5;">Lava Volcano</strong>
+                <p style="font-size:12px; color:#fecaca; margin-top:4px;">Energetic fiery embers and blazing magma glow.</p>
+              </div>
+              <div style="background:#ecfdf5; border:2px solid #a7f3d0; border-radius:12px; padding:16px; text-align:center;">
+                <div style="font-size:28px;">🧚</div>
+                <strong style="color:#065f46;">Fairy Garden</strong>
+                <p style="font-size:12px; color:#047857; margin-top:4px;">Enchanted fireflies and shimmering woodland spores.</p>
+              </div>
+              <div style="background:#f0f9ff; border:2px solid #bae6fd; border-radius:12px; padding:16px; text-align:center;">
+                <div style="font-size:28px;">🌊</div>
+                <strong style="color:#0369a1;">Deep Ocean</strong>
+                <p style="font-size:12px; color:#0284c7; margin-top:4px;">Floating underwater bubble ripples and marine bioluminescence.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 🪜 The 6-Stage Mastery Ladder -->
+    <section id="ladder">
+      <div class="section-head">
+        <h3><span>🪜</span> The 6-Stage Pedagogical Mastery Ladder</h3>
+        <p>A cognitive progression moving students from contextual recognition to unassisted recall</p>
+      </div>
+
+      <div class="stage-timeline">
+        <div class="timeline-item">
+          <div class="timeline-num">01</div>
+          <div class="timeline-body">
+            <h4>🧩 Stage 1: Fill in Blanks <span class="pass-threshold-tag">Pass: 0 Mistakes</span></h4>
+            <p>1 to 2 key vocabulary words or grammatical connectors are masked with amber placeholder slots. The child learns to scan for missing keywords and drag or click them into place.</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-num">02</div>
+          <div class="timeline-body">
+            <h4>🎯 Stage 2: Sentence Jigsaw <span class="pass-threshold-tag">Pass: 0 Hints Used</span></h4>
+            <p>The sentence is segmented into scrambled phrase blocks. The child must reconstruct the complete sentence by understanding word order, subject-verb agreement, and clause placement.</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-num">03</div>
+          <div class="timeline-body">
+            <h4>🎧 Stage 3: Listening Comprehension <span class="pass-threshold-tag">Pass: 100% Accuracy</span></h4>
+            <p>The visual question text is completely masked. The student listens carefully to the neural pronunciation audio and builds the sentence purely by ear.</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-num">04</div>
+          <div class="timeline-body">
+            <h4>🎙️ Stage 4: Voice Mastery <span class="pass-threshold-tag">Pass: Score $\ge$ 80%</span></h4>
+            <p>Instead of manipulating puzzle tiles, the student speaks the answer aloud into the microphone. Ollama AI evaluates pronunciation, word substitutions, and fluency.</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-num">05</div>
+          <div class="timeline-body">
+            <h4>⌨️ Stage 5: Progressive Typing Blanks <span class="pass-threshold-tag">Pass: Score $\ge$ 85%</span></h4>
+            <p>Bridges puzzle-solving with physical typing. The child types specific missing vocabulary words into inline keyboard inputs before moving to complete transcription.</p>
+          </div>
+        </div>
+
+        <div class="timeline-item">
+          <div class="timeline-num">06</div>
+          <div class="timeline-body">
+            <h4>✍️ Stage 6: Written Typing Studio <span class="pass-threshold-tag">Pass: Spelling $\ge$ 90%</span></h4>
+            <p>The ultimate mastery milestone: typing the entire sentence from memory with correct spelling, capitalization, and punctuation (including Hindi Purna Viram <code>।</code>).</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 🤖 Local AI Voice Coach -->
+    <section id="ai-coach">
+      <div class="section-head">
+        <h3><span>🤖</span> Local AI Voice Coach (Powered by Ollama)</h3>
+        <p>Private, offline, zero-latency artificial intelligence evaluation designed for young learners</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="feature-card">
+          <span class="card-badge badge-purple">100% Private & Local</span>
+          <h4>How the AI Coach Works</h4>
+          <p>
+            Sentence Jigsaw communicates directly with your local Ollama server (<code>http://127.0.0.1:11434</code>). Student speech and answers are processed entirely on your personal machine with <strong>zero cloud uploads, zero tracking, and zero subscriptions</strong>.
+          </p>
+          <ul class="feature-list">
+            <li>Compatible with <strong>Gemma 4 (12B/26B)</strong>, <strong>Qwen 3.5 (9B)</strong>, and <strong>Ornith (9B)</strong></li>
+            <li>Instant deterministic similarity fallback if Ollama is offline</li>
+            <li>Word-level sequence alignment diffs (Green = Match, Red = Missing/Extra)</li>
+          </ul>
+        </div>
+
+        <div class="feature-card">
+          <span class="card-badge badge-green">Warm & Constructive</span>
+          <h4>Encouraging Pedagogical Prompts</h4>
+          <p>
+            The AI evaluator uses specially crafted educator prompts. Rather than just giving a blunt percentage score, it praises what the child said correctly, gently highlights different words, and explains simple grammar rules.
+          </p>
+          <ul class="feature-list">
+            <li>Praise for partial recall and phonetically close words</li>
+            <li>Identifies substituted prepositions and tenses</li>
+            <li>Gentle cheerfulness: "Almost there! Let's try that verb again."</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 🗂️ Deck Management & Exam Readiness -->
+    <section id="deck-exam">
+      <div class="section-head">
+        <h3><span>🗂️</span> Anki-Style Decks & Exam Goals</h3>
+        <p>Organize sentences into custom curriculum decks and track deadline readiness</p>
+      </div>
+
+      <div class="grid-3">
+        <div class="feature-card">
+          <span class="card-badge badge-blue">Textbook Importer</span>
+          <h4>🪄 1-Click Story Importer</h4>
+          <p>
+            Paste any textbook passage or story. The importer automatically detects sentence boundaries (<code>।</code>, <code>.</code>, <code>?</code>, <code>!</code>) and intelligently splits phrases by 2, 3, or 4 words per block.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <span class="card-badge badge-amber">Exam Goals</span>
+          <h4>🎯 Deadline Readiness Gauge</h4>
+          <p>
+            Set target exam dates (e.g. "Term 1 Science - Nov 10"). The engine calculates daily review pacing, highlighting due reviews and remaining ladder stages.
+          </p>
+        </div>
+
+        <div class="feature-card">
+          <span class="card-badge badge-green">Offline Homework</span>
+          <h4>🖨️ Printable Worksheets</h4>
+          <p>
+            Generate clean, ready-to-print HTML activity sheets with scramble blocks, blank answer lines, and detachable answer keys for paper-and-pencil study.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ⌨️ Keyboard Shortcuts Reference -->
+    <section id="hotkeys">
+      <div class="section-head">
+        <h3><span>⌨️</span> Keyboard Shortcuts & Apple HIG Hotkeys</h3>
+        <p>Control every aspect of the app at lightning speed without lifting your hands from the keyboard</p>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Action</th>
+              <th>Windows / Linux Hotkey</th>
+              <th>macOS Hotkey</th>
+              <th>Description</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Select Word Block</strong></td>
+              <td><span class="kbd">1</span> – <span class="kbd">9</span>, <span class="kbd">0</span>, <span class="kbd">A</span> – <span class="kbd">Z</span></td>
+              <td><span class="kbd">1</span> – <span class="kbd">9</span>, <span class="kbd">0</span>, <span class="kbd">A</span> – <span class="kbd">Z</span></td>
+              <td>Selects and places candidate phrase chunk into answer board.</td>
+            </tr>
+            <tr>
+              <td><strong>Next Sentence</strong></td>
+              <td><span class="kbd">Enter</span> / <span class="kbd">Return</span></td>
+              <td><span class="kbd">Return ↵</span></td>
+              <td>Advances to next question upon correct completion.</td>
+            </tr>
+            <tr>
+              <td><strong>Give Hint</strong></td>
+              <td><span class="kbd">Ctrl + H</span> or <span class="kbd">H</span></td>
+              <td><span class="kbd">⌘ + H</span> or <span class="kbd">H</span></td>
+              <td>Picks and places the correct next block.</td>
+            </tr>
+            <tr>
+              <td><strong>Hear Teacher Voice</strong></td>
+              <td><span class="kbd">Ctrl + L</span> or <span class="kbd">L</span></td>
+              <td><span class="kbd">⌘ + L</span> or <span class="kbd">L</span></td>
+              <td>Plays Edge neural speech pronunciation.</td>
+            </tr>
+            <tr>
+              <td><strong>Hear Answer Board</strong></td>
+              <td><span class="kbd">Ctrl + A</span></td>
+              <td><span class="kbd">⌘ + A</span></td>
+              <td>Speaks the assembled blocks currently on the board.</td>
+            </tr>
+            <tr>
+              <td><strong>Record Student Voice</strong></td>
+              <td><span class="kbd">Ctrl + R</span> or <span class="kbd">R</span></td>
+              <td><span class="kbd">⌘ + R</span> or <span class="kbd">R</span></td>
+              <td>Starts / stops microphone recording for pronunciation comparison.</td>
+            </tr>
+            <tr>
+              <td><strong>Play My Voice</strong></td>
+              <td><span class="kbd">Ctrl + P</span> or <span class="kbd">P</span></td>
+              <td><span class="kbd">⌘ + P</span> or <span class="kbd">P</span></td>
+              <td>Plays back student's recorded audio.</td>
+            </tr>
+            <tr>
+              <td><strong>Peek Writing Answer</strong></td>
+              <td><span class="kbd">Ctrl + P</span> (in Writing Mode)</td>
+              <td><span class="kbd">⌘ + P</span></td>
+              <td>Toggles translucent ghost view of the correct sentence.</td>
+            </tr>
+            <tr>
+              <td><strong>Undo Last Block</strong></td>
+              <td><span class="kbd">Backspace</span></td>
+              <td><span class="kbd">Delete ⌫</span></td>
+              <td>Returns the last placed block to the pool.</td>
+            </tr>
+            <tr>
+              <td><strong>Clear Board</strong></td>
+              <td><span class="kbd">Escape</span></td>
+              <td><span class="kbd">Esc</span></td>
+              <td>Clears all blocks and reshuffles the pool.</td>
+            </tr>
+            <tr>
+              <td><strong>Skip Sentence</strong></td>
+              <td><span class="kbd">Ctrl + S</span> or <span class="kbd">S</span></td>
+              <td><span class="kbd">⌘ + S</span> or <span class="kbd">S</span></td>
+              <td>Skips the current question and requeues for review.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 💻 Cross-OS Setup Guide -->
+    <section id="cross-os">
+      <div class="section-head">
+        <h3><span>💻</span> Cross-Platform Setup Guide</h3>
+        <p>1-Click Launchers and Prerequisites for Windows, macOS, and Linux</p>
+      </div>
+
+      <div class="grid-3">
+        <!-- Windows -->
+        <div class="feature-card" style="border-top:5px solid #0284c7;">
+          <div style="font-size:24px; margin-bottom:8px;">🪟 Windows</div>
+          <h4>Windows 10 & 11</h4>
+          <p>Double-click the launcher script or run via terminal:</p>
+          <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-family:'JetBrains Mono', monospace; font-size:12.5px; margin:10px 0; color:#0f172a;">
+            scripts\run_windows.bat
+          </div>
+          <p style="font-size:13px; color:#64748b;">Requires Microsoft Edge WebView2 (pre-installed on Windows 10/11).</p>
+        </div>
+
+        <!-- macOS -->
+        <div class="feature-card" style="border-top:5px solid #a855f7;">
+          <div style="font-size:24px; margin-bottom:8px;">🍎 macOS</div>
+          <h4>macOS (Intel & Apple Silicon)</h4>
+          <p>Double-click the shell script or launch in Terminal:</p>
+          <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-family:'JetBrains Mono', monospace; font-size:12.5px; margin:10px 0; color:#0f172a;">
+            ./scripts/run_mac.sh
+          </div>
+          <p style="font-size:13px; color:#64748b;">Uses native WKWebView and Apple CoreAudio <code>afplay</code>/<code>afrecord</code>.</p>
+        </div>
+
+        <!-- Linux -->
+        <div class="feature-card" style="border-top:5px solid #10b981;">
+          <div style="font-size:24px; margin-bottom:8px;">🐧 Linux</div>
+          <h4>Ubuntu, Debian, Fedora & Arch</h4>
+          <p>Install WebKitGTK and launch the app:</p>
+          <div style="background:#f1f5f9; padding:8px 12px; border-radius:8px; font-family:'JetBrains Mono', monospace; font-size:12.5px; margin:10px 0; color:#0f172a;">
+            ./scripts/run_linux.sh
+          </div>
+          <p style="font-size:13px; color:#64748b;">Ubuntu/Debian: <code>sudo apt install python3-gi gir1.2-webkit2-4.1 alsa-utils</code></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ❓ FAQ -->
+    <section id="faq">
+      <div class="section-head">
+        <h3><span>❓</span> Frequently Asked Questions</h3>
+        <p>Answers to common questions about offline usage, spaced repetition, and audio</p>
+      </div>
+
+      <div class="faq-list">
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">Does Sentence Jigsaw work completely offline without internet?</div>
+          <div class="faq-a">
+            <strong>Yes!</strong> All sentence decks, user profiles, SM-2 repetition schedules, UI sounds, and dictionary definitions are cached locally on your device. Only Neural TTS audio fetching requires internet access on the very first playback (which is then cached permanently on disk for offline replay). Local Ollama AI evaluation is also 100% offline.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">How does the SM-2 Spaced Repetition interval work?</div>
+          <div class="faq-a">
+            When a student completes a sentence flawlessly without hints, the interval between reviews expands: <strong>1 day ➔ 3 days ➔ 7 days ➔ 16 days ➔ 35 days</strong>. If an error is made, the interval resets to 0 days, ensuring the child reviews difficult sentences today until mastery is restored.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">Can multiple siblings or students use the same machine?</div>
+          <div class="faq-a">
+            <strong>Absolutely.</strong> Click the Profile selector in the top-left toolbar to create or switch profiles. Each student receives isolated spaced repetition memory, custom avatar choices, independent settings, and separate exam countdown goals.
+          </div>
+        </div>
+
+        <div class="faq-item">
+          <div class="faq-q" onclick="toggleFaq(this)">How do I change the TTS speech speed or choose Hindi voices?</div>
+          <div class="faq-a">
+            Open <strong>⚙️ Settings</strong> in the top toolbar. You can adjust the speech rate (-25% Slow, Normal, +20% Fast), select specific neural voices (e.g. <code>hi-IN-SwaraNeural</code> for Hindi or <code>en-IN-NeerjaNeural</code> for English), and toggle background sound effects.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 🚀 Quick Start Callout -->
+    <section id="quickstart">
+      <div class="launch-box">
+        <h3 style="font-size:24px; font-weight:800; color:white;">🚀 Ready to Master Sentences?</h3>
+        <p style="color:#94a3b8; font-size:15px;">Launch the full interactive desktop app with automatic dependency checks using your OS launcher:</p>
+        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; margin-top: 8px;">
+          <div class="launch-cmd">
+            <span>scripts\run_windows.bat</span>
+            <span style="color:#94a3b8; font-size:12px;">🪟 Windows (1-Click)</span>
+          </div>
+          <div class="launch-cmd">
+            <span>./scripts/run_mac.sh</span>
+            <span style="color:#94a3b8; font-size:12px;">🍎 macOS (1-Click)</span>
+          </div>
+          <div class="launch-cmd">
+            <span>./scripts/run_linux.sh</span>
+            <span style="color:#94a3b8; font-size:12px;">🐧 Linux (1-Click)</span>
+          </div>
+        </div>
+        <p style="color:#94a3b8; font-size:13px; margin-top:6px;">Or run the cross-platform launcher directly via terminal: <code style="color:#38bdf8; background:#1e293b; padding:2px 8px; border-radius:4px; font-family:'JetBrains Mono', monospace;">python run_app.py</code> (or <code style="color:#38bdf8; background:#1e293b; padding:2px 8px; border-radius:4px; font-family:'JetBrains Mono', monospace;">py run_app.py</code>)</p>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+      <p>🧩 Sentence Jigsaw 3.0 • Advanced Pedagogical Language Mastery Platform</p>
+      <p style="margin-top:4px; font-size:12px; color:#94a3b8;">Built with Apple HIG principles, modern Tailwind styling, and open-source love for young learners.</p>
+    </footer>
+
+  </main>
+
+  <!-- Interactive Tab Switcher Script -->
+  <script>
+    function switchScreenshot(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelectorAll('.tab-view').forEach(view => view.classList.remove('active'));
+
+      const activeView = document.getElementById(tabId);
+      if (activeView) activeView.classList.add('active');
+
+      event.currentTarget.classList.add('active');
+    }
+
+    function toggleFaq(headerEl) {
+      const item = headerEl.parentElement;
+      item.classList.toggle('open');
+    }
+  </script>
+</body>
+</html>
