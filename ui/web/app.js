@@ -4158,6 +4158,24 @@ function initListeningCard() {
 // Mode D: Voice Mastery & Spoken Phonics Studio
 // -------------------------------------------------------------------------
 
+let micPermissionGranted = false;
+
+async function ensureMicrophonePermission() {
+  if (micPermissionGranted) return true;
+  if (navigator.mediaDevices && typeof navigator.mediaDevices.getUserMedia === 'function') {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      micPermissionGranted = true;
+      stream.getTracks().forEach(track => track.stop());
+      return true;
+    } catch (err) {
+      console.warn("Microphone permission check:", err);
+      return false;
+    }
+  }
+  return false;
+}
+
 function initVoiceCard() {
   const g = state.gameplay;
   const card = g.current_card;
@@ -4176,12 +4194,15 @@ function initVoiceCard() {
   const micBtn = document.getElementById('btn-mic-record');
   micBtn.className = 'w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-2xl flex items-center justify-center shadow-lg transition transform active:scale-95 cursor-pointer';
   micBtn.setAttribute('aria-pressed', 'false');
+
+  // Pre-authorize microphone permission once in background so student is never prompted on click
+  ensureMicrophonePermission().catch(() => {});
 }
 
 let voiceRecognitionInstance = null;
 let isVoiceRecording = false;
 
-function toggleVoiceRecording() {
+async function toggleVoiceRecording() {
   const card = state.gameplay.current_card;
   if (!card) return;
   const targetText = (card.chunks || []).join(' ') || card.question;
@@ -4206,6 +4227,10 @@ function toggleVoiceRecording() {
     }
     return;
   }
+
+  // Pre-authorize microphone permission before starting recognition to avoid repeated prompts
+  await ensureMicrophonePermission().catch(() => {});
+
 
   // Start speech recognition
   isVoiceRecording = true;
@@ -5888,5 +5913,6 @@ if (typeof window !== 'undefined') {
   window.swapPlacedChunks = swapPlacedChunks;
   window.swapTrayChunkWithBoard = swapTrayChunkWithBoard;
   window.setActiveInsertIndex = setActiveInsertIndex;
+  window.ensureMicrophonePermission = ensureMicrophonePermission;
 }
 
