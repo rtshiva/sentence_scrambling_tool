@@ -2420,8 +2420,103 @@ console.log("✓ PASS: Accessibility global font size scaling across DOM and set
     console.log("✓ PASS: Fullscreen desktop kiosk toggle, Zen Focus auto-activation in gameplay, and floating exit verified!");
   })();
 
+  // -------------------------------------------------------------------------
+  // [Test 49] Writing Word Bank shows only missing (not-yet-typed) words
+  // -------------------------------------------------------------------------
+  await (async () => {
+    console.log("\n[Test 49] Testing Writing Word Bank missing-words filter...");
+    const bankCard = {
+      card_id: 'card_bank_test',
+      question: 'सूरज किधर से निकलता है?',
+      meaning: 'Which direction does the sun rise from?',
+      chunks: ['सूरज', 'पूरब से', 'निकलता', 'है।']
+    };
+
+    context.setupGameSession([bankCard], 'writing', 'Chapter Bank Test', 'deck_bank');
+    const ta = mockDocument.getElementById('writing-input-area');
+    const tray = mockDocument.getElementById('writing-word-bank-tray');
+    ta.value = '';
+
+    // Bank splits chunks into words: सूरज, पूरब, से, निकलता, है। (5 chips)
+    assert.strictEqual(tray.children.length, 5, "Word bank must contain one chip per answer word");
+
+    context.toggleWritingWordBank();
+    const visibleChips = () => tray.children.filter(c => c.style.display !== 'none');
+    assert.strictEqual(visibleChips().length, 5, "All chips visible before typing");
+
+    // 1. Typing words hides their chips (punctuation-insensitive: है। matches है)
+    ta.value = 'सूरज पूरब है';
+    context.updateWritingWordCount();
+    assert.strictEqual(visibleChips().length, 2, "Typed words must disappear, leaving only missing words");
+    const hiddenTexts = tray.children.filter(c => c.style.display === 'none').map(c => c.textContent);
+    assert(hiddenTexts.includes('सूरज') && hiddenTexts.includes('पूरब') && hiddenTexts.includes('है।'), "Hidden chips must be the typed words");
+
+    // 2. Deleting text restores chips
+    ta.value = '';
+    context.updateWritingWordCount();
+    assert.strictEqual(visibleChips().length, 5, "Deleting typed text must restore all chips");
+
+    context.toggleWritingWordBank();
+    console.log("✓ PASS: Word Bank missing-words filter, hide-on-type, and restore-on-delete verified!");
+  })();
+
+  // -------------------------------------------------------------------------
+  // [Test 50] Cloze blanks are shuffled + word bank scoped to blanked blocks
+  // -------------------------------------------------------------------------
+  await (async () => {
+    console.log("\n[Test 50] Testing shuffled cloze blanks and blank-scoped word bank...");
+    const shuffleCard = {
+      card_id: 'card_shuffle_test',
+      question: 'Shuffled blanks?',
+      meaning: ' blanks shuffle',
+      chunks: ['एक', 'दो तीन', 'चार', 'पाँच छह', 'सात']
+    };
+
+    context.setupGameSession([shuffleCard], 'writing', 'Chapter Shuffle Test', 'deck_shuffle');
+    const tray = mockDocument.getElementById('writing-word-bank-tray');
+    const slotsRow = mockDocument.getElementById('writing-cloze-slots-row');
+
+    // 1. Level 1 blanks vary across renders (5 chunks -> P(same 12x) negligible)
+    const seen = new Set();
+    for (let i = 0; i < 12; i++) {
+      context.setWritingLadderLevel(1);
+      const slots = slotsRow.querySelectorAll('.cloze-typing-slot');
+      assert.strictEqual(slots.length, 1, "Level 1 must render exactly 1 blank");
+      seen.add(slots[0].dataset.slotIndex);
+    }
+    assert(seen.size > 1, "Level 1 blank position must shuffle across renders");
+
+    // 2. Level 1 bank holds only the blanked block's words (multi-word split)
+    context.setWritingLadderLevel(1);
+    const l1slots = slotsRow.querySelectorAll('.cloze-typing-slot');
+    const l1expected = l1slots[0].dataset.expected.split(/\s+/).filter(Boolean).sort();
+    const l1bank = tray.children.map(c => c.textContent).sort();
+    assert.deepStrictEqual(l1bank, l1expected, "Level 1 bank must contain only the blanked block's words");
+
+    // 3. Level 2 renders 2 blanks at shuffled positions, bank covers both blocks
+    const seenPairs = new Set();
+    for (let i = 0; i < 12; i++) {
+      context.setWritingLadderLevel(2);
+      const slots = slotsRow.querySelectorAll('.cloze-typing-slot');
+      assert.strictEqual(slots.length, 2, "Level 2 must render exactly 2 blanks");
+      seenPairs.add(slots.map(s => s.dataset.slotIndex).sort().join(','));
+    }
+    assert(seenPairs.size > 1, "Level 2 blank positions must shuffle across renders");
+    context.setWritingLadderLevel(2);
+    const l2slots = slotsRow.querySelectorAll('.cloze-typing-slot');
+    const l2expected = [];
+    l2slots.forEach(s => s.dataset.expected.split(/\s+/).forEach(w => { if (w) l2expected.push(w); }));
+    assert.deepStrictEqual(tray.children.map(c => c.textContent).sort(), l2expected.sort(), "Level 2 bank must contain all words of both blanked blocks");
+
+    // 4. Back to Level 3 restores the full-answer bank
+    context.setWritingLadderLevel(3);
+    assert.strictEqual(tray.children.length, 7, "Level 3 bank must cover all answer words again");
+
+    console.log("✓ PASS: Shuffled cloze blanks and blank-scoped word bank verified!");
+  })();
+
   console.log("\n========================================================");
-  console.log("=== ALL 48 USE CASE & GAMEPLAY SCENARIOS PASSED (48/48) ===");
+  console.log("=== ALL 50 USE CASE & GAMEPLAY SCENARIOS PASSED (50/50) ===");
   console.log("========================================================");
 })().catch(err => {
   console.error("Test failed:", err);

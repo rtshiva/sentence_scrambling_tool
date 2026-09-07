@@ -73,8 +73,32 @@ html[data-font-size="xlarge"] .font-hindi {
 }
 
 .ghost-watermark-active {
-  display: block !important;
+  display: flex !important;
+  align-items: flex-start;
+  z-index: 20 !important;
+  pointer-events: none !important;
+  opacity: 0.45 !important;
+  color: #b45309 !important;
   animation: watermarkFadeIn 0.2s ease-out forwards;
+}
+
+/* Transparent textarea so the watermark shows through during peek */
+#writing-input-area.ghost-peek-transparent {
+  background-color: transparent !important;
+}
+
+/* Cloze ghost hints (Ladder Levels 1 & 2): faint italic amber */
+.cloze-typing-slot.ghost-hint {
+  border-style: solid !important;
+  border-color: #f59e0b !important;
+  background-color: #fffbeb !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.25) !important;
+}
+.cloze-typing-slot.ghost-hint::placeholder {
+  color: #b45309 !important;
+  opacity: 0.55 !important;
+  font-style: italic !important;
+  font-weight: 600 !important;
 }
 
 @keyframes watermarkFadeIn {

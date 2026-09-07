@@ -2977,6 +2977,8 @@ function initTypingBlanksCard() {
 function setWritingLadderLevel(level) {
   const g = state.gameplay;
   if (g) g.cloze_level = level;
+  // Clear any active peek so hints don't leak across levels
+  hideWritingGhostPeek();
 
   // Update button styling
   for (let l = 1; l <= 3; l++) {
@@ -3008,14 +3010,41 @@ function setWritingLadderLevel(level) {
       renderClozeTypingBoard(g.current_card, level);
     }
   } else {
-    // Level 3: Full Scribe
+    // Level 3: Full Scribe (word bank covers the whole answer again)
     if (clozeBoard) clozeBoard.classList.add('hidden');
     if (fullContainer) fullContainer.classList.remove('hidden');
+    if (g && g.current_card) {
+      const tray = document.getElementById('writing-word-bank-tray');
+      if (tray && tray.children && tray.children.length > 0) {
+        renderWritingWordBank(g.current_card);
+      }
+    }
     const ta = document.getElementById('writing-input-area');
     if (ta) {
       try { ta.focus(); } catch (e) {}
     }
   }
+}
+
+// Pick random distinct chunk indices to blank (shuffled every render,
+// avoiding an immediate repeat of the previous pick when possible).
+function pickClozeBlankIndices(numChunks, count) {
+  const g = state.gameplay;
+  if (numChunks <= 0) return [];
+  const n = Math.min(count, numChunks);
+  const prevKey = (g && g.last_cloze_blanks_key) || null;
+  let pick = [];
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const indices = Array.from({ length: numChunks }, (_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [indices[i], indices[j]] = [indices[j], indices[i]];
+    }
+    pick = indices.slice(0, n).sort((a, b) => a - b);
+    if (numChunks <= n || pick.join(',') !== prevKey) break;
+  }
+  if (g) g.last_cloze_blanks_key = pick.join(',');
+  return pick;
 }
 
 function renderClozeTypingBoard(card, level) {
@@ -3028,16 +3057,9 @@ function renderClozeTypingBoard(card, level) {
 
   let blankIndices = [];
   if (level === 1) {
-    const idx = numChunks > 1 ? 1 : 0;
-    blankIndices = [idx];
+    blankIndices = pickClozeBlankIndices(numChunks, 1);
   } else if (level === 2) {
-    if (numChunks <= 1) {
-      blankIndices = [0];
-    } else if (numChunks === 2) {
-      blankIndices = [0, 1];
-    } else {
-      blankIndices = [1, Math.min(numChunks - 1, 3)];
-    }
+    blankIndices = pickClozeBlankIndices(numChunks, 2);
   }
 
   const g = state.gameplay;
@@ -3047,7 +3069,7 @@ function renderClozeTypingBoard(card, level) {
     const isBlank = blankIndices.includes(idx);
     if (!isBlank) {
       const span = document.createElement('span');
-      span.className = 'px-3 py-1.5 bg-slate-100/90 text-slate-800 rounded-xl font-medium border border-slate-200 text-base md:text-lg select-none';
+      span.className = 'cloze-static-chunk px-3 py-1.5 bg-slate-100 text-slate-800 rounded-xl font-medium border border-slate-200 text-base md:text-lg select-none';
       span.textContent = chunk;
       row.appendChild(span);
     } else {
@@ -3060,6 +3082,7 @@ function renderClozeTypingBoard(card, level) {
       input.autocomplete = 'off';
       input.autocapitalize = 'off';
       input.spellcheck = false;
+      input.oninput = () => refreshWritingWordBank();
       input.onkeydown = (e) => {
         if (e.key === 'Enter') {
           e.preventDefault();
@@ -3074,6 +3097,10 @@ function renderClozeTypingBoard(card, level) {
   if (firstInput) {
     try { firstInput.focus(); } catch (e) {}
   }
+
+  // Scope the word bank to the blanked blocks only (all words inside them),
+  // so the bank acts as the answer palette for exactly these blanks.
+  renderWritingWordBank(card, blankIndices);
 }
 
 async function checkClozeTypingAnswer() {
@@ -3253,10 +3280,8 @@ function startWritingLookCoverWrite() {
   g.writing_lcwc_seconds_left = 5;
   if (countdownEl) countdownEl.textContent = '5s';
 
-  // Auditory phonological rehearsal
-  try {
-    playAnswerTTS();
-  } catch (e) {}
+  // Silent visual memorize only — no auto audio. Student taps
+  // "Listen Pronunciation" / "Hear Audio Prompt" to hear the answer.
 
   if (g.writing_lcwc_timer) {
     clearInterval(g.writing_lcwc_timer);
@@ -3301,14 +3326,35 @@ function dismissWritingCurtain(focusInput = true) {
 // Ghost Watermark Peek Lifeline
 function showWritingGhostPeek() {
   const g = state.gameplay;
+  const card = g ? g.current_card : null;
+  const level = g ? g.cloze_level : 3;
   const watermark = document.getElementById('writing-ghost-watermark');
   const scaffoldBadge = document.getElementById('writing-scaffold-status-badge');
 
-  if (watermark) {
-    const card = g.current_card;
-    if (card) watermark.textContent = (card.chunks || []).join(' ');
-    watermark.classList.remove('hidden');
-    watermark.classList.add('ghost-watermark-active');
+  // Levels 1 & 2: full textarea container is hidden, so hint inline cloze boxes
+  if (level === 1 || level === 2) {
+    const row = document.getElementById('writing-cloze-slots-row');
+    const slots = row
+      ? Array.from(row.querySelectorAll('.cloze-typing-slot, .writing-cloze-input'))
+      : Array.from(document.querySelectorAll ? document.querySelectorAll('.cloze-typing-slot, .writing-cloze-input') : []);
+    slots.forEach((slot) => {
+      const typed = (slot.value || '').trim();
+      if (!typed) {
+        if (slot.dataset.origPlaceholder === undefined) {
+          slot.dataset.origPlaceholder = slot.placeholder || '';
+        }
+        slot.placeholder = slot.dataset.expected || slot.placeholder;
+        if (slot.classList) slot.classList.add('ghost-hint');
+      }
+    });
+  } else {
+    const ta = document.getElementById('writing-input-area');
+    if (watermark) {
+      if (card) watermark.textContent = (card.chunks || []).join(' ');
+      watermark.classList.remove('hidden');
+      watermark.classList.add('ghost-watermark-active');
+    }
+    if (ta && ta.classList) ta.classList.add('ghost-peek-transparent');
   }
   if (g) g.writing_peek_used = true;
 
@@ -3324,9 +3370,39 @@ function hideWritingGhostPeek() {
     watermark.classList.remove('ghost-watermark-active');
     watermark.classList.add('hidden');
   }
+  const ta = document.getElementById('writing-input-area');
+  if (ta && ta.classList) ta.classList.remove('ghost-peek-transparent');
+
+  // Restore cloze placeholders cleared by ghost peek
+  const row = document.getElementById('writing-cloze-slots-row');
+  const slots = row
+    ? Array.from(row.querySelectorAll('.cloze-typing-slot, .writing-cloze-input'))
+    : [];
+  slots.forEach((slot) => {
+    if (slot.classList) slot.classList.remove('ghost-hint');
+    if (slot.dataset && slot.dataset.origPlaceholder !== undefined) {
+      slot.placeholder = slot.dataset.origPlaceholder;
+      delete slot.dataset.origPlaceholder;
+    }
+  });
 }
 
 function toggleWritingGhostPeekClick() {
+  const g = state.gameplay;
+  const level = g ? g.cloze_level : 3;
+  if (level === 1 || level === 2) {
+    const row = document.getElementById('writing-cloze-slots-row');
+    const slots = row
+      ? Array.from(row.querySelectorAll('.cloze-typing-slot, .writing-cloze-input'))
+      : [];
+    const isShown = slots.some((s) => s.classList && s.classList.contains('ghost-hint'));
+    if (isShown) {
+      hideWritingGhostPeek();
+    } else {
+      showWritingGhostPeek();
+    }
+    return;
+  }
   const watermark = document.getElementById('writing-ghost-watermark');
   if (!watermark) return;
   const isShown = !watermark.classList.contains('hidden');
@@ -3376,19 +3452,80 @@ function toggleWritingWordBank() {
   if (isHidden) {
     container.classList.remove('hidden');
     if (state.gameplay) state.gameplay.writing_wordbank_used = true;
+    refreshWritingWordBank();
   } else {
     container.classList.add('hidden');
   }
 }
 
-function renderWritingWordBank(card) {
+// Normalize for bank-vs-typed comparison (case/punctuation-insensitive)
+function normalizeWritingBankWord(w) {
+  return String(w || '').toLowerCase().replace(/[।?!,.،;:‹›«»"'\-]/g, '').trim();
+}
+
+// Hide bank chips whose word the student already typed (frequency-aware,
+// so duplicates stay visible until typed twice). Chips reappear on delete.
+function refreshWritingWordBank() {
+  const tray = document.getElementById('writing-word-bank-tray');
+  if (!tray) return;
+  const chips = tray.querySelectorAll
+    ? Array.from(tray.querySelectorAll('.writing-word-chip'))
+    : Array.from(tray.children || []);
+
+  // Gather typed words from the full-scribe textarea + cloze blank inputs
+  let typedWords = [];
+  const ta = document.getElementById('writing-input-area');
+  if (ta && ta.value) {
+    typedWords = typedWords.concat(String(ta.value).trim().split(/\s+/).filter(Boolean));
+  }
+  const row = document.getElementById('writing-cloze-slots-row');
+  if (row && row.querySelectorAll) {
+    Array.from(row.querySelectorAll('.cloze-typing-slot, .writing-cloze-input')).forEach((s) => {
+      if (s.value) typedWords = typedWords.concat(String(s.value).trim().split(/\s+/).filter(Boolean));
+    });
+  }
+  const remaining = {};
+  typedWords.forEach((w) => {
+    const k = normalizeWritingBankWord(w);
+    if (!k) return;
+    remaining[k] = (remaining[k] || 0) + 1;
+  });
+
+  let visibleCount = 0;
+  chips.forEach((chip) => {
+    const k = normalizeWritingBankWord(chip.textContent || '');
+    if (k && remaining[k] > 0) {
+      remaining[k]--;
+      if (chip.classList) chip.classList.add('used');
+      if (chip.style) chip.style.display = 'none';
+    } else {
+      if (chip.classList) chip.classList.remove('used');
+      if (chip.style) chip.style.display = '';
+      visibleCount++;
+    }
+  });
+
+  const hint = document.getElementById('writing-wordbank-empty-hint');
+  if (hint && hint.classList) {
+    if (chips.length > 0 && visibleCount === 0) {
+      hint.classList.remove('hidden');
+    } else {
+      hint.classList.add('hidden');
+    }
+  }
+}
+
+function renderWritingWordBank(card, onlyIndices) {
   const tray = document.getElementById('writing-word-bank-tray');
   if (!tray || !card) return;
   tray.innerHTML = '';
 
   const chunks = card.chunks || [];
+  const scoped = Array.isArray(onlyIndices)
+    ? onlyIndices.map(i => chunks[i]).filter(ch => typeof ch === 'string')
+    : chunks;
   const words = [];
-  chunks.forEach(ch => {
+  scoped.forEach(ch => {
     ch.trim().split(/\s+/).forEach(w => {
       if (w.trim()) words.push(w.trim());
     });
@@ -3410,9 +3547,11 @@ function renderWritingWordBank(card) {
     chip.onclick = () => {
       insertCharIntoWritingInput(word + ' ');
       chip.classList.add('used');
+      refreshWritingWordBank();
     };
     tray.appendChild(chip);
   });
+  refreshWritingWordBank();
 }
 
 // Post-Jigsaw "Write It Now" Mini-Bridge
@@ -3470,6 +3609,7 @@ function insertCharIntoWritingInput(char) {
       activeSlot.value = val.substring(0, start) + char + val.substring(end);
       activeSlot.selectionStart = activeSlot.selectionEnd = start + char.length;
       activeSlot.focus();
+      refreshWritingWordBank();
       return;
     }
   }
@@ -3491,6 +3631,7 @@ function updateWritingWordCount() {
   const words = text ? text.split(/\s+/).length : 0;
   const wc = document.getElementById('writing-word-count');
   if (wc) wc.textContent = `${words} words typed`;
+  refreshWritingWordBank();
 }
 
 async function checkWritingAnswer() {

@@ -90,17 +90,10 @@ cd sentence_scrambling_tool
 # 2. Install dependencies
 pip install -r requirements.txt
 
-# 3. Launch the application
-# Windows (1-Click):
-scripts\run_windows.bat
+# 3. Launch the application (any OS, 1-Click):
+python scripts/run.py
 
-# macOS (1-Click):
-./scripts/run_mac.sh
-
-# Linux (1-Click):
-./scripts/run_linux.sh
-
-# Or cross-platform launcher:
+# Or cross-platform launcher directly:
 python run_app.py
 ```
 

@@ -2009,3 +2009,307 @@
   box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.35) !important;
 }
 
+/* ========================================================================= */
+/* CLOZE TYPING SLOTS: match theme (fix white-on-white in dark themes)      */
+/* Base .cloze-typing-slot is white bg + dark text. Dark themes override    */
+/* .text-indigo-950 to white, leaving white text on a light box. These     */
+/* rules give the 1-Blank / 2-Blanks inputs a themed dark bg + light text. */
+/* ========================================================================= */
+
+/* ---- Dark ---- */
+[data-theme="dark"] .cloze-typing-slot {
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%) !important;
+  border-color: #818cf8 !important;
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
+  color-scheme: dark;
+}
+[data-theme="dark"] .cloze-typing-slot::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}
+[data-theme="dark"] .cloze-typing-slot:focus {
+  background: #312e81 !important;
+  border-color: #a5b4fc !important;
+  border-style: solid !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.35) !important;
+}
+[data-theme="dark"] .cloze-typing-slot.correct {
+  background: rgba(6, 78, 59, 0.85) !important;
+  border-color: #34d399 !important;
+  color: #a7f3d0 !important;
+}
+[data-theme="dark"] .cloze-typing-slot.incorrect {
+  background: rgba(76, 5, 25, 0.85) !important;
+  border-color: #fb7185 !important;
+  color: #fecdd3 !important;
+}
+
+/* ---- Space ---- */
+[data-theme="space"] .cloze-typing-slot {
+  background: linear-gradient(135deg, rgba(49, 46, 129, 0.92) 0%, rgba(30, 27, 75, 0.96) 100%) !important;
+  border-color: #a855f7 !important;
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
+  color-scheme: dark;
+}
+[data-theme="space"] .cloze-typing-slot::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}
+[data-theme="space"] .cloze-typing-slot:focus {
+  background: rgba(49, 46, 129, 0.98) !important;
+  border-color: #38bdf8 !important;
+  border-style: solid !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 18px rgba(56, 189, 248, 0.45) !important;
+}
+[data-theme="space"] .cloze-typing-slot.correct {
+  background: rgba(6, 78, 59, 0.85) !important;
+  border-color: #34d399 !important;
+  color: #a7f3d0 !important;
+}
+[data-theme="space"] .cloze-typing-slot.incorrect {
+  background: rgba(76, 5, 25, 0.85) !important;
+  border-color: #fb7185 !important;
+  color: #fecdd3 !important;
+}
+
+/* ---- Lava ---- */
+[data-theme="lava"] .cloze-typing-slot {
+  background: linear-gradient(135deg, rgba(124, 45, 18, 0.92) 0%, rgba(69, 26, 3, 0.96) 100%) !important;
+  border-color: #f59e0b !important;
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
+  color-scheme: dark;
+}
+[data-theme="lava"] .cloze-typing-slot::placeholder {
+  color: #fdba74 !important;
+  opacity: 1;
+}
+[data-theme="lava"] .cloze-typing-slot:focus {
+  background: rgba(124, 45, 18, 0.98) !important;
+  border-color: #fbbf24 !important;
+  border-style: solid !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.5) !important;
+}
+[data-theme="lava"] .cloze-typing-slot.correct {
+  background: rgba(6, 78, 59, 0.85) !important;
+  border-color: #34d399 !important;
+  color: #a7f3d0 !important;
+}
+[data-theme="lava"] .cloze-typing-slot.incorrect {
+  background: rgba(76, 5, 25, 0.85) !important;
+  border-color: #fb7185 !important;
+  color: #fecdd3 !important;
+}
+
+/* ---- Anime ---- */
+[data-theme="anime"] .cloze-typing-slot {
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.95) 0%, rgba(15, 23, 42, 0.98) 100%) !important;
+  border-color: #06b6d4 !important;
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
+  color-scheme: dark;
+}
+[data-theme="anime"] .cloze-typing-slot::placeholder {
+  color: #94a3b8 !important;
+  opacity: 1;
+}
+[data-theme="anime"] .cloze-typing-slot:focus {
+  background: rgba(30, 41, 59, 0.98) !important;
+  border-color: #f97316 !important;
+  border-style: solid !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 18px rgba(6, 182, 212, 0.45) !important;
+}
+[data-theme="anime"] .cloze-typing-slot.correct {
+  background: rgba(6, 78, 59, 0.85) !important;
+  border-color: #22c55e !important;
+  color: #bbf7d0 !important;
+}
+[data-theme="anime"] .cloze-typing-slot.incorrect {
+  background: rgba(76, 5, 25, 0.85) !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
+/* ---- Ocean ---- */
+[data-theme="ocean"] .cloze-typing-slot {
+  background: linear-gradient(135deg, #0c4a7a 0%, #083358 100%) !important;
+  border-color: #38bdf8 !important;
+  color: #ffffff !important;
+  caret-color: #ffffff !important;
+  color-scheme: dark;
+}
+[data-theme="ocean"] .cloze-typing-slot::placeholder {
+  color: #7dd3fc !important;
+  opacity: 1;
+}
+[data-theme="ocean"] .cloze-typing-slot:focus {
+  background: #0c4a7a !important;
+  border-color: #22d3ee !important;
+  border-style: solid !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 20px rgba(34, 211, 238, 0.6) !important;
+}
+[data-theme="ocean"] .cloze-typing-slot.correct {
+  background: rgba(6, 78, 59, 0.85) !important;
+  border-color: #34d399 !important;
+  color: #a7f3d0 !important;
+}
+[data-theme="ocean"] .cloze-typing-slot.incorrect {
+  background: rgba(76, 5, 25, 0.85) !important;
+  border-color: #fb7185 !important;
+  color: #fecdd3 !important;
+}
+
+/* ========================================================================= */
+/* CLOZE STATIC CHUNKS: readable context pills next to the typing boxes     */
+/* The static spans used bg-slate-100/90 which escapes the .bg-slate-100   */
+/* theme overrides, leaving light-grey pills with forced-white text.       */
+/* Explicit per-theme rules + /90 fallback fix white-on-light in writing.  */
+/* ========================================================================= */
+[data-theme="dark"] .cloze-static-chunk {
+  background-color: #334155 !important;
+  border-color: #475569 !important;
+  color: #f8fafc !important;
+}
+[data-theme="space"] .cloze-static-chunk {
+  background-color: rgba(30, 41, 59, 0.85) !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+  color: #f9fafb !important;
+}
+[data-theme="lava"] .cloze-static-chunk {
+  background-color: rgba(43, 20, 12, 0.85) !important;
+  border-color: rgba(249, 115, 22, 0.4) !important;
+  color: #fff7ed !important;
+}
+[data-theme="anime"] .cloze-static-chunk {
+  background-color: rgba(30, 41, 59, 0.9) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  color: #f8fafc !important;
+}
+[data-theme="ocean"] .cloze-static-chunk {
+  background-color: rgba(12, 66, 111, 0.85) !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+  color: #e0f2fe !important;
+}
+
+/* Fallback: any leftover bg-slate-100/90 usage gets the themed treatment */
+[data-theme="dark"] .bg-slate-100\/90 {
+  background-color: #334155 !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+[data-theme="space"] .bg-slate-100\/90 {
+  background-color: rgba(30, 41, 59, 0.85) !important;
+  color: #f9fafb !important;
+  border-color: rgba(99, 102, 241, 0.35) !important;
+}
+[data-theme="lava"] .bg-slate-100\/90 {
+  background-color: rgba(43, 20, 12, 0.85) !important;
+  color: #fff7ed !important;
+  border-color: rgba(249, 115, 22, 0.4) !important;
+}
+[data-theme="anime"] .bg-slate-100\/90 {
+  background-color: rgba(30, 41, 59, 0.9) !important;
+  color: #f8fafc !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+}
+[data-theme="ocean"] .bg-slate-100\/90 {
+  background-color: rgba(12, 66, 111, 0.85) !important;
+  color: #e0f2fe !important;
+  border-color: rgba(56, 189, 248, 0.4) !important;
+}
+
+/* ========================================================================= */
+/* GHOST PEEK WATERMARK: theme-dependent text (brown is invisible on dark)  */
+/* Base .ghost-watermark-active uses amber-700 (#b45309) for light themes. */
+/* Dark themes get pale-amber text on a dark translucent panel instead.    */
+/* ========================================================================= */
+[data-theme="dark"] .ghost-watermark-active {
+  color: #fde68a !important;
+  background: rgba(30, 27, 75, 0.88) !important;
+  border-color: #f59e0b !important;
+  opacity: 0.9 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
+}
+[data-theme="space"] .ghost-watermark-active {
+  color: #fde68a !important;
+  background: rgba(30, 27, 75, 0.9) !important;
+  border-color: rgba(168, 85, 247, 0.55) !important;
+  opacity: 0.9 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
+}
+[data-theme="lava"] .ghost-watermark-active {
+  color: #fed7aa !important;
+  background: rgba(69, 26, 3, 0.9) !important;
+  border-color: #f59e0b !important;
+  opacity: 0.9 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
+}
+[data-theme="anime"] .ghost-watermark-active {
+  color: #fef3c7 !important;
+  background: rgba(15, 23, 42, 0.9) !important;
+  border-color: #f97316 !important;
+  opacity: 0.9 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.85) !important;
+}
+[data-theme="ocean"] .ghost-watermark-active {
+  color: #fef3c7 !important;
+  background: rgba(8, 51, 88, 0.9) !important;
+  border-color: #38bdf8 !important;
+  opacity: 0.9 !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Cloze ghost hints (Levels 1 & 2) match the dark input boxes */
+[data-theme="dark"] .cloze-typing-slot.ghost-hint {
+  background: #312e81 !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.35) !important;
+}
+[data-theme="dark"] .cloze-typing-slot.ghost-hint::placeholder {
+  color: #fde68a !important;
+  opacity: 0.85 !important;
+}
+[data-theme="space"] .cloze-typing-slot.ghost-hint {
+  background: rgba(49, 46, 129, 0.98) !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.4) !important;
+}
+[data-theme="space"] .cloze-typing-slot.ghost-hint::placeholder {
+  color: #fde68a !important;
+  opacity: 0.85 !important;
+}
+[data-theme="lava"] .cloze-typing-slot.ghost-hint {
+  background: rgba(124, 45, 18, 0.98) !important;
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.5) !important;
+}
+[data-theme="lava"] .cloze-typing-slot.ghost-hint::placeholder {
+  color: #fed7aa !important;
+  opacity: 0.85 !important;
+}
+[data-theme="anime"] .cloze-typing-slot.ghost-hint {
+  background: rgba(30, 41, 59, 0.98) !important;
+  border-color: #f97316 !important;
+  box-shadow: 0 0 18px rgba(249, 115, 22, 0.5) !important;
+}
+[data-theme="anime"] .cloze-typing-slot.ghost-hint::placeholder {
+  color: #fef3c7 !important;
+  opacity: 0.85 !important;
+}
+[data-theme="ocean"] .cloze-typing-slot.ghost-hint {
+  background: #0c4a7a !important;
+  border-color: #f59e0b !important;
+  box-shadow: 0 0 20px rgba(245, 158, 11, 0.45) !important;
+}
+[data-theme="ocean"] .cloze-typing-slot.ghost-hint::placeholder {
+  color: #fef3c7 !important;
+  opacity: 0.85 !important;
+}
+

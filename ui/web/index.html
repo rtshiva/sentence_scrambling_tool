@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sentence Jigsaw 3.0 • Multi-Subject Learning & Exam Mastery</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=6">
   <script>
     tailwind.config = {
       theme: {
@@ -514,13 +514,14 @@
             <div class="flex justify-between items-center text-xs">
               <span class="font-bold text-emerald-900 flex items-center gap-1.5">
                 <span>🧩</span> Scrambled Word Bank Reference:
-                <span class="text-[11px] font-normal text-emerald-700">(Click a word to insert at cursor, or use as a spelling guide)</span>
+                <span class="text-[11px] font-normal text-emerald-700">(Only missing words shown — click to insert at cursor)</span>
               </span>
               <button type="button" onclick="toggleWritingWordBank()" id="writing-wordbank-close-btn" class="text-emerald-700 hover:text-emerald-900 text-xs font-bold px-2 py-0.5 rounded-lg hover:bg-emerald-100 transition">&times; Hide</button>
             </div>
             <div id="writing-word-bank-tray" class="flex flex-wrap gap-1.5 font-hindi text-sm py-1">
               <!-- Rendered dynamically -->
             </div>
+            <div id="writing-wordbank-empty-hint" class="hidden text-[11px] text-emerald-700 italic px-1">All words typed — review your sentence and press Check! ✓</div>
           </div>
 
           <!-- Virtual Hindi Helper Toolbar -->
@@ -557,8 +558,8 @@
               </button>
             </div>
             <div class="relative">
-              <textarea id="writing-input-area" rows="4" oninput="updateWritingWordCount()" placeholder="Type the complete answer sentence here from memory..." class="w-full p-4 font-hindi text-base md:text-lg bg-white border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed relative z-10 bg-transparent"></textarea>
-              <div id="writing-ghost-watermark" class="hidden absolute inset-0 p-4 font-hindi text-base md:text-lg text-slate-400 select-none pointer-events-none z-0 overflow-hidden leading-relaxed opacity-40 italic bg-amber-50/40 rounded-2xl border border-amber-300">
+              <textarea id="writing-input-area" rows="4" oninput="updateWritingWordCount()" placeholder="Type the complete answer sentence here from memory..." class="w-full p-4 font-hindi text-base md:text-lg bg-transparent border border-slate-200 rounded-2xl focus:ring-2 focus:ring-indigo-500 focus:outline-none leading-relaxed relative z-10"></textarea>
+              <div id="writing-ghost-watermark" class="hidden absolute inset-0 p-4 font-hindi text-base md:text-lg text-slate-400 select-none pointer-events-none z-20 overflow-hidden leading-relaxed opacity-40 italic bg-amber-50/40 rounded-2xl border border-amber-300">
                 <!-- Watermark shown when Peek is activated -->
               </div>
             </div>
@@ -1357,7 +1358,7 @@ Example:
     <div class="absolute left-1/2 -bottom-1.5 -translate-x-1/2 w-3 h-3 bg-slate-900/95 rotate-45 border-r border-b border-slate-700/60"></div>
   </div>
 
-  <script src="js/effects/particles.js"></script>
-  <script src="app.js"></script>
+  <script src="js/effects/particles.js?v=6"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
