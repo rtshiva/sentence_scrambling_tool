@@ -2515,8 +2515,66 @@ console.log("✓ PASS: Accessibility global font size scaling across DOM and set
     console.log("✓ PASS: Shuffled cloze blanks and blank-scoped word bank verified!");
   })();
 
+  // -------------------------------------------------------------------------
+  // [Test 51] Voice recording survives pauses; stops only on mic click
+  // -------------------------------------------------------------------------
+  await (async () => {
+    console.log("\n[Test 51] Testing voice recording across speech gaps...");
+    // Fake Web Speech API: start() only counts, stop() fires onend like browsers do.
+    function FakeRecognition() {
+      this.startCalls = 0;
+      this.stopCalls = 0;
+      this.continuous = false;
+      this.interimResults = false;
+      this.onresult = null;
+      this.onend = null;
+      this.onerror = null;
+      FakeRecognition.instances.push(this);
+    }
+    FakeRecognition.instances = [];
+    FakeRecognition.prototype.start = function() { this.startCalls++; };
+    FakeRecognition.prototype.stop = function() {
+      this.stopCalls++;
+      if (this.onend) this.onend();
+    };
+    mockWindow.webkitSpeechRecognition = FakeRecognition;
+
+    const gapCard = {
+      card_id: 'card_voice_gap_test',
+      question: 'सूरज किधर से निकलता है?',
+      meaning: 'Which direction does the sun rise from?',
+      chunks: ['सूरज', 'पूरब से', 'निकलता', 'है।']
+    };
+    context.setupGameSession([gapCard], 'voice', 'Chapter Voice Gap', 'deck_gap');
+    const ta_transcript = mockDocument.getElementById('voice-transcript-text');
+    const scoreEl = mockDocument.getElementById('voice-accuracy-score');
+
+    // 1. Start recording
+    await context.toggleVoiceRecording();
+    assert.strictEqual(FakeRecognition.instances.length, 1, "One recognition session must start");
+    const rec = FakeRecognition.instances[0];
+    assert.strictEqual(rec.continuous, true, "Recognition must be continuous so gaps never cut it");
+    assert.strictEqual(rec.startCalls, 1, "Session started once");
+
+    // 2. First utterance, then a mid-speech pause (browser fires onend)
+    rec.onresult({ resultIndex: 0, results: [{ 0: { transcript: 'सूरज ' }, isFinal: true }] });
+    rec.onend();
+    assert.strictEqual(rec.startCalls, 2, "Pause must auto-resume listening instead of ending the take");
+    assert(ta_transcript.textContent.includes('सूरज'), "First utterance must be kept across the pause");
+
+    // 3. Finish the sentence after the gap, then click Stop
+    rec.onresult({ resultIndex: 0, results: [{ 0: { transcript: 'पूरब से निकलता है।' }, isFinal: true }] });
+    await context.toggleVoiceRecording();
+    assert.strictEqual(rec.stopCalls, 1, "Stop click must stop the session");
+    assert(ta_transcript.textContent.includes('सूरज') && ta_transcript.textContent.includes('निकलता'), "Full take across the gap must be evaluated");
+    assert.strictEqual(scoreEl.textContent, 'Score: 100%', "Complete take must score 100%");
+
+    mockWindow.webkitSpeechRecognition = null;
+    console.log("✓ PASS: Voice recording spans pauses, accumulates speech, and scores on Stop verified!");
+  })();
+
   console.log("\n========================================================");
-  console.log("=== ALL 50 USE CASE & GAMEPLAY SCENARIOS PASSED (50/50) ===");
+  console.log("=== ALL 51 USE CASE & GAMEPLAY SCENARIOS PASSED (51/51) ===");
   console.log("========================================================");
 })().catch(err => {
   console.error("Test failed:", err);

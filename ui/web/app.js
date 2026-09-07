@@ -2801,12 +2801,53 @@ function initVoiceCard() {
   micBtn.className = 'w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-2xl flex items-center justify-center shadow-lg transition transform active:scale-95 cursor-pointer';
   micBtn.setAttribute('aria-pressed', 'false');
 
+  // Stop any lingering session from the previous card so it can't bleed over.
+  voiceStopRequested = true;
+  try { if (voiceRecognitionInstance) voiceRecognitionInstance.stop(); } catch(e) {}
+  voiceRecognitionInstance = null;
+  isVoiceRecording = false;
+  voiceFinalTranscript = '';
+  voiceInterimTranscript = '';
+
   // Pre-authorize microphone permission once in background so student is never prompted on click
   ensureMicrophonePermission().catch(() => {});
 }
 
 let voiceRecognitionInstance = null;
 let isVoiceRecording = false;
+// Set when the student clicks Stop: onend then finalizes instead of resuming.
+let voiceStopRequested = false;
+// Accumulated final transcript across auto-restarts (pauses must not cut it).
+let voiceFinalTranscript = '';
+let voiceInterimTranscript = '';
+
+function resetVoiceMicButton() {
+  const btn = document.getElementById('btn-mic-record');
+  if (!btn) return;
+  btn.className = 'w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-2xl flex items-center justify-center shadow-lg transition transform active:scale-95 cursor-pointer';
+  btn.setAttribute('aria-pressed', 'false');
+}
+
+// Evaluate whatever the student actually said when recording ends.
+function finalizeVoiceRecording(targetText) {
+  isVoiceRecording = false;
+  resetVoiceMicButton();
+  const badge = document.getElementById('voice-status-badge');
+  const instruction = document.getElementById('voice-mic-instruction');
+  const transcriptEl = document.getElementById('voice-transcript-text');
+  const spoken = (voiceFinalTranscript + ' ' + voiceInterimTranscript).trim();
+  voiceFinalTranscript = '';
+  voiceInterimTranscript = '';
+  if (badge) {
+    badge.className = 'text-xs font-bold bg-slate-100 text-slate-600 px-3 py-1 rounded-full';
+    badge.textContent = spoken ? 'Evaluating Speech...' : 'Ready to Speak';
+  }
+  if (instruction) instruction.textContent = spoken ? 'Evaluation complete.' : 'No speech detected — click microphone and try again.';
+  if (transcriptEl && !spoken) transcriptEl.textContent = 'Your spoken words will appear here...';
+  if (spoken) {
+    evaluateVoiceSpeech(spoken, targetText);
+  }
+}
 
 async function toggleVoiceRecording() {
   const card = state.gameplay.current_card;
@@ -2822,14 +2863,20 @@ async function toggleVoiceRecording() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
   if (isVoiceRecording) {
-    isVoiceRecording = false;
-    btn.className = 'w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-2xl flex items-center justify-center shadow-lg transition transform active:scale-95 cursor-pointer';
-    btn.setAttribute('aria-pressed', 'false');
-    badge.className = 'text-xs font-bold bg-slate-100 text-slate-600 px-3 py-1 rounded-full';
-    badge.textContent = 'Evaluating Speech...';
-    instruction.textContent = 'Evaluation complete.';
+    // Student clicked Stop: finalize on recognition end so the last
+    // utterance is included in the evaluated transcript.
+    voiceStopRequested = true;
+    if (badge) {
+      badge.className = 'text-xs font-bold bg-slate-100 text-slate-600 px-3 py-1 rounded-full';
+      badge.textContent = 'Evaluating Speech...';
+    }
+    if (instruction) instruction.textContent = 'Evaluation complete.';
     if (voiceRecognitionInstance) {
-      try { voiceRecognitionInstance.stop(); } catch(e) {}
+      try { voiceRecognitionInstance.stop(); } catch(e) {
+        finalizeVoiceRecording(targetText);
+      }
+    } else {
+      finalizeVoiceRecording(targetText);
     }
     return;
   }
@@ -2840,43 +2887,72 @@ async function toggleVoiceRecording() {
 
   // Start speech recognition
   isVoiceRecording = true;
+  voiceStopRequested = false;
+  voiceFinalTranscript = '';
+  voiceInterimTranscript = '';
   btn.className = 'w-16 h-16 rounded-full bg-red-500 text-white text-2xl flex items-center justify-center shadow-xl animate-pulse cursor-pointer';
   btn.setAttribute('aria-pressed', 'true');
   badge.className = 'text-xs font-bold bg-rose-100 text-rose-700 px-3 py-1 rounded-full animate-pulse';
   badge.textContent = '● Listening... Speak Now';
-  instruction.textContent = 'Speaking... Click microphone again when finished.';
+  instruction.textContent = 'Speaking... pause whenever you need to, then click microphone when finished.';
   transcriptEl.textContent = 'Listening...';
 
   if (SpeechRecognition) {
     const recognition = new SpeechRecognition();
     voiceRecognitionInstance = recognition;
     recognition.lang = isHindi ? 'hi-IN' : 'en-US';
-    recognition.continuous = false;
+    // Continuous: a pause between words must NOT end the session. The
+    // student speaks till the end and stops explicitly via the mic button.
+    recognition.continuous = true;
     recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-      let speechResult = '';
-      for (let i = 0; i < event.results.length; ++i) {
-        speechResult += event.results[i][0].transcript;
+      // Accumulate only new results so auto-restarts never duplicate words.
+      let interim = '';
+      const startIdx = event.resultIndex || 0;
+      for (let i = startIdx; i < event.results.length; ++i) {
+        const text = event.results[i][0].transcript;
+        if (event.results[i].isFinal) {
+          voiceFinalTranscript += text + ' ';
+        } else {
+          interim += text;
+        }
       }
-      transcriptEl.textContent = speechResult;
-
-      if (event.results[0].isFinal) {
-        evaluateVoiceSpeech(speechResult, targetText);
-      }
+      voiceInterimTranscript = interim;
+      const full = (voiceFinalTranscript + voiceInterimTranscript).trim();
+      transcriptEl.textContent = full || 'Listening...';
     };
 
     recognition.onerror = (err) => {
       console.warn("Speech recognition error:", err);
-      isVoiceRecording = false;
-      btn.className = 'w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-2xl flex items-center justify-center shadow-lg transition transform active:scale-95 cursor-pointer';
-      badge.textContent = 'Ready to Speak';
-      fallbackVoiceEvaluation(targetText);
+      const errType = (err && err.error) || '';
+      // Transient gaps/end-of-audio: the session auto-resumes in onend.
+      // Never fabricate a score here — only evaluate real speech.
+      if (voiceStopRequested || errType === 'no-speech' || errType === 'aborted') return;
+      if (errType === 'not-allowed' || errType === 'service-not-allowed' || errType === 'audio-capture' || errType === 'network') {
+        voiceStopRequested = true;
+        try { recognition.stop(); } catch(e) {}
+        finalizeVoiceRecording(targetText);
+      }
     };
 
     recognition.onend = () => {
-      isVoiceRecording = false;
-      btn.className = 'w-16 h-16 rounded-full bg-rose-600 hover:bg-rose-700 text-white text-2xl flex items-center justify-center shadow-lg transition transform active:scale-95 cursor-pointer';
+      if (voiceStopRequested) {
+        // Explicit Stop (or fatal error): score what was actually spoken.
+        finalizeVoiceRecording(targetText);
+        return;
+      }
+      if (isVoiceRecording) {
+        // Auto-ended on a pause/idle timeout: resume silently so the
+        // student can keep speaking till the end.
+        try {
+          recognition.start();
+        } catch(e) {
+          finalizeVoiceRecording(targetText);
+        }
+        return;
+      }
+      resetVoiceMicButton();
     };
 
     try {
